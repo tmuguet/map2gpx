@@ -86,6 +86,12 @@ window.onload = function() {
         layer: "ORTHOIMAGERY.ORTHOPHOTOS",
         apiKey: keyIgn
     }).addTo(map);
+    var slopes =  L.geoportalLayer.WMTS({
+        layer: "GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN",
+        apiKey: keyIgn
+    }, {
+        opacity: 0.25
+    }).addTo(map);
     L.geoportalLayer.WMTS({
         layer: "GEOGRAPHICALGRIDSYSTEMS.MAPS",
         apiKey: keyIgn
@@ -103,7 +109,17 @@ window.onload = function() {
         'position': 'bottomleft',
         'zoomLevelOffset': -4
     }).addTo(map);
-    map.addControl(L.geoportalControl.LayerSwitcher());
+    var layerSwitcher = L.geoportalControl.LayerSwitcher({
+        collapsed : false,
+        layers : [{
+            layer: slopes,
+            config: {
+                visibility: false
+            }
+        }]
+    });
+    map.addControl(layerSwitcher);
+
     map.addControl(L.control.scale({
         'imperial': false,
         'position': 'bottomright'
