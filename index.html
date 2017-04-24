@@ -115,7 +115,7 @@ window.onload = function() {
             icon: 'fa-magic',
             title: 'Close the loop',
             onClick: function(btn, map) {
-                if (markers.length > 2) {
+                if (markers.length > 1) {
                     var first = markers[0];
                     addMarker({
                         latlng: first.getLatLng()
@@ -182,14 +182,11 @@ window.onload = function() {
         if (enabled) {
             closeLoop.state('loaded');
             exportButton.state('loaded');
-            if (markers.length > 2) {
-                closeLoop.enable();
-            } else {
-                closeLoop.disable();
-            }
             if (markers.length > 1) {
+                closeLoop.enable();
                 exportButton.enable();
             } else {
+                closeLoop.disable();
                 exportButton.disable();
             }
         } else {
