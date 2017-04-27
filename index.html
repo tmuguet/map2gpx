@@ -125,15 +125,10 @@ window.onload = function() {
         'zoomLevelOffset': -4
     }).addTo(map);
     var layerSwitcher = L.geoportalControl.LayerSwitcher({
-        collapsed : false,
-        layers : [{
-            layer: slopes,
-            config: {
-                visibility: false
-            }
-        }]
+        collapsed : false
     });
     map.addControl(layerSwitcher);
+    layerSwitcher.setVisibility(slopes, false);
 
     map.addControl(L.control.scale({
         'imperial': false,
