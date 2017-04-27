@@ -794,7 +794,7 @@ window.onload = function() {
                     return 'Distance: ' + Math.floor(tooltipItems[0].xLabel*100)/100 + "km";
                 },
                 label: function(tooltipItems, data) {
-                    return data.datasets[tooltipItems.datasetIndex].label +': ' + Math.round(tooltipItems.yLabel*100)/100 + (tooltipItems.datasetIndex == 0 ? 'm' : '°');
+                    return data.datasets[tooltipItems.datasetIndex].label +': ' + (tooltipItems.datasetIndex == 0 ? Math.round(tooltipItems.yLabel*100)/100 + 'm' : Math.round(tooltipItems.yLabel) + '°');
                 }
             }
 
