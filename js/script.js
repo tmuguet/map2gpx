@@ -128,7 +128,9 @@ window.onload = function() {
                 closeLoop.disable();
                 exportButton.disable();
             }
+            $("#data-computing").fadeOut();
         } else {
+            $("#data-computing").fadeIn();
             closeLoop.state('computing');
             exportButton.state('computing');
             closeLoop.disable();
@@ -171,7 +173,7 @@ window.onload = function() {
                             color: "#ED7F10",
                             weight: 5,
                             opacity: 0.75
-                        }).addTo(map);
+                        });
 
                         var _geometry = {
                             type: "FeatureCollection",
@@ -210,6 +212,7 @@ window.onload = function() {
                                 });
                             });
                             replot().then(function() {
+                                geojson.addTo(map)
                                 self.resolve();
                             });
                         });
@@ -525,7 +528,7 @@ window.onload = function() {
         });
     }
 
-    function computeElevationMeasure() {
+    function computeStats() {
         var elevations = [];
         $.each(routes, function(i, group) {
             group.eachLayer(function(layer) {
@@ -536,7 +539,7 @@ window.onload = function() {
         });
 
         if (elevations.length == 0) {
-            return elevations;
+            return {};
         }
 
         var _decimalToRadian = function (location) {
@@ -560,10 +563,13 @@ window.onload = function() {
 
         // Calcul de la distance au départ pour chaque point + arrondi des lat/lon
         var distance = 0;
-        var altMin = elevations[0];
-        var altMax = elevations[0];
+        var altMin = elevations[0].z;
+        var altMax = elevations[0].z;
+        var slopeMax = 0;
+        var slopeMin = 0;
         var denivPos = 0;
         var denivNeg = 0;
+
         elevations[0].dist = 0;
         elevations[0].slopeOnTrack = 0;
 
@@ -587,10 +593,15 @@ window.onload = function() {
                     elevationsResampled[j].slopeOnTrack = (previous + elevationsResampled[j].slopeOnTrack) / 2;
                 }
 
-                if (elevationsResampled[j].z < altMin.z)
-                    altMin = elevationsResampled[j];
-                if (elevationsResampled[j].z > altMax.z)
-                    altMax = elevationsResampled[j];
+                if (elevationsResampled[j].z < altMin)
+                    altMin = elevationsResampled[j].z;
+                if (elevationsResampled[j].z > altMax)
+                    altMax = elevationsResampled[j].z;
+
+                if (elevationsResampled[j].slopeOnTrack > slopeMax)
+                    slopeMax = elevationsResampled[j].slopeOnTrack;
+                if (elevationsResampled[j].slopeOnTrack < slopeMin)
+                    slopeMin = elevationsResampled[j].slopeOnTrack;
 
                 if (elevationsResampled[j].z < elevationsResampled[j-1].z)
                     denivNeg += (Math.round(elevationsResampled[j-1].z) - Math.round(elevationsResampled[j].z));
@@ -599,16 +610,18 @@ window.onload = function() {
             }
         }
 
-        $("#data-distance").text(Math.round(distance*100)/100 + "km");
-        $("#data-alt-min").text(Math.round(altMin.z) + "m");
-        $("#data-alt-max").text(Math.round(altMax.z) + "m");
-        $("#data-deniv-pos").text(Math.round(denivPos) + "m");
-        $("#data-deniv-neg").text(Math.round(denivNeg) + "m");
-
-        return elevationsResampled;
+        return {elevations: elevationsResampled, distance: distance, altMin: altMin, altMax: altMax, slopeMin: slopeMin, slopeMax: slopeMax, denivPos: denivPos, denivNeg: denivNeg};
     }
 
     var plotMarker = null;
+
+/*  TODO: needs https://github.com/chartjs/chartjs-plugin-annotation/issues/60 to be resolved
+    var annotationsEnabled = {};
+    function onClickAlt(e) {
+        this.options.label.enabled = !this.options.label.enabled;
+        annotationsEnabled[this.options.id] = this.options.label.enabled;
+        chart.update();
+    }*/
 
     var ctx = $("#chart");
     var chart = new Chart(ctx, {
@@ -680,6 +693,7 @@ window.onload = function() {
         },
         scales: {
             xAxes: [{
+                id: 'distance',
                 type: 'linear',
                 position: 'bottom',
                 min: 0
@@ -688,6 +702,7 @@ window.onload = function() {
                 id: 'alt',
                 type: 'linear',
                 position: 'left',
+                beginAtZero: false
               }, {
                 id: 'slope',
                 type: 'linear',
@@ -714,39 +729,74 @@ window.onload = function() {
                     return data.datasets[tooltipItems.datasetIndex].label +': ' + (tooltipItems.datasetIndex == 0 ? Math.round(tooltipItems.yLabel*100)/100 + 'm' : Math.round(tooltipItems.yLabel) + '°');
                 }
             }
-
+        },
+        annotation: {
+            //events: ['click'],
+            annotations: [{
+                    id: 'altmax',
+                    type: 'line',
+                    mode: 'horizontal',
+                    scaleID: 'alt',
+                    value: 0,
+                    borderColor: 'rgba(12, 173, 98, 0.5)',
+                    borderWidth: 1,
+                    label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal",},
+                    //onClick: onClickAlt,
+                },{
+                    id: 'altmin',
+                    type: 'line',
+                    mode: 'horizontal',
+                    scaleID: 'alt',
+                    value: 0,
+                    borderColor: 'rgba(12, 173, 98, 0.5)',
+                    borderWidth: 1,
+                    label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal"},
+                    //onClick: onClickAlt,
+                },{
+                    id: 'distance',
+                    type: 'line',
+                    mode: 'vertical',
+                    scaleID: 'distance',
+                    value: 0,
+                    borderColor: 'rgba(0, 0, 0, 0.5)',
+                    borderWidth: 1,
+                    label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", xAdjust: -50},
+                    //onClick: onClickAlt,
+                }],
         }
     }
     });
+
     function replot() {
         return $.Deferred(function() {
             var self = this;
-            var elevations = computeElevationMeasure();
+            var stats = computeStats();
 
-            var data = [];
-            var data2 = [];
-            var data3 = [];
-            var maxSlope = 0;
-            var minSlope = 0;
-            for (var j = 0 ; j < elevations.length; j++) {
-                data.push({x: elevations[j].dist, y: elevations[j].z, lat: elevations[j].lat, lon: elevations[j].lon});
-                data2.push({x: elevations[j].dist, y: elevations[j].slopeOnTrack, lat: elevations[j].lat, lon: elevations[j].lon});
-                data3.push({x: elevations[j].dist, y: elevations[j].slope, lat: elevations[j].lat, lon: elevations[j].lon});
+            if (stats.elevations) {
+                var data = [];
+                var data2 = [];
+                var data3 = [];
+                for (var j = 0 ; j < stats.elevations.length; j++) {
+                    data.push({x: stats.elevations[j].dist, y: stats.elevations[j].z, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                    data2.push({x: stats.elevations[j].dist, y: stats.elevations[j].slopeOnTrack, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                    data3.push({x: stats.elevations[j].dist, y: stats.elevations[j].slope, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                }
 
-                if (elevations[j].slopeOnTrack > maxSlope)
-                    maxSlope = elevations[j].slopeOnTrack;
-                if (elevations[j].slopeOnTrack < minSlope)
-                    minSlope = elevations[j].slopeOnTrack;
-            }
-            if (data.length > 0) {
                 chart.options.scales.xAxes[0].max = data[data.length-1].x;
                 chart.config.data.datasets[0].data = data;
                 chart.config.data.datasets[1].data = data2;
                 chart.config.data.datasets[2].data = data3;
 
-                var gradient = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 125);
-                maxSlope = Math.ceil(maxSlope/10)*10;
-                minSlope = Math.floor(minSlope/10)*10;
+                chart.options.annotation.annotations[0].value = stats.altMax;
+                chart.options.annotation.annotations[0].label.content = "Altitude max: " + Math.round(stats.altMax) + "m; D+: " + Math.round(stats.denivPos) + "m";
+                chart.options.annotation.annotations[1].value = stats.altMin;
+                chart.options.annotation.annotations[1].label.content = "Altitude min: " + Math.round(stats.altMin) + "m; D-: " + Math.round(stats.denivNeg) + "m";
+                chart.options.annotation.annotations[2].value = data[data.length-1].x;
+                chart.options.annotation.annotations[2].label.content = "Distance: " + Math.round(data[data.length-1].x*100)/100 + "km";
+
+                var gradient = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
+                var maxSlope = Math.ceil(stats.slopeMax/10)*10;
+                var minSlope = Math.floor(stats.slopeMin/10)*10;
 
                 var totalSlope = -minSlope + maxSlope;
 
@@ -780,20 +830,27 @@ window.onload = function() {
                 chart.config.data.datasets[1].backgroundColor = gradient;
 
 
-                var gradient2 = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 125);
+                var gradient2 = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
                 gradient2.addColorStop(0, 'purple');
                 gradient2.addColorStop(1-40/45, 'red');
                 gradient2.addColorStop(1-35/45, 'orange');
                 gradient2.addColorStop(1-30/45, 'yellow');
                 gradient2.addColorStop(1, 'grey');
                 chart.config.data.datasets[2].backgroundColor = gradient2;
+
+                var old = chart.options.annotation;
+                chart.options.annotation = {};  // TODO: potential bug with annotations where old 'value' of annotations are kept in graph
+                chart.update();
+                chart.options.annotation = old;
+                chart.update();
+                $("#data-empty").slideUp();
             } else {
                 chart.options.scales.xAxes[0].max = 1;
                 chart.config.data.datasets[0].data = [];
                 chart.config.data.datasets[1].data = [];
                 chart.config.data.datasets[2].data = [];
+                $("#data-empty").slideDown();
             }
-            chart.update();
             self.resolve();
         });
     }
