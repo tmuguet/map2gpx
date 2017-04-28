@@ -236,7 +236,8 @@ window.onload = function() {
                         var geojson = L.geoJSON([], {
                             color: "#ED7F10",
                             weight: 5,
-                            opacity: 0.75
+                            opacity: 0.75,
+                            snakingPause: 0, snakingSpeed: 1000
                         });
 
                         var _geometry = {
@@ -258,6 +259,7 @@ window.onload = function() {
                             routes[index] = geojson;
                             replot();
                             geojson.addTo(map);
+                            geojson.snakeIn();
                             start.setOpacity(1);
                             end.setOpacity(1);
                             self.resolve();
