@@ -125,6 +125,12 @@ window.onload = function() {
             icon: 'fa-cloud-download',
             title: 'Exporter',
             onClick: function(btn, map) {
+                var bounds = L.latLngBounds(markers[0].getLatLng(), markers[1].getLatLng());
+                $.each(routes, function(i, group) {
+                    bounds.extend(group[0].getBounds());
+                });
+
+                map.flyToBounds(bounds, {padding: [50, 50]});
                 exportPopup.setLatLng(markers[0].getLatLng()).openOn(map);
                 var o = this;
                 $(".export-gpx-button:visible").click(function() {
