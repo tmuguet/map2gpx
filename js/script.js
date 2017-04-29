@@ -4,11 +4,12 @@ window.onload = function() {
     var routes = [];    // Cache of computed routes
     var altitudes = {}; // Cache of computed altitudes for each points of routes computed so far
     var slopes = {}; // Cache of computed slopes for each points of routes computed so far
+    var mode = null;
+
 
     // Central map
     var map = L.map('map', {
-        loadingControl: true,
-        doubleClickZoom: false
+        loadingControl: true
     }).setView([44.97755, 6.141186], 13);   // Center in les Ecrins because I love this place
     L.geoportalLayer.WMTS({
         layer: "ORTHOIMAGERY.ORTHOPHOTOS",
@@ -48,6 +49,50 @@ window.onload = function() {
         'position': 'bottomright'
     }));
 
+    var automatedBtn = L.easyButton({
+        states: [{
+            stateName: 'loaded',
+            icon: 'fa-map-signs',
+            title: 'Tracer automatiquement l\'itinéraire',
+            onClick: function(btn, map) {
+                btn.state('active');
+                lineBtn.state('loaded');
+                mode = "auto";
+                map.doubleClickZoom.disable();
+            }
+        },{
+            stateName: 'active',
+            icon: 'fa-map-signs',
+            title: 'Tracer automatiquement l\'itinéraire',
+            onClick: function(btn, map) {
+                btn.state('loaded');
+                mode = null;
+                map.doubleClickZoom.enable();
+            }
+        }]
+    });
+    var lineBtn = L.easyButton({
+        states: [{
+            stateName: 'loaded',
+            icon: 'fa-map-marker',
+            title: 'Tracer l\'itinéraire en ligne droite',
+            onClick: function(btn, map) {
+                btn.state('active');
+                automatedBtn.state('loaded');
+                mode = "straight";
+                map.doubleClickZoom.disable();
+            }
+        },{
+            stateName: 'active',
+            icon: 'fa-map-marker',
+            title: 'Tracer l\'itinéraire en ligne droite',
+            onClick: function(btn, map) {
+                btn.state('loaded');
+                mode = null;
+                map.doubleClickZoom.enable();
+            }
+        }]
+    });
     var closeLoop = L.easyButton({
         states: [{
             stateName: 'loaded',
@@ -70,7 +115,9 @@ window.onload = function() {
             icon: 'fa-magic',
             title: 'Fermer la boucle (invalide!)'
         }]
-    }).addTo(map);
+    });
+    L.easyBar([automatedBtn, lineBtn, closeLoop]).addTo(map);
+
     var exportPopup = L.popup().setContent('<input type="text" value="nom" class="export-filename"/><br/><button class="export-gpx-button"><span class="ico gpx"></span></button><button class="export-kml-button"><span class="ico kml"></span></button>');
     var exportButton = L.easyButton({
         states: [{
@@ -168,6 +215,11 @@ window.onload = function() {
     const ALT=2;
     const SLOPE=3;
 
+    // Converts from radians to degrees.
+    Math.roundE8 = function(value) {
+        return Math.round(value * Math.pow(10, 8)) / Math.pow(10, 8);
+    };
+
     // Converts from degrees to radians.
     Math.radians = function(degrees) {
         return degrees * Math.PI / 180;
@@ -188,6 +240,91 @@ window.onload = function() {
             Math.sin(deltaLonBy2) * Math.sin(deltaLonBy2) *
             Math.cos(lat1) * Math.cos(lat2);
         return 2 * 6378137 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // from https://gis.stackexchange.com/questions/157693/getting-all-vertex-lat-long-coordinates-every-1-meter-between-two-known-points
+    function getDestinationLatLong(start, azimuth, distance) {
+        var R = 6378137; // Radius of the Earth in m
+        var brng = Math.radians(azimuth); // Bearing is degrees converted to radians.
+        var lat1 = Math.radians(start[LAT]); //Current dd lat point converted to radians
+        var lon1 = Math.radians(start[LON]); //Current dd long point converted to radians
+        var lat2 = Math.asin(Math.sin(lat1) * Math.cos(distance/R) + Math.cos(lat1)* Math.sin(distance/R)* Math.cos(brng));
+        var lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distance/R)* Math.cos(lat1), Math.cos(distance/R)- Math.sin(lat1)* Math.sin(lat2));
+        //convert back to degrees
+        lat2 = Math.degrees(lat2);
+        lon2 = Math.degrees(lon2);
+        return [Math.roundE8(lon2), Math.roundE8(lat2)];
+    }
+
+    function _bearing(c1, c2) {
+        var startLat = Math.radians(c1[LAT]);
+        var startLong = Math.radians(c1[LON]);
+        var endLat = Math.radians(c2[LAT]);
+        var endLong = Math.radians(c2[LON]);
+        var dLong = endLong - startLong;
+        var dPhi = Math.log(Math.tan(endLat/2.0 + Math.PI/4.0) / Math.tan(startLat/2.0 + Math.PI/4.0));
+        if (Math.abs(dLong) > Math.PI) {
+             if (dLong > 0.0)
+                 dLong = -(2.0 * Math.PI - dLong);
+             else
+                 dLong = (2.0 * Math.PI + dLong);
+        }
+        return (Math.degrees(Math.atan2(dLong, dPhi)) + 360.0) % 360.0;
+    }
+
+    function computeStraightRoute(start, end, index) {
+        return $.Deferred(function() {
+            var self = this;
+
+            var onFail = function(error) {
+                console.log(error);
+                routes[index] = null;
+                self.reject();
+            };
+
+            var c1 = [Math.roundE8(start.getLatLng().lng), Math.roundE8(start.getLatLng().lat)];
+            var c2 = [Math.roundE8(end.getLatLng().lng), Math.roundE8(end.getLatLng().lat)];
+            var d = _haversineDistance(c1, c2);
+            var azimuth = _bearing(c1, c2);
+
+            var coordinates = [c1];
+
+            var interval = 5;
+            for (var counter = interval; counter < d; counter+=interval) {
+                var coord = getDestinationLatLong(c1, azimuth, counter);
+                coordinates.push(coord);
+            }
+            coordinates.push(c2);
+
+            var lines = [{
+                "type": "LineString",
+                "coordinates": coordinates
+            }];
+
+            var geojson = L.geoJSON(lines, {
+                color: "#ED7F10",
+                weight: 5,
+                opacity: 0.75,
+                snakingPause: 0, snakingSpeed: 1000
+            });
+
+            var done = function() {
+                routes[index] = [geojson, 'straight'];
+                replot();
+                geojson.addTo(map);
+                geojson.snakeIn();
+                start.setOpacity(1);
+                end.setOpacity(1);
+                self.resolve();
+            };
+
+            $.when.apply($, geojson.fetchData()).then(done).fail(function() {
+                // Retry
+                $.when.apply($, geojson.fetchData()).then(done).fail(function() {
+                    onFail("Impossible d'obtenir les données de la route");
+                });
+            });
+        });
     }
 
     function latlngToTilePixel(latlng, crs, zoom, tileSize, pixelOrigin) {
@@ -298,8 +435,10 @@ window.onload = function() {
 
             var onFail = function(error) {
                 console.log(error);
-                routes[index] = null;
-                self.reject();
+                console.log("Trying straight line...");
+                computeStraightRoute(start, end, index)
+                    .done(function() {self.resolve();})
+                    .fail(function() {self.reject(); });
             };
 
             var startLatLng = start.getLatLng();
@@ -347,8 +486,8 @@ window.onload = function() {
                         geojson.addData(_geometry);
 
                         var done = function() {
-                            routes[index] = geojson;
                             replot();
+                            routes[index] = [geojson, 'auto'];
                             geojson.addTo(map);
                             geojson.snakeIn();
                             start.setOpacity(1);
@@ -382,10 +521,15 @@ window.onload = function() {
     }
 
     function addMarker(e) {
+        if (mode == null) {
+            return;
+        }
+
         updateButtons(false); // Disabled while computations
         var promises = [];
 
-        var marker = L.marker(e.latlng, {
+        var latlng = L.latLng(Math.roundE8(e.latlng.lat), Math.roundE8(e.latlng.lng));
+        var marker = L.marker(latlng, {
             riseOnHover: true,
             draggable: true,
             opacity: 0.5
@@ -408,7 +552,8 @@ window.onload = function() {
             if (routes.length != markerIndex - 1)
                 console.log("Something wrong"); // but we can probably recover
 
-            promises.push(computeRoute(start, end, markerIndex - 1));
+            promises.push(mode == "auto" ? computeRoute(start, end, markerIndex - 1)
+                : computeStraightRoute(start, end, markerIndex - 1));
         }
 
         marker.on('moveend', function(event) {
@@ -424,11 +569,17 @@ window.onload = function() {
                     var routeFrom = routes[markerIndex];
 
                     if (routeFrom != null)
-                        map.removeLayer(routeFrom);
+                        map.removeLayer(routeFrom[0]);
 
                     var start = markers[markerIndex];
                     var end = markers[markerIndex + 1];
-                    promises.push(computeRoute(start, end, markerIndex));
+
+                    var _mode = "auto";
+                    if (mode == null && routeFrom != null) {
+                        _mode = routeFrom[1];
+                    }
+                    promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex)
+                        : computeStraightRoute(start, end, markerIndex));
                 }
 
                 if (markerIndex > 0) {
@@ -436,11 +587,16 @@ window.onload = function() {
                     var routeTo = routes[markerIndex - 1];
 
                     if (routeTo != null)
-                        map.removeLayer(routeTo);
+                        map.removeLayer(routeTo[0]);
 
                     var start = markers[markerIndex - 1];
                     var end = markers[markerIndex];
-                    promises.push(computeRoute(start, end, markerIndex - 1));
+                    var _mode = "auto";
+                    if (mode == null && routeTo != null) {
+                        _mode = routeTo[1];
+                    }
+                    promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex - 1)
+                        : computeStraightRoute(start, end, markerIndex -1));
                 }
             }
 
@@ -465,7 +621,7 @@ window.onload = function() {
                         var routeFrom = routes[0];
 
                         if (routeFrom != null)
-                            map.removeLayer(routeFrom);
+                            map.removeLayer(routeFrom[0]);
                         routes.splice(0, 1);
 
                         replot();
@@ -475,7 +631,7 @@ window.onload = function() {
                     var routeTo = routes[markerIndex - 1];
 
                     if (routeTo != null)
-                            map.removeLayer(routeTo);
+                            map.removeLayer(routeTo[0]);
                     routes.splice(markerIndex - 1, 1);
 
                     replot();
@@ -484,16 +640,21 @@ window.onload = function() {
                     var routeTo = routes[markerIndex - 1];
                     var routeFrom = routes[markerIndex];
                     if (routeTo != null)
-                        map.removeLayer(routeTo);
+                        map.removeLayer(routeTo[0]);
                     if (routeFrom != null)
-                        map.removeLayer(routeFrom);
+                        map.removeLayer(routeFrom[0]);
 
                     routes.splice(markerIndex, 1); // Remove route starting at this marker
 
                     // Re-compute new route between previous & next markers
                     var start = markers[markerIndex - 1];
                     var end = markers[markerIndex + 1];
-                    promises.push(computeRoute(start, end, markerIndex - 1));
+                    var _mode = "auto";
+                    if (mode == null && routeTo != null) {
+                        _mode = routeTo[1];
+                    }
+                    promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex - 1)
+                        : computeStraightRoute(start, end, markerIndex -1));
                 }
                 markers.splice(markerIndex, 1);
             }
@@ -600,7 +761,7 @@ window.onload = function() {
             xml += '        <name>' + filename + '</name>\n';
             xml += '        <trkseg>\n';
             $.each(routes, function(i, group) {
-                group.eachLayer(function(layer) {
+                group[0].eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
                         xml += '            <trkpt lat="' + coords[LAT] + '" lon="' + coords[LON] + '">';
                         if (coords[LON] + '/' + coords[LAT] in altitudes) {
@@ -640,7 +801,7 @@ window.onload = function() {
             xml += '                <coordinates>\n';
             xml += '                    ';
             $.each(routes, function(i, group) {
-                group.eachLayer(function(layer) {
+                group[0].eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
                         xml += coords[LON] + ',' + coords[LAT] + ',0 ';
                     });
@@ -663,7 +824,7 @@ window.onload = function() {
         var elevations = [];
         $.each(routes, function(i, group) {
             if (group != null) {
-                group.eachLayer(function(layer) {
+                group[0].eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
                         var key = coords[LON] + '/' + coords[LAT];
                         var alt = null;
@@ -920,35 +1081,36 @@ window.onload = function() {
             var minSlope = Math.floor(stats.slopeMin/10)*10;
 
             var totalSlope = -minSlope + maxSlope;
+            if (totalSlope != 0) {
+                if (maxSlope >= 45) {
+                    gradient.addColorStop((maxSlope-45)/totalSlope, 'purple');
+                }
+                if (maxSlope >= 40) {
+                    gradient.addColorStop((maxSlope-40)/totalSlope, 'red');
+                }
+                if (maxSlope >= 35) {
+                    gradient.addColorStop((maxSlope-35)/totalSlope, 'orange');
+                }
+                if (maxSlope >= 30) {
+                    gradient.addColorStop((maxSlope-30)/totalSlope, 'yellow');
+                }
 
-            if (maxSlope >= 45) {
-                gradient.addColorStop((maxSlope-45)/totalSlope, 'purple');
-            }
-            if (maxSlope >= 40) {
-                gradient.addColorStop((maxSlope-40)/totalSlope, 'red');
-            }
-            if (maxSlope >= 35) {
-                gradient.addColorStop((maxSlope-35)/totalSlope, 'orange');
-            }
-            if (maxSlope >= 30) {
-                gradient.addColorStop((maxSlope-30)/totalSlope, 'yellow');
-            }
+                gradient.addColorStop(maxSlope/totalSlope, 'grey');
 
-            gradient.addColorStop(maxSlope/totalSlope, 'grey');
-
-            if (minSlope <= -30) {
-                gradient.addColorStop((maxSlope+30)/totalSlope, 'yellow');
+                if (minSlope <= -30) {
+                    gradient.addColorStop((maxSlope+30)/totalSlope, 'yellow');
+                }
+                if (minSlope <= -35) {
+                    gradient.addColorStop((maxSlope+35)/totalSlope, 'orange');
+                }
+                if (minSlope <= -40) {
+                    gradient.addColorStop((maxSlope+40)/totalSlope, 'red');
+                }
+                if (minSlope <= -45) {
+                    gradient.addColorStop((maxSlope+45)/totalSlope, 'purple');
+                }
+                chart.config.data.datasets[1].backgroundColor = gradient;
             }
-            if (minSlope <= -35) {
-                gradient.addColorStop((maxSlope+35)/totalSlope, 'orange');
-            }
-            if (minSlope <= -40) {
-                gradient.addColorStop((maxSlope+40)/totalSlope, 'red');
-            }
-            if (minSlope <= -45) {
-                gradient.addColorStop((maxSlope+45)/totalSlope, 'purple');
-            }
-            chart.config.data.datasets[1].backgroundColor = gradient;
 
 
             var gradient2 = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
