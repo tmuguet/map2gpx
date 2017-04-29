@@ -480,21 +480,28 @@ window.onload = function() {
         var tiles = {};
         geojson.eachLayer(function(layer) {
             $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                var tile = latlngToTilePixel(L.latLng(coords[1], coords[0]), map.options.crs, 16, 256, map.getPixelOrigin());
+                if (!(coords[0] + '/' + coords[1] in slopes)) { // Ignore already cached values
+                    var tile = latlngToTilePixel(L.latLng(coords[1], coords[0]), map.options.crs, 16, 256, map.getPixelOrigin());
 
-                if (!(tile[0].x in tiles))
-                    tiles[tile[0].x] = {};
-                if (!(tile[0].y in tiles[tile[0].x]))
-                    tiles[tile[0].x][tile[0].y] = [];
+                    if (!(tile[0].x in tiles))
+                        tiles[tile[0].x] = {};
+                    if (!(tile[0].y in tiles[tile[0].x]))
+                        tiles[tile[0].x][tile[0].y] = [[]];
 
-                tiles[tile[0].x][tile[0].y].push({lat: coords[1], lon: coords[0], z: coords[2], x: tile[1].x, y: tile[1].y});
+                    if (tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].length > 50)
+                        tiles[tile[0].x][tile[0].y].push([]);
+
+                    tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].push({lat: coords[1], lon: coords[0], z: coords[2], x: tile[1].x, y: tile[1].y});
+                }
             });
         });
 
         var promises = [];
         $.each(tiles, function(x, _y) {
-            $.each(_y, function(y, val) {
-                promises.push(fetchSlope(x, y, val));
+            $.each(_y, function(y, batches) {
+                $.each(batches, function(j, batch) {
+                    promises.push(fetchSlope(x, y, batch));
+                });
             });
         });
         return promises;
