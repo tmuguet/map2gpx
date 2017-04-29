@@ -144,6 +144,8 @@ window.onload = function() {
             if (invalid) {
                 closeLoop.state('invalid');
                 exportButton.state('invalid');
+                closeLoop.disable();
+                exportButton.disable();
                 $("#data-invalid").show();
             } else {
                 closeLoop.state('loaded');
@@ -558,37 +560,29 @@ window.onload = function() {
                 self.reject();
                 return false;
             }
-            var promises = [];
-            $.each(routes, function(i, geojson) {   // probably not useful anymore (data should already be here)
-                Array.prototype.push.apply(promises, fetchAltitudeOfFeature(geojson));  // Merge in place
-            });
 
-            $.when.apply($, promises).done(function() {
-                var xml = '<?xml version="1.0"?>\n';
-                xml += '<gpx creator="Foobar" version="1.0" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n';
-                xml += '    <trk>\n';
-                xml += '        <name>' + filename + '</name>\n';
-                xml += '        <trkseg>\n';
-                $.each(routes, function(i, group) {
-                    group.eachLayer(function(layer) {
-                        $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                            xml += '            <trkpt lat="' + coords[1] + '" lon="' + coords[0] + '">';
-                            if (coords[0] + '/' + coords[1] in altitudes) {
-                                xml += '<ele>' + altitudes[coords[0] + '/' + coords[1]] + '</ele>';
-                            }
-                            xml += '</trkpt>\n';
-                        });
+            var xml = '<?xml version="1.0"?>\n';
+            xml += '<gpx creator="map2gpx.fr" version="1.0" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n';
+            xml += '    <trk>\n';
+            xml += '        <name>' + filename + '</name>\n';
+            xml += '        <trkseg>\n';
+            $.each(routes, function(i, group) {
+                group.eachLayer(function(layer) {
+                    $.each(layer.feature.geometry.coordinates, function(j, coords) {
+                        xml += '            <trkpt lat="' + coords[1] + '" lon="' + coords[0] + '">';
+                        if (coords[0] + '/' + coords[1] in altitudes) {
+                            xml += '<ele>' + altitudes[coords[0] + '/' + coords[1]] + '</ele>';
+                        }
+                        xml += '</trkpt>\n';
                     });
                 });
-                xml += '        </trkseg>\n    </trk>\n</gpx>\n';
-                var blob = new Blob([xml], {
-                    type: "application/gpx+xml;charset=utf-8"
-                });
-                saveAs(blob, filename + ".gpx");
-                self.resolve();
-            }).fail(function() {
-                self.reject();
             });
+            xml += '        </trkseg>\n    </trk>\n</gpx>\n';
+            var blob = new Blob([xml], {
+                type: "application/gpx+xml;charset=utf-8"
+            });
+            saveAs(blob, filename + ".gpx");
+            self.resolve();
         });
     }
 
