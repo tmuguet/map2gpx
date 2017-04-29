@@ -163,6 +163,33 @@ window.onload = function() {
     }
     updateButtons(true);
 
+    const LON=0;
+    const LAT=1;
+    const ALT=2;
+    const SLOPE=3;
+
+    // Converts from degrees to radians.
+    Math.radians = function(degrees) {
+        return degrees * Math.PI / 180;
+    };
+
+    // Converts from radians to degrees.
+    Math.degrees = function(radians) {
+        return radians * 180 / Math.PI;
+    };
+
+    /** Returns the distance from c1 to c2 using the haversine formula */
+    function _haversineDistance(c1, c2) {
+        var lat1 = Math.radians(c1[LAT]);
+        var lat2 = Math.radians(c2[LAT]);
+        var deltaLatBy2 = (lat2 - lat1) / 2;
+        var deltaLonBy2 = Math.radians(c2[LON] - c1[LON]) / 2;
+        var a = Math.sin(deltaLatBy2) * Math.sin(deltaLatBy2) +
+            Math.sin(deltaLonBy2) * Math.sin(deltaLonBy2) *
+            Math.cos(lat1) * Math.cos(lat2);
+        return 2 * 6378137 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
     function latlngToTilePixel(latlng, crs, zoom, tileSize, pixelOrigin) {
         const layerPoint = crs.latLngToPoint(latlng, zoom).floor()
         const tile = layerPoint.divideBy(tileSize).floor()
@@ -178,28 +205,90 @@ window.onload = function() {
         });
     }
 
-    function fetchDataOfFeature(geojson) {
-        return $.Deferred(function() {
-            var self = this;
-            var promises = fetchAltitudeOfFeature(geojson).concat(fetchSlopeOfFeature(geojson));
-            // Resolve this deffered when all altitudes+slopes are computed
-            $.when.apply($, promises).then(function() {
-                geojson.eachLayer(function(layer) {
-                    $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        if (coords[0] + '/' + coords[1] in altitudes) {
-                            coords[2] = altitudes[coords[0] + '/' + coords[1]]; // updates ref
+    L.GeoJSON.include({
+        fetchData: function() {
+            var geojson = this;
+            return $.Deferred(function() {
+                var self = this;
+                var promises = geojson.fetchAltitude().concat(geojson.fetchSlope());
+                // Resolve this deffered when all altitudes+slopes are computed
+                $.when.apply($, promises).then(function() {
+                    geojson.eachLayer(function(layer) {
+                        $.each(layer.feature.geometry.coordinates, function(j, coords) {
+                            var key = coords[LON] + '/' + coords[LAT];
+                            if (key in altitudes) {
+                                coords[ALT] = altitudes[key]; // updates ref
+                            }
+                            if (key in slopes) {
+                                coords[SLOPE] = slopes[key]; // updates ref
+                            }
+                        });
+                    });
+                    self.resolve();
+                }, function() {
+                    self.reject();
+                });
+            });
+        },
+
+        fetchAltitude: function() {
+            var geojson = this;
+            var geometry = []; // Batch
+            var promises = [];
+            geojson.eachLayer(function(layer) {
+                $.each(layer.feature.geometry.coordinates, function(j, coords) {
+                    if (!(coords[LON] + '/' + coords[LAT] in altitudes)) { // Ignore already cached values
+                        geometry.push({
+                            lon: coords[LON],
+                            lat: coords[LAT]
+                        });
+                        if (geometry.length == 50) {
+                            // Launch batch
+                            promises.push(fetchAltitude(geometry));
+                            geometry = [];
                         }
-                        if (coords[0] + '/' + coords[1] in slopes) {
-                            coords[3] = slopes[coords[0] + '/' + coords[1]]; // updates ref
-                        }
+                    }
+                });
+            });
+            if (geometry.length > 0) {
+                // Launch last batch
+                promises.push(fetchAltitude(geometry));
+            }
+            return promises;
+        },
+
+        fetchSlope: function() {
+            var geojson = this;
+            var tiles = {};
+            geojson.eachLayer(function(layer) {
+                $.each(layer.feature.geometry.coordinates, function(j, coords) {
+                    if (!(coords[LON] + '/' + coords[LAT] in slopes)) { // Ignore already cached values
+                        var tile = latlngToTilePixel(L.latLng(coords[LAT], coords[LON]), map.options.crs, 16, 256, map.getPixelOrigin());
+
+                        if (!(tile[0].x in tiles))
+                            tiles[tile[0].x] = {};
+                        if (!(tile[0].y in tiles[tile[0].x]))
+                            tiles[tile[0].x][tile[0].y] = [[]];
+
+                        if (tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].length > 50)
+                            tiles[tile[0].x][tile[0].y].push([]);
+
+                        tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].push({lat: coords[LAT], lon: coords[LON], x: tile[1].x, y: tile[1].y});
+                    }
+                });
+            });
+
+            var promises = [];
+            $.each(tiles, function(x, _y) {
+                $.each(_y, function(y, batches) {
+                    $.each(batches, function(j, batch) {
+                        promises.push(fetchSlope(x, y, batch));
                     });
                 });
-                self.resolve();
-            }, function() {
-                self.reject();
             });
-        });
-    }
+            return promises;
+        }
+    });
 
     function computeRoute(start, end, index) {
 
@@ -267,9 +356,9 @@ window.onload = function() {
                             self.resolve();
                         };
 
-                        fetchDataOfFeature(geojson).done(done).fail(function() {
+                        geojson.fetchData().done(done).fail(function() {
                             // Retry
-                            fetchDataOfFeature(geojson).done(done).fail(function() {
+                            geojson.fetchData().done(done).fail(function() {
                                 onFail("Impossible d'obtenir les données de la route");
                             });
                         });
@@ -423,31 +512,6 @@ window.onload = function() {
         });
     }
 
-    function fetchAltitudeOfFeature(geojson) {
-        var geometry = []; // Batch
-        var promises = [];
-        geojson.eachLayer(function(layer) {
-            $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                if (!(coords[0] + '/' + coords[1] in altitudes)) { // Ignore already cached values
-                    geometry.push({
-                        lon: coords[0],
-                        lat: coords[1]
-                    });
-                    if (geometry.length == 50) {
-                        // Launch batch
-                        promises.push(fetchAltitude(geometry));
-                        geometry = [];
-                    }
-                }
-            });
-        });
-        if (geometry.length > 0) {
-            // Launch last batch
-            promises.push(fetchAltitude(geometry));
-        }
-        return promises;
-    }
-
     function fetchAltitude(geometry) {
         return $.Deferred(function() {
             var self = this;
@@ -476,37 +540,6 @@ window.onload = function() {
             // Request altitude service
             Gp.Services.getAltitude(options);
         });
-    }
-
-    function fetchSlopeOfFeature(geojson) {
-        var tiles = {};
-        geojson.eachLayer(function(layer) {
-            $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                if (!(coords[0] + '/' + coords[1] in slopes)) { // Ignore already cached values
-                    var tile = latlngToTilePixel(L.latLng(coords[1], coords[0]), map.options.crs, 16, 256, map.getPixelOrigin());
-
-                    if (!(tile[0].x in tiles))
-                        tiles[tile[0].x] = {};
-                    if (!(tile[0].y in tiles[tile[0].x]))
-                        tiles[tile[0].x][tile[0].y] = [[]];
-
-                    if (tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].length > 50)
-                        tiles[tile[0].x][tile[0].y].push([]);
-
-                    tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].push({lat: coords[1], lon: coords[0], z: coords[2], x: tile[1].x, y: tile[1].y});
-                }
-            });
-        });
-
-        var promises = [];
-        $.each(tiles, function(x, _y) {
-            $.each(_y, function(y, batches) {
-                $.each(batches, function(j, batch) {
-                    promises.push(fetchSlope(x, y, batch));
-                });
-            });
-        });
-        return promises;
     }
 
     function fetchSlope(tilex, tiley, coords) {
@@ -569,9 +602,9 @@ window.onload = function() {
             $.each(routes, function(i, group) {
                 group.eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        xml += '            <trkpt lat="' + coords[1] + '" lon="' + coords[0] + '">';
-                        if (coords[0] + '/' + coords[1] in altitudes) {
-                            xml += '<ele>' + altitudes[coords[0] + '/' + coords[1]] + '</ele>';
+                        xml += '            <trkpt lat="' + coords[LAT] + '" lon="' + coords[LON] + '">';
+                        if (coords[LON] + '/' + coords[LAT] in altitudes) {
+                            xml += '<ele>' + altitudes[coords[LON] + '/' + coords[LAT]] + '</ele>';
                         }
                         xml += '</trkpt>\n';
                     });
@@ -609,7 +642,7 @@ window.onload = function() {
             $.each(routes, function(i, group) {
                 group.eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        xml += coords[0] + ',' + coords[1] + ',0 ';
+                        xml += coords[LON] + ',' + coords[LAT] + ',0 ';
                     });
                 });
             });
@@ -632,7 +665,7 @@ window.onload = function() {
             if (group != null) {
                 group.eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        elevations.push({lat: coords[1], lon: coords[0], z: coords[2], slope: coords[3]});
+                        elevations.push({lat: coords[LAT], lon: coords[LON], z: coords[ALT], slope: coords[SLOPE]});
                     });
                 });
             }
@@ -641,25 +674,6 @@ window.onload = function() {
         if (elevations.length == 0) {
             return {};
         }
-
-        var _decimalToRadian = function (location) {
-            // from https://github.com/IGNF/geoportal-extensions/blob/master/src/Leaflet/Controls/Utils/PositionFormater.js
-            var d = 0.01745329251994329577;
-            var multiplier = Math.pow( 10, 8 );
-            return Math.round( location * d * multiplier ) / multiplier;
-        };
-
-        /** Returns the distance from c1 to c2 using the haversine formula */
-        var _haversineDistance = function (c1, c2) {
-            var lat1 = _decimalToRadian(c1[1]);
-            var lat2 = _decimalToRadian(c2[1]);
-            var deltaLatBy2 = (lat2 - lat1) / 2;
-            var deltaLonBy2 = _decimalToRadian(c2[0] - c1[0]) / 2;
-            var a = Math.sin(deltaLatBy2) * Math.sin(deltaLatBy2) +
-            Math.sin(deltaLonBy2) * Math.sin(deltaLonBy2) *
-            Math.cos(lat1) * Math.cos(lat2);
-            return 2 * 6378137 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        };
 
         // Calcul de la distance au départ pour chaque point + arrondi des lat/lon
         var distance = 0;
