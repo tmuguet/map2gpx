@@ -208,11 +208,9 @@ window.onload = function() {
     L.GeoJSON.include({
         fetchData: function() {
             var geojson = this;
-            return $.Deferred(function() {
-                var self = this;
-                var promises = geojson.fetchAltitude().concat(geojson.fetchSlope());
+            return geojson.fetchAltitude().concat(geojson.fetchSlope());
                 // Resolve this deffered when all altitudes+slopes are computed
-                $.when.apply($, promises).then(function() {
+                /*$.when.apply($, promises).then(function() {
                     geojson.eachLayer(function(layer) {
                         $.each(layer.feature.geometry.coordinates, function(j, coords) {
                             var key = coords[LON] + '/' + coords[LAT];
@@ -227,8 +225,7 @@ window.onload = function() {
                     self.resolve();
                 }, function() {
                     self.reject();
-                });
-            });
+                });*/
         },
 
         fetchAltitude: function() {
@@ -289,6 +286,9 @@ window.onload = function() {
             return promises;
         }
     });
+
+    // TODO: straight line between 2 points
+    // see https://gis.stackexchange.com/questions/157693/getting-all-vertex-lat-long-coordinates-every-1-meter-between-two-known-points
 
     function computeRoute(start, end, index) {
 
@@ -356,9 +356,9 @@ window.onload = function() {
                             self.resolve();
                         };
 
-                        geojson.fetchData().done(done).fail(function() {
+                        $.when.apply($, geojson.fetchData()).then(done).fail(function() {
                             // Retry
-                            geojson.fetchData().done(done).fail(function() {
+                            $.when.apply($, geojson.fetchData()).then(done).fail(function() {
                                 onFail("Impossible d'obtenir les données de la route");
                             });
                         });
@@ -665,7 +665,16 @@ window.onload = function() {
             if (group != null) {
                 group.eachLayer(function(layer) {
                     $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        elevations.push({lat: coords[LAT], lon: coords[LON], z: coords[ALT], slope: coords[SLOPE]});
+                        var key = coords[LON] + '/' + coords[LAT];
+                        var alt = null;
+                        var slope = null;
+                        if (key in altitudes) {
+                            alt = altitudes[key];
+                        }
+                        if (key in slopes) {
+                            slope = slopes[key];
+                        }
+                        elevations.push({lat: coords[LAT], lon: coords[LON], z: alt, slope: slope});
                     });
                 });
             }
