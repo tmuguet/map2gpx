@@ -430,9 +430,6 @@ window.onload = function() {
         }
     });
 
-    // TODO: straight line between 2 points
-    // see https://gis.stackexchange.com/questions/157693/getting-all-vertex-lat-long-coordinates-every-1-meter-between-two-known-points
-
     function computeRoute(start, end, index) {
 
         return $.Deferred(function() {
@@ -492,12 +489,12 @@ window.onload = function() {
                         geojson.addData(_geometry);
 
                         var done = function() {
-                            replot();
                             routes[index] = [geojson, 'auto'];
                             geojson.addTo(map);
                             geojson.snakeIn();
                             start.setOpacity(1);
                             end.setOpacity(1);
+                            replot();
                             self.resolve();
                         };
 
