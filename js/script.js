@@ -6,6 +6,15 @@ window.onload = function() {
     var slopes = {}; // Cache of computed slopes for each points of routes computed so far
     var mode = null;
 
+    var isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
+
+    if (isSmallScreen) {
+        var popup = $('<div style="position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0" id="mobile-warning"><strong>Attention:</strong> ce site n\'est pas destiné aux mobiles. <button>Ok, j\'ai compris</button></div>');
+        popup.find("button").click(function() {
+            popup.hide();
+        });
+        popup.appendTo("body");
+    }
 
     // Central map
     var map = L.map('map', {
@@ -30,24 +39,28 @@ window.onload = function() {
 
     // Add controls
     // Mini-map
-    var miniMapLayer = L.geoportalLayer.WMTS({
-        layer: "GEOGRAPHICALGRIDSYSTEMS.MAPS",
-        apiKey: keyIgn
-    });
-    var miniMap = new L.Control.MiniMap(miniMapLayer, {
-        'position': 'bottomleft',
-        'zoomLevelOffset': -4
-    }).addTo(map);
+    if (!isSmallScreen) {
+        var miniMapLayer = L.geoportalLayer.WMTS({
+            layer: "GEOGRAPHICALGRIDSYSTEMS.MAPS",
+            apiKey: keyIgn
+        });
+        var miniMap = new L.Control.MiniMap(miniMapLayer, {
+            'position': 'bottomleft',
+            'zoomLevelOffset': -4
+        }).addTo(map);
+    }
     var layerSwitcher = L.geoportalControl.LayerSwitcher({
-        collapsed : false
+        collapsed : isSmallScreen
     });
     map.addControl(layerSwitcher);
     layerSwitcher.setVisibility(slopes, false);
 
-    map.addControl(L.control.scale({
-        'imperial': false,
-        'position': 'bottomright'
-    }));
+    if (!isSmallScreen) {
+        map.addControl(L.control.scale({
+            'imperial': false,
+            'position': 'bottomright'
+        }));
+    }
 
     var automatedBtn = L.easyButton({
         states: [{
@@ -158,20 +171,23 @@ window.onload = function() {
             title: 'Exporter (invalide!)'
         }]
     }).addTo(map);
-    var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
-    var infoButton = L.easyButton({
-        position: 'bottomright',
-        states: [{
-            icon: 'fa-info-circle',
-            onClick: function(btn, map) {
-                infoPopup.setLatLng(map.getCenter()).openOn(map);
-            },
-            title: 'A propos & crédits'
-        }]
-    }).addTo(map);
 
-    var welcomePopup = L.popup().setContent(L.DomUtil.get("welcome"));
-    welcomePopup.setLatLng(map.getCenter()).openOn(map);
+    if (!isSmallScreen) {
+        var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
+        var infoButton = L.easyButton({
+            position: 'bottomright',
+            states: [{
+                icon: 'fa-info-circle',
+                onClick: function(btn, map) {
+                    infoPopup.setLatLng(map.getCenter()).openOn(map);
+                },
+                title: 'A propos & crédits'
+            }]
+        }).addTo(map);
+
+        var welcomePopup = L.popup().setContent(L.DomUtil.get("welcome"));
+        welcomePopup.setLatLng(map.getCenter()).openOn(map);
+    }
 
     // Map interactions
     map.on('dblclick', addMarker);
@@ -902,6 +918,7 @@ window.onload = function() {
 
     var plotMarker = null;
 
+    if (!isSmallScreen) {
 /*  TODO: needs https://github.com/chartjs/chartjs-plugin-annotation/issues/60 to be resolved
     var annotationsEnabled = {};
     function onClickAlt(e) {
@@ -910,149 +927,152 @@ window.onload = function() {
         chart.update();
     }*/
 
-    var ctx = $("#chart");
-    var chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        datasets: [{
-            label: 'Altitude',
-            data: [],
-            fill: false,
-            borderColor: 'rgba(12, 98, 173, 0.8)',
-            backgroundColor: 'rgba(12, 98, 173, 0.8)',
-            lineTension: 0,
-            pointRadius: 0,
-            yAxisId: 'alt'
-        },{
-            label: 'Pente de l\'itinéraire',
-            data: [],
-            fill: true,
-            //lineTension: 0,
-            pointRadius: 0,
-            yAxisID: 'slope'
-        },{
-            label: 'Pente',
-            data: [],
-            fill: true,
-            //lineTension: 0,
-            pointRadius: 0,
-            yAxisID: 'slope2',
-            hidden: true
-        }]
-    },
-    options: {
-        maintainAspectRatio: false,
-        hover: {
-            mode: 'index',
-            intersect: false,
-            onHover: function(event, active) {
-                if (event.type == "mousemove") {
-                    if (active && active.length > 0) {
-                        var idx = active[0]._index;
-                        var item = chart.config.data.datasets[0].data[idx];
+        var ctx = $("#chart");
+        var chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Altitude',
+                    data: [],
+                    fill: false,
+                    borderColor: 'rgba(12, 98, 173, 0.8)',
+                    backgroundColor: 'rgba(12, 98, 173, 0.8)',
+                    lineTension: 0,
+                    pointRadius: 0,
+                    yAxisId: 'alt'
+                },{
+                    label: 'Pente de l\'itinéraire',
+                    data: [],
+                    fill: true,
+                    //lineTension: 0,
+                    pointRadius: 0,
+                    yAxisID: 'slope'
+                },{
+                    label: 'Pente',
+                    data: [],
+                    fill: true,
+                    //lineTension: 0,
+                    pointRadius: 0,
+                    yAxisID: 'slope2',
+                    hidden: true
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                hover: {
+                    mode: 'index',
+                    intersect: false,
+                    onHover: function(event, active) {
+                        if (event.type == "mousemove") {
+                            if (active && active.length > 0) {
+                                var idx = active[0]._index;
+                                var item = chart.config.data.datasets[0].data[idx];
 
-                        if (plotMarker == null) {
-                            plotMarker = L.marker(L.latLng(item.lat, item.lon), {
-                                icon : new L.Icon.Default("orange"),
-                                draggable : false,
-                                clickable : false,
-                                zIndexOffset : 1000
-                            });
+                                if (plotMarker == null) {
+                                    plotMarker = L.marker(L.latLng(item.lat, item.lon), {
+                                        icon : new L.Icon.Default("orange"),
+                                        draggable : false,
+                                        clickable : false,
+                                        zIndexOffset : 1000
+                                    });
 
-                            plotMarker.addTo(map);
-                        } else {
-                            plotMarker.setLatLng(L.latLng(item.lat, item.lon));
-                            plotMarker.update();
-                        }
-                    } else {
-                        if (plotMarker) {
-                            map.removeLayer(plotMarker);
-                            plotMarker = null;
+                                    plotMarker.addTo(map);
+                                } else {
+                                    plotMarker.setLatLng(L.latLng(item.lat, item.lon));
+                                    plotMarker.update();
+                                }
+                            } else {
+                                if (plotMarker) {
+                                    map.removeLayer(plotMarker);
+                                    plotMarker = null;
+                                }
+                            }
+                        } else if (event.type == "mouseout") {
+                            if (plotMarker) {
+                                map.removeLayer(plotMarker);
+                                plotMarker = null;
+                            }
                         }
                     }
-                } else if (event.type == "mouseout") {
-                    if (plotMarker) {
-                        map.removeLayer(plotMarker);
-                        plotMarker = null;
-                    }
-                }
-            }
-        },
-        scales: {
-            xAxes: [{
-                id: 'distance',
-                type: 'linear',
-                position: 'bottom',
-                min: 0
-            }],
-            yAxes: [{
-                id: 'alt',
-                type: 'linear',
-                position: 'left',
-                beginAtZero: false
-              }, {
-                id: 'slope',
-                type: 'linear',
-                position: 'right'
-              }, {
-                id: 'slope2',
-                type: 'linear',
-                position: 'right',
-                min: 0,
-                max: 45
-              }]
-        },
-        legend: {
-            position: 'left'
-        },
-        tooltips: {
-            mode: 'index',
-            intersect: false,
-            callbacks: {
-                title: function(tooltipItems, data) {
-                    return 'Distance: ' + Math.floor(tooltipItems[0].xLabel*100)/100 + "km";
                 },
-                label: function(tooltipItems, data) {
-                    return data.datasets[tooltipItems.datasetIndex].label +': ' + (tooltipItems.datasetIndex == 0 ? Math.round(tooltipItems.yLabel*100)/100 + 'm' : Math.round(tooltipItems.yLabel) + '°');
+                scales: {
+                    xAxes: [{
+                        id: 'distance',
+                        type: 'linear',
+                        position: 'bottom',
+                        min: 0
+                    }],
+                    yAxes: [{
+                        id: 'alt',
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: false
+                      }, {
+                        id: 'slope',
+                        type: 'linear',
+                        position: 'right'
+                      }, {
+                        id: 'slope2',
+                        type: 'linear',
+                        position: 'right',
+                        min: 0,
+                        max: 45
+                      }]
+                },
+                legend: {
+                    position: 'left'
+                },
+                tooltips: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        title: function(tooltipItems, data) {
+                            return 'Distance: ' + Math.floor(tooltipItems[0].xLabel*100)/100 + "km";
+                        },
+                        label: function(tooltipItems, data) {
+                            return data.datasets[tooltipItems.datasetIndex].label +': ' + (tooltipItems.datasetIndex == 0 ? Math.round(tooltipItems.yLabel*100)/100 + 'm' : Math.round(tooltipItems.yLabel) + '°');
+                        }
+                    }
+                },
+                annotation: {
+                    //events: ['click'],
+                    annotations: [{
+                            id: 'altmax',
+                            type: 'line',
+                            mode: 'horizontal',
+                            scaleID: 'alt',
+                            value: 0,
+                            borderColor: 'rgba(12, 173, 98, 0.5)',
+                            borderWidth: 1,
+                            label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal",},
+                            //onClick: onClickAlt,
+                        },{
+                            id: 'altmin',
+                            type: 'line',
+                            mode: 'horizontal',
+                            scaleID: 'alt',
+                            value: 0,
+                            borderColor: 'rgba(12, 173, 98, 0.5)',
+                            borderWidth: 1,
+                            label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal"},
+                            //onClick: onClickAlt,
+                        },{
+                            id: 'distance',
+                            type: 'line',
+                            mode: 'vertical',
+                            scaleID: 'distance',
+                            value: 0,
+                            borderColor: 'rgba(0, 0, 0, 0.5)',
+                            borderWidth: 1,
+                            label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", xAdjust: -50},
+                            //onClick: onClickAlt,
+                        }],
                 }
             }
-        },
-        annotation: {
-            //events: ['click'],
-            annotations: [{
-                    id: 'altmax',
-                    type: 'line',
-                    mode: 'horizontal',
-                    scaleID: 'alt',
-                    value: 0,
-                    borderColor: 'rgba(12, 173, 98, 0.5)',
-                    borderWidth: 1,
-                    label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal",},
-                    //onClick: onClickAlt,
-                },{
-                    id: 'altmin',
-                    type: 'line',
-                    mode: 'horizontal',
-                    scaleID: 'alt',
-                    value: 0,
-                    borderColor: 'rgba(12, 173, 98, 0.5)',
-                    borderWidth: 1,
-                    label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal"},
-                    //onClick: onClickAlt,
-                },{
-                    id: 'distance',
-                    type: 'line',
-                    mode: 'vertical',
-                    scaleID: 'distance',
-                    value: 0,
-                    borderColor: 'rgba(0, 0, 0, 0.5)',
-                    borderWidth: 1,
-                    label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", xAdjust: -50},
-                    //onClick: onClickAlt,
-                }],
-        }
+        });
+    } else {
+        $("#chart").remove();
     }
-    });
 
     function replot() {
         var stats = computeStats();
@@ -1061,80 +1081,87 @@ window.onload = function() {
             var data = [];
             var data2 = [];
             var data3 = [];
-            for (var j = 0 ; j < stats.elevations.length; j++) {
-                data.push({x: stats.elevations[j].dist, y: stats.elevations[j].z, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
-                data2.push({x: stats.elevations[j].dist, y: stats.elevations[j].slopeOnTrack, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
-                data3.push({x: stats.elevations[j].dist, y: stats.elevations[j].slope, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+
+            if (!isSmallScreen) {
+                for (var j = 0 ; j < stats.elevations.length; j++) {
+                    data.push({x: stats.elevations[j].dist, y: stats.elevations[j].z, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                    data2.push({x: stats.elevations[j].dist, y: stats.elevations[j].slopeOnTrack, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                    data3.push({x: stats.elevations[j].dist, y: stats.elevations[j].slope, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                }
+
+                chart.options.scales.xAxes[0].max = data[data.length-1].x;
+                chart.config.data.datasets[0].data = data;
+                chart.config.data.datasets[1].data = data2;
+                chart.config.data.datasets[2].data = data3;
+
+                chart.options.annotation.annotations[0].value = stats.altMax;
+                chart.options.annotation.annotations[0].label.content = "Altitude max: " + Math.round(stats.altMax) + "m; D+: " + Math.round(stats.denivPos) + "m";
+                chart.options.annotation.annotations[1].value = stats.altMin;
+                chart.options.annotation.annotations[1].label.content = "Altitude min: " + Math.round(stats.altMin) + "m; D-: " + Math.round(stats.denivNeg) + "m";
+                chart.options.annotation.annotations[2].value = data[data.length-1].x;
+                chart.options.annotation.annotations[2].label.content = "Distance: " + Math.round(data[data.length-1].x*100)/100 + "km";
+
+                var gradient = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
+                var maxSlope = Math.ceil(stats.slopeMax/10)*10;
+                var minSlope = Math.floor(stats.slopeMin/10)*10;
+
+                var totalSlope = -minSlope + maxSlope;
+                if (totalSlope != 0) {
+                    if (maxSlope >= 45) {
+                        gradient.addColorStop((maxSlope-45)/totalSlope, 'purple');
+                    }
+                    if (maxSlope >= 40) {
+                        gradient.addColorStop((maxSlope-40)/totalSlope, 'red');
+                    }
+                    if (maxSlope >= 35) {
+                        gradient.addColorStop((maxSlope-35)/totalSlope, 'orange');
+                    }
+                    if (maxSlope >= 30) {
+                        gradient.addColorStop((maxSlope-30)/totalSlope, 'yellow');
+                    }
+
+                    gradient.addColorStop(maxSlope/totalSlope, 'grey');
+
+                    if (minSlope <= -30) {
+                        gradient.addColorStop((maxSlope+30)/totalSlope, 'yellow');
+                    }
+                    if (minSlope <= -35) {
+                        gradient.addColorStop((maxSlope+35)/totalSlope, 'orange');
+                    }
+                    if (minSlope <= -40) {
+                        gradient.addColorStop((maxSlope+40)/totalSlope, 'red');
+                    }
+                    if (minSlope <= -45) {
+                        gradient.addColorStop((maxSlope+45)/totalSlope, 'purple');
+                    }
+                    chart.config.data.datasets[1].backgroundColor = gradient;
+                }
+
+
+                var gradient2 = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
+                gradient2.addColorStop(0, 'purple');
+                gradient2.addColorStop(1-40/45, 'red');
+                gradient2.addColorStop(1-35/45, 'orange');
+                gradient2.addColorStop(1-30/45, 'yellow');
+                gradient2.addColorStop(1, 'grey');
+                chart.config.data.datasets[2].backgroundColor = gradient2;
+
+                var old = chart.options.annotation;
+                chart.options.annotation = {};  // TODO: potential bug with annotations where old 'value' of annotations are kept in graph
+                chart.update();
+                chart.options.annotation = old;
+                chart.update();
+            } else {
+                $("#data").html("<ul><li>Altitude max: " + Math.round(stats.altMax) + "m; D+: " + Math.round(stats.denivPos) + "m</li><li>Altitude min: " + Math.round(stats.altMin) + "m; D-: " + Math.round(stats.denivNeg) + "m</li><li>Distance: " + Math.round(stats.elevations[stats.elevations.length-1].dist*100)/100 + "km</li></ul>");
             }
-
-            chart.options.scales.xAxes[0].max = data[data.length-1].x;
-            chart.config.data.datasets[0].data = data;
-            chart.config.data.datasets[1].data = data2;
-            chart.config.data.datasets[2].data = data3;
-
-            chart.options.annotation.annotations[0].value = stats.altMax;
-            chart.options.annotation.annotations[0].label.content = "Altitude max: " + Math.round(stats.altMax) + "m; D+: " + Math.round(stats.denivPos) + "m";
-            chart.options.annotation.annotations[1].value = stats.altMin;
-            chart.options.annotation.annotations[1].label.content = "Altitude min: " + Math.round(stats.altMin) + "m; D-: " + Math.round(stats.denivNeg) + "m";
-            chart.options.annotation.annotations[2].value = data[data.length-1].x;
-            chart.options.annotation.annotations[2].label.content = "Distance: " + Math.round(data[data.length-1].x*100)/100 + "km";
-
-            var gradient = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
-            var maxSlope = Math.ceil(stats.slopeMax/10)*10;
-            var minSlope = Math.floor(stats.slopeMin/10)*10;
-
-            var totalSlope = -minSlope + maxSlope;
-            if (totalSlope != 0) {
-                if (maxSlope >= 45) {
-                    gradient.addColorStop((maxSlope-45)/totalSlope, 'purple');
-                }
-                if (maxSlope >= 40) {
-                    gradient.addColorStop((maxSlope-40)/totalSlope, 'red');
-                }
-                if (maxSlope >= 35) {
-                    gradient.addColorStop((maxSlope-35)/totalSlope, 'orange');
-                }
-                if (maxSlope >= 30) {
-                    gradient.addColorStop((maxSlope-30)/totalSlope, 'yellow');
-                }
-
-                gradient.addColorStop(maxSlope/totalSlope, 'grey');
-
-                if (minSlope <= -30) {
-                    gradient.addColorStop((maxSlope+30)/totalSlope, 'yellow');
-                }
-                if (minSlope <= -35) {
-                    gradient.addColorStop((maxSlope+35)/totalSlope, 'orange');
-                }
-                if (minSlope <= -40) {
-                    gradient.addColorStop((maxSlope+40)/totalSlope, 'red');
-                }
-                if (minSlope <= -45) {
-                    gradient.addColorStop((maxSlope+45)/totalSlope, 'purple');
-                }
-                chart.config.data.datasets[1].backgroundColor = gradient;
-            }
-
-
-            var gradient2 = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
-            gradient2.addColorStop(0, 'purple');
-            gradient2.addColorStop(1-40/45, 'red');
-            gradient2.addColorStop(1-35/45, 'orange');
-            gradient2.addColorStop(1-30/45, 'yellow');
-            gradient2.addColorStop(1, 'grey');
-            chart.config.data.datasets[2].backgroundColor = gradient2;
-
-            var old = chart.options.annotation;
-            chart.options.annotation = {};  // TODO: potential bug with annotations where old 'value' of annotations are kept in graph
-            chart.update();
-            chart.options.annotation = old;
-            chart.update();
             $("#data-empty").slideUp();
         } else {
-            chart.options.scales.xAxes[0].max = 1;
-            chart.config.data.datasets[0].data = [];
-            chart.config.data.datasets[1].data = [];
-            chart.config.data.datasets[2].data = [];
+            if (!isSmallScreen) {
+                chart.options.scales.xAxes[0].max = 1;
+                chart.config.data.datasets[0].data = [];
+                chart.config.data.datasets[1].data = [];
+                chart.config.data.datasets[2].data = [];
+            }
             $("#data-empty").slideDown();
         }
     }
