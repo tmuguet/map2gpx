@@ -38,6 +38,8 @@ window.onload = function() {
     }).addTo(map);
 
     // Add controls
+    map.addControl(L.geoportalControl.SearchEngine({displayAdvancedSearch: false}));
+
     // Mini-map
     if (!isSmallScreen) {
         var miniMapLayer = L.geoportalLayer.WMTS({
