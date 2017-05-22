@@ -334,12 +334,13 @@ window.onload = function() {
 
             var done = function() {
                 routes[index] = [geojson, 'straight'];
-                replot();
                 geojson.addTo(map);
                 geojson.snakeIn();
                 start.setOpacity(1);
                 end.setOpacity(1);
-                self.resolve();
+                geojson.on('snakeend', function() {
+                    self.resolve();
+                });
             };
 
             $.when.apply($, geojson.fetchData()).then(done).fail(function() {
@@ -512,8 +513,9 @@ window.onload = function() {
                             geojson.snakeIn();
                             start.setOpacity(1);
                             end.setOpacity(1);
-                            replot();
-                            self.resolve();
+                            geojson.on('snakeend', function() {
+                                self.resolve();
+                            });
                         };
 
                         $.when.apply($, geojson.fetchData()).then(done).fail(function() {
@@ -622,9 +624,11 @@ window.onload = function() {
             }
 
             $.when.apply($, promises).done(function() {
+                replot();
                 event.target.setOpacity(1);
                 updateButtons(true);
             }).fail(function() {
+                replot();
                 updateButtons(true);
             });
         });
@@ -680,16 +684,20 @@ window.onload = function() {
                 markers.splice(markerIndex, 1);
             }
             $.when.apply($, promises).done(function() {
+                replot();
                 updateButtons(true);
             }).fail(function() {
+                replot();
                 updateButtons(true);
             });
         });
 
         $.when.apply($, promises).done(function() {
+            replot();
             marker.setOpacity(1);
             updateButtons(true);
         }).fail(function() {
+            replot();
             updateButtons(true);
         });
     }
