@@ -1010,7 +1010,9 @@ window.onload = function() {
                         id: 'distance',
                         type: 'linear',
                         position: 'bottom',
-                        min: 0
+                        ticks: {
+                            min: 0
+                        }
                     }],
                     yAxes: [{
                         id: 'alt',
@@ -1025,8 +1027,10 @@ window.onload = function() {
                         id: 'slope2',
                         type: 'linear',
                         position: 'right',
-                        min: 0,
-                        max: 45
+                        ticks: {
+                            min: 0,
+                            max: 45
+                        }
                       }]
                 },
                 legend: {
@@ -1099,7 +1103,7 @@ window.onload = function() {
                     data3.push({x: stats.elevations[j].dist, y: stats.elevations[j].slope, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
                 }
 
-                chart.options.scales.xAxes[0].max = data[data.length-1].x;
+                chart.options.scales.xAxes[0].ticks.max = data[data.length-1].x;
                 chart.config.data.datasets[0].data = data;
                 chart.config.data.datasets[1].data = data2;
                 chart.config.data.datasets[2].data = data3;
@@ -1167,7 +1171,7 @@ window.onload = function() {
             $("#data-empty").slideUp();
         } else {
             if (!isSmallScreen) {
-                chart.options.scales.xAxes[0].max = 1;
+                chart.options.scales.xAxes[0].ticks.max = 1;
                 chart.config.data.datasets[0].data = [];
                 chart.config.data.datasets[1].data = [];
                 chart.config.data.datasets[2].data = [];
