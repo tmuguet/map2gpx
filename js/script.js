@@ -1,3 +1,4 @@
+
 window.onload = function() {
 
     var markers = [];   // Cache of defined markers
@@ -193,6 +194,8 @@ window.onload = function() {
 
     // Map interactions
     map.on('dblclick', addMarker);
+    map.on('zoomend ', function() {console.log("Zoomed to ", map.getZoom());});
+    map.on('moveend  ', function() {console.log("Moved to ", map.getCenter());});
 
 
     // Logic
@@ -371,23 +374,6 @@ window.onload = function() {
         fetchData: function() {
             var geojson = this;
             return geojson.fetchAltitude().concat(geojson.fetchSlope());
-                // Resolve this deffered when all altitudes+slopes are computed
-                /*$.when.apply($, promises).then(function() {
-                    geojson.eachLayer(function(layer) {
-                        $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                            var key = coords[LON] + '/' + coords[LAT];
-                            if (key in altitudes) {
-                                coords[ALT] = altitudes[key]; // updates ref
-                            }
-                            if (key in slopes) {
-                                coords[SLOPE] = slopes[key]; // updates ref
-                            }
-                        });
-                    });
-                    self.resolve();
-                }, function() {
-                    self.reject();
-                });*/
         },
 
         fetchAltitude: function() {
@@ -396,7 +382,7 @@ window.onload = function() {
             var promises = [];
             geojson.eachLayer(function(layer) {
                 $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                    if (!(coords[LON] + '/' + coords[LAT] in altitudes)) { // Ignore already cached values
+                    if (!(coords[LON] + '/' + coords[LAT] in altitudes)) { // Skip already cached values
                         geometry.push({
                             lon: coords[LON],
                             lat: coords[LAT]
@@ -421,7 +407,7 @@ window.onload = function() {
             var tiles = {};
             geojson.eachLayer(function(layer) {
                 $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                    if (!(coords[LON] + '/' + coords[LAT] in slopes)) { // Ignore already cached values
+                    if (!(coords[LON] + '/' + coords[LAT] in slopes)) { // Skip already cached values
                         var tile = latlngToTilePixel(L.latLng(coords[LAT], coords[LON]), map.options.crs, 16, 256, map.getPixelOrigin());
 
                         if (!(tile[0].x in tiles))
