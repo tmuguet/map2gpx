@@ -62,6 +62,84 @@ window.onload = function() {
         var slopes = {}; // Cache of computed slopes for each points of routes computed so far
         var mode = null;
 
+        L.FeatureGroup.include({
+            fetchData: function() {
+                var gpx = this;
+                return gpx.fetchAltitude().concat(gpx.fetchSlope());
+            },
+
+            fetchAltitude: function() {
+                var gpx = this;
+                var geometry = []; // Batch
+                var promises = [];
+
+                $.each(gpx.getLatLngs(), function(j, coords) {
+                    if (!(coords.lng + '/' + coords.lat in altitudes)) { // Skip already cached values
+                        geometry.push({
+                            lon: coords.lng,
+                            lat: coords.lat
+                        });
+                        if (geometry.length == 50) {
+                            // Launch batch
+                            promises.push(fetchAltitude(geometry));
+                            geometry = [];
+                        }
+                    }
+                });
+
+                if (geometry.length > 0) {
+                    // Launch last batch
+                    promises.push(fetchAltitude(geometry));
+                }
+                return promises;
+            },
+
+            fetchSlope: function() {
+                var gpx = this;
+                var tiles = {};
+
+                $.each(gpx.getLatLngs(), function(j, coords) {
+                    if (!(coords.lng + '/' + coords.lat in slopes)) { // Skip already cached values
+                        var tile = latlngToTilePixel(coords, map.options.crs, 16, 256, map.getPixelOrigin());
+
+                        if (!(tile[0].x in tiles))
+                            tiles[tile[0].x] = {};
+                        if (!(tile[0].y in tiles[tile[0].x]))
+                            tiles[tile[0].x][tile[0].y] = [[]];
+
+                        if (tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].length > 50)
+                            tiles[tile[0].x][tile[0].y].push([]);
+
+                        tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].push({lat: coords.lat, lon: coords.lng, x: tile[1].x, y: tile[1].y});
+                    }
+                });
+
+                var promises = [];
+                $.each(tiles, function(x, _y) {
+                    $.each(_y, function(y, batches) {
+                        $.each(batches, function(j, batch) {
+                            promises.push(fetchSlope(x, y, batch));
+                        });
+                    });
+                });
+                return promises;
+            },
+        });
+
+        L.GeoJSON.include({
+            getLatLngs: function() {
+                var geojson = this;
+                var c = [];
+
+                geojson.eachLayer(function(layer) {
+                    $.each(layer.feature.geometry.coordinates, function(j, coords) {
+                        c.push(L.latLng(coords[LAT], coords[LON]));
+                    });
+                });
+                return c;
+            }
+        });
+
         var isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
 
         if (isSmallScreen) {
@@ -141,6 +219,10 @@ window.onload = function() {
                     mode = null;
                     map.doubleClickZoom.enable();
                 }
+            },{
+                stateName: 'invalid',
+                icon: 'fa-map-signs',
+                title: 'Tracer automatiquement l\'itinéraire',
             }]
         });
         var lineBtn = L.easyButton({
@@ -163,6 +245,10 @@ window.onload = function() {
                     mode = null;
                     map.doubleClickZoom.enable();
                 }
+            },{
+                stateName: 'invalid',
+                icon: 'fa-map-marker',
+                title: 'Tracer l\'itinéraire en ligne droite'
             }]
         });
         var closeLoop = L.easyButton({
@@ -231,6 +317,116 @@ window.onload = function() {
             }]
         }).addTo(map);
 
+        var importPopup = L.popup().setContent('<form enctype="multipart/form-data"><input class="import-gpx-file" type="file" name="files[]"/></form><br/><button class="import-gpx-button"><span class="ico gpx"></span></button><br/><span class="import-gpx-status"></span>');
+        var importButton = L.easyButton({
+            states: [{
+                stateName: 'loaded',
+                icon: 'fa-cloud-upload',
+                title: 'Importer',
+                onClick: function(btn, map) {
+                    importPopup.setLatLng(map.getCenter()).openOn(map);
+                    var o = this;
+                    $(".import-gpx-button:visible").click(function() {
+                        var btn = $(this);
+                        btn.attr("disabled", "disabled");
+                        updateButtons(false);
+                        $(".import-gpx-status:visible").text("Importation en cours...");
+
+                        var files = $(".import-gpx-file:visible")[0].files; // FileList object
+
+                        // use the 1st file from the list
+                        f = files[0];
+
+                        var reader = new FileReader();
+                        // Closure to capture the file information.
+                        reader.onload = (function(theFile) {
+                            return function(e) {
+
+                                var line = new L.GPX(e.target.result, {
+                                    async: false,
+                                    onFail: function() {
+                                        console.log("Failed to retrieve track");
+                                        $(".import-gpx-status:visible").text("Imposible de traiter ce fichier");
+                                        btn.removeAttr("disabled");
+                                        updateButtons(true);
+                                    },
+                                    onSuccess: function(track) {
+                                        $(".import-gpx-status:visible").text("Récupération des données géographiques en cours...");
+                                        // Re-init routes/markers
+                                        var oldRoutes = routes;
+                                        routes = [];
+                                        $.each(oldRoutes, function() {
+                                            map.removeLayer(this[0]);
+                                        });
+                                        var oldMarkers = markers;
+                                        markers = [];
+                                        $.each(oldMarkers, function() {
+                                            map.removeLayer(this);
+                                        });
+
+                                        $.when.apply($, track.fetchData()).then(function() {
+
+                                            // Add new route+markers
+                                            routes.push([track, 'import']);
+
+                                            var start = track.getLatLngs()[0];
+                                            var end = track.getLatLngs()[track.getLatLngs().length-1];
+
+                                            var marker = L.marker(start, {draggable: false});
+                                            markers.push(marker);
+                                            marker.addTo(map);
+
+                                            var marker2 = L.marker(end, {draggable: false});
+                                            markers.push(marker2);
+                                            marker2.addTo(map);
+
+                                            var deleteTrack = function() {
+                                                var o = this;
+                                                $(".track-delete-button:visible").click(function() {
+                                                    map.removeLayer(track);
+                                                    map.removeLayer(marker);
+                                                    map.removeLayer(marker2);
+
+                                                    routes = [];
+                                                    markers = [];
+
+                                                    updateButtons(true);
+                                                    replot();
+                                                });
+                                            };
+
+                                            marker.bindPopup('<input type="button" value="Supprimer l\'import" class="track-delete-button"/>');
+                                            marker.on("popupopen", deleteTrack);
+                                            marker2.bindPopup('<input type="button" value="Supprimer l\'import" class="track-delete-button"/>');
+                                            marker2.on("popupopen", deleteTrack);
+                                            track.bindPopup('<input type="button" value="Supprimer l\'import" class="track-delete-button"/>');
+                                            track.on("popupopen", deleteTrack);
+
+                                            map.fitBounds(track.getBounds(), {padding: [200, 200]});
+                                            track.addTo(map);
+                                            track.snakeIn();
+
+                                            updateButtons(true);
+                                            replot();
+                                            importPopup.remove();
+                                        }).fail(function() {
+                                            console.log("Fail");
+                                            $(".import-gpx-status:visible").text("Impossible de récupérer les données géographiques de ce parcours");
+                                            btn.removeAttr("disabled");
+                                            updateButtons(true);
+                                        });
+                                    }
+                                });
+                            };
+                        })(f);
+
+                        // Read in the image file as a data URL.
+                        reader.readAsText(f);
+                    });
+                }
+            }]
+        }).addTo(map);
+
         if (!isSmallScreen) {
             var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
             var infoButton = L.easyButton({
@@ -257,12 +453,26 @@ window.onload = function() {
         // Logic
         function updateButtons(enabled) {
             if (enabled) {
-                if (markers.length > 1) {
-                    closeLoop.enable();
-                    exportButton.enable();
-                } else {
+                if (routes.length == 1 && routes[0][1] == "import") {
+                    automatedBtn.disable();
+                    automatedBtn.state('loaded');
+                    lineBtn.disable();
+                    lineBtn.state('loaded');
+                    mode = null;
+                    map.doubleClickZoom.enable();
+
                     closeLoop.disable();
                     exportButton.disable();
+                } else {
+                    automatedBtn.enable();
+                    lineBtn.enable();
+                    if (markers.length > 1) {
+                        closeLoop.enable();
+                        exportButton.enable();
+                    } else {
+                        closeLoop.disable();
+                        exportButton.disable();
+                    }
                 }
 
                 var invalid = false;
@@ -425,71 +635,6 @@ window.onload = function() {
                 setTimeout(function(){ self.resolve(); }, ms);
             });
         }
-
-        L.GeoJSON.include({
-            fetchData: function() {
-                var geojson = this;
-                return geojson.fetchAltitude().concat(geojson.fetchSlope());
-            },
-
-            fetchAltitude: function() {
-                var geojson = this;
-                var geometry = []; // Batch
-                var promises = [];
-                geojson.eachLayer(function(layer) {
-                    $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        if (!(coords[LON] + '/' + coords[LAT] in altitudes)) { // Skip already cached values
-                            geometry.push({
-                                lon: coords[LON],
-                                lat: coords[LAT]
-                            });
-                            if (geometry.length == 50) {
-                                // Launch batch
-                                promises.push(fetchAltitude(geometry));
-                                geometry = [];
-                            }
-                        }
-                    });
-                });
-                if (geometry.length > 0) {
-                    // Launch last batch
-                    promises.push(fetchAltitude(geometry));
-                }
-                return promises;
-            },
-
-            fetchSlope: function() {
-                var geojson = this;
-                var tiles = {};
-                geojson.eachLayer(function(layer) {
-                    $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                        if (!(coords[LON] + '/' + coords[LAT] in slopes)) { // Skip already cached values
-                            var tile = latlngToTilePixel(L.latLng(coords[LAT], coords[LON]), map.options.crs, 16, 256, map.getPixelOrigin());
-
-                            if (!(tile[0].x in tiles))
-                                tiles[tile[0].x] = {};
-                            if (!(tile[0].y in tiles[tile[0].x]))
-                                tiles[tile[0].x][tile[0].y] = [[]];
-
-                            if (tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].length > 50)
-                                tiles[tile[0].x][tile[0].y].push([]);
-
-                            tiles[tile[0].x][tile[0].y][tiles[tile[0].x][tile[0].y].length-1].push({lat: coords[LAT], lon: coords[LON], x: tile[1].x, y: tile[1].y});
-                        }
-                    });
-                });
-
-                var promises = [];
-                $.each(tiles, function(x, _y) {
-                    $.each(_y, function(y, batches) {
-                        $.each(batches, function(j, batch) {
-                            promises.push(fetchSlope(x, y, batch));
-                        });
-                    });
-                });
-                return promises;
-            }
-        });
 
         function computeRoute(start, end, index) {
 
@@ -832,14 +977,12 @@ window.onload = function() {
                 xml += '        <name>' + filename + '</name>\n';
                 xml += '        <trkseg>\n';
                 $.each(routes, function(i, group) {
-                    group[0].eachLayer(function(layer) {
-                        $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                            xml += '            <trkpt lat="' + coords[LAT] + '" lon="' + coords[LON] + '">';
-                            if (coords[LON] + '/' + coords[LAT] in altitudes) {
-                                xml += '<ele>' + altitudes[coords[LON] + '/' + coords[LAT]] + '</ele>';
-                            }
-                            xml += '</trkpt>\n';
-                        });
+                    $.each(group[0].getLatLngs(), function(j, coords) {
+                        xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
+                        if (coords.lng + '/' + coords.lat in altitudes) {
+                            xml += '<ele>' + altitudes[coords.lng + '/' + coords.lat] + '</ele>';
+                        }
+                        xml += '</trkpt>\n';
                     });
                 });
                 xml += '        </trkseg>\n    </trk>\n</gpx>\n';
@@ -872,10 +1015,8 @@ window.onload = function() {
                 xml += '                <coordinates>\n';
                 xml += '                    ';
                 $.each(routes, function(i, group) {
-                    group[0].eachLayer(function(layer) {
-                        $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                            xml += coords[LON] + ',' + coords[LAT] + ',0 ';
-                        });
+                    $.each(group[0].getLatLngs(), function(j, coords) {
+                        xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
                 });
                 xml += '\n                </coordinates>\n';
@@ -895,19 +1036,17 @@ window.onload = function() {
             var elevations = [];
             $.each(routes, function(i, group) {
                 if (group != null) {
-                    group[0].eachLayer(function(layer) {
-                        $.each(layer.feature.geometry.coordinates, function(j, coords) {
-                            var key = coords[LON] + '/' + coords[LAT];
-                            var alt = null;
-                            var slope = null;
-                            if (key in altitudes) {
-                                alt = altitudes[key];
-                            }
-                            if (key in slopes) {
-                                slope = slopes[key];
-                            }
-                            elevations.push({lat: coords[LAT], lon: coords[LON], z: alt, slope: slope});
-                        });
+                    $.each(group[0].getLatLngs(), function(j, coords) {
+                        var key = coords.lng + '/' + coords.lat;
+                        var alt = null;
+                        var slope = null;
+                        if (key in altitudes) {
+                            alt = altitudes[key];
+                        }
+                        if (key in slopes) {
+                            slope = slopes[key];
+                        }
+                        elevations.push({lat: coords.lat, lon: coords.lng, z: alt, slope: slope});
                     });
                 }
             });
