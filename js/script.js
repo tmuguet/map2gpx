@@ -328,14 +328,19 @@ window.onload = function() {
                     var o = this;
                     $(".import-gpx-button:visible").click(function() {
                         var btn = $(this);
+
+                        var files = $(".import-gpx-file:visible")[0].files; // FileList object
+                        // use the 1st file from the list
+                        f = files[0];
+
+                        if (f == undefined) {
+                            $(".import-gpx-status:visible").text("Veuillez sélectionner un fichier");
+                            return;
+                        }
+
                         btn.attr("disabled", "disabled");
                         updateButtons(false);
                         $(".import-gpx-status:visible").text("Importation en cours...");
-
-                        var files = $(".import-gpx-file:visible")[0].files; // FileList object
-
-                        // use the 1st file from the list
-                        f = files[0];
 
                         var reader = new FileReader();
                         // Closure to capture the file information.
