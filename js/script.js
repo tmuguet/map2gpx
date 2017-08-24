@@ -63,12 +63,105 @@ window.onload = function() {
         var mode = null;
 
         L.FeatureGroup.include({
-            fetchData: function() {
+            _elevations: [],
+            _distance: 0,
+            _altMin: 0,
+            _altMax: 0,
+            _slopeMin: 0,
+            _slopeMax: 0,
+            _denivPos: 0,
+            _denivNeg: 0,
+
+            getElevations: function() {return JSON.parse(JSON.stringify(this._elevations));},   // return deep copy (isn't there a better way??)
+            getDistance: function() {return this._distance;},
+            getAltMin: function() {return this._altMin;},
+            getAltMax: function() {return this._altMax;},
+            getSlopeMin: function() {return this._slopeMin;},
+            getSlopeMax: function() {return this._slopeMax;},
+            getDenivPos: function() {return this._denivPos;},
+            getDenivNeg: function() {return this._denivNeg;},
+
+            computeStats: function() {
                 var gpx = this;
-                return gpx.fetchAltitude().concat(gpx.fetchSlope());
+                return $.Deferred(function() {
+                    var self = this;
+                    $.when.apply($, gpx._fetchAltitude().concat(gpx._fetchSlope()))
+                        .fail(function() {self.reject();})
+                        .then(function() {
+                            var elevations = [];
+
+                            $.each(gpx.getLatLngs(), function(j, coords) {
+                                var key = coords.lng + '/' + coords.lat;
+                                var alt = null;
+                                var slope = null;
+                                if (key in altitudes) {
+                                    alt = altitudes[key];
+                                }
+                                if (key in slopes) {
+                                    slope = slopes[key];
+                                }
+                                elevations.push({lat: coords.lat, lon: coords.lng, z: alt, slope: slope});
+                            });
+
+                            if (elevations.length == 0) {
+                                self.resolve();
+                            }
+
+                            // Calcul de la distance au départ pour chaque point + arrondi des lat/lon
+                            gpx._distance = 0;
+                            gpx._altMin = elevations[0].z;
+                            gpx._altMax = elevations[0].z;
+                            gpx._slopeMax = 0;
+                            gpx._slopeMin = 0;
+                            gpx._denivPos = 0;
+                            gpx._denivNeg = 0;
+
+                            elevations[0].dist = 0;
+                            elevations[0].slopeOnTrack = 0;
+
+                            gpx._elevations = [];
+                            gpx._elevations.push(elevations[0]);
+
+                            var j=0;
+                            for (var i = 1; i < elevations.length; i++) {
+                                var localDistance = _haversineDistance([elevations[i].lon, elevations[i].lat], [gpx._elevations[j].lon, gpx._elevations[j].lat]); // m
+                                if (localDistance > 10) {
+                                    gpx._distance += localDistance / 1000;   // km
+
+                                    gpx._elevations.push(elevations[i]);
+                                    j++;
+
+                                    gpx._elevations[j].dist = gpx._distance;
+                                    gpx._elevations[j].slopeOnTrack = Math.atan((Math.round(gpx._elevations[j].z) - Math.round(gpx._elevations[j-1].z)) / localDistance) * 180 / Math.PI;
+
+                                    if (j > 5) {
+                                        var previous = (gpx._elevations[j-5].slopeOnTrack + gpx._elevations[j-4].slopeOnTrack + gpx._elevations[j-3].slopeOnTrack + gpx._elevations[j-2].slopeOnTrack + gpx._elevations[j-1].slopeOnTrack) / 5
+                                        gpx._elevations[j].slopeOnTrack = (previous + gpx._elevations[j].slopeOnTrack) / 2;
+                                    }
+
+                                    if (gpx._elevations[j].z < gpx._altMin)
+                                        gpx._altMin = gpx._elevations[j].z;
+                                    if (gpx._elevations[j].z > gpx._altMax)
+                                        gpx._altMax = gpx._elevations[j].z;
+
+                                    if (gpx._elevations[j].slopeOnTrack > gpx._slopeMax)
+                                        gpx._slopeMax = gpx._elevations[j].slopeOnTrack;
+                                    if (gpx._elevations[j].slopeOnTrack < gpx._slopeMin)
+                                        gpx._slopeMin = gpx._elevations[j].slopeOnTrack;
+
+                                    if (gpx._elevations[j].z < gpx._elevations[j-1].z)
+                                        gpx._denivNeg += (Math.round(gpx._elevations[j-1].z) - Math.round(gpx._elevations[j].z));
+                                    else
+                                        gpx._denivPos += (Math.round(gpx._elevations[j].z) - Math.round(gpx._elevations[j-1].z));
+                                }
+                            }
+
+                            self.resolve();
+                        });
+                });
             },
 
-            fetchAltitude: function() {
+            _fetchAltitude: function() {
                 var gpx = this;
                 var geometry = []; // Batch
                 var promises = [];
@@ -94,7 +187,7 @@ window.onload = function() {
                 return promises;
             },
 
-            fetchSlope: function() {
+            _fetchSlope: function() {
                 var gpx = this;
                 var tiles = {};
 
@@ -137,6 +230,25 @@ window.onload = function() {
                     });
                 });
                 return c;
+            }
+        });
+
+        var stepMarker = L.AwesomeMarkers.icon({
+            icon: 'pause',
+            markerColor: 'purple',
+            prefix: 'fa'
+        });
+
+        L.Marker.include({
+            __type: 'waypoint',
+            getType: function() {return this.__type;},
+            setType: function(type) {
+                this.__type = type;
+                if (type == "waypoint") {
+                    this.setIcon(new L.Icon.Default());
+                } else {
+                    this.setIcon(stepMarker);
+                }
             }
         });
 
@@ -369,7 +481,7 @@ window.onload = function() {
                                             map.removeLayer(this);
                                         });
 
-                                        $.when.apply($, track.fetchData()).then(function() {
+                                        track.computeStats().then(function() {
 
                                             // Add new route+markers
                                             routes.push([track, 'import']);
@@ -378,10 +490,12 @@ window.onload = function() {
                                             var end = track.getLatLngs()[track.getLatLngs().length-1];
 
                                             var marker = L.marker(start, {draggable: false});
+                                            marker.setType('waypoint');
                                             markers.push(marker);
                                             marker.addTo(map);
 
                                             var marker2 = L.marker(end, {draggable: false});
+                                            marker2.setType('step');
                                             markers.push(marker2);
                                             marker2.addTo(map);
 
@@ -617,11 +731,8 @@ window.onload = function() {
                     });
                 };
 
-                $.when.apply($, geojson.fetchData()).then(done).fail(function() {
-                    // Retry
-                    $.when.apply($, geojson.fetchData()).then(done).fail(function() {
-                        onFail("Impossible d'obtenir les données de la route");
-                    });
+                geojson.computeStats().then(done).fail(function() {
+                    onFail("Impossible d'obtenir les données de la route");
                 });
             });
         }
@@ -710,11 +821,8 @@ window.onload = function() {
                                 });
                             };
 
-                            $.when.apply($, geojson.fetchData()).then(done).fail(function() {
-                                // Retry
-                                $.when.apply($, geojson.fetchData()).then(done).fail(function() {
-                                    onFail("Impossible d'obtenir les données de la route");
-                                });
+                            geojson.computeStats().then(done).fail(function() {
+                                onFail("Impossible d'obtenir les données de la route");
                             });
                         } else {
                             onFail("Impossible d'obtenir la route");
@@ -755,6 +863,7 @@ window.onload = function() {
                     map.removeLayer(o); // Routes will be deleted when marker gets deleted
                 });
             });
+            marker.setType('waypoint');
             markers.push(marker);
             marker.addTo(map);
 
@@ -1037,81 +1146,6 @@ window.onload = function() {
             });
         }
 
-        function computeStats() {
-            var elevations = [];
-            $.each(routes, function(i, group) {
-                if (group != null) {
-                    $.each(group[0].getLatLngs(), function(j, coords) {
-                        var key = coords.lng + '/' + coords.lat;
-                        var alt = null;
-                        var slope = null;
-                        if (key in altitudes) {
-                            alt = altitudes[key];
-                        }
-                        if (key in slopes) {
-                            slope = slopes[key];
-                        }
-                        elevations.push({lat: coords.lat, lon: coords.lng, z: alt, slope: slope});
-                    });
-                }
-            });
-
-            if (elevations.length == 0) {
-                return {};
-            }
-
-            // Calcul de la distance au départ pour chaque point + arrondi des lat/lon
-            var distance = 0;
-            var altMin = elevations[0].z;
-            var altMax = elevations[0].z;
-            var slopeMax = 0;
-            var slopeMin = 0;
-            var denivPos = 0;
-            var denivNeg = 0;
-
-            elevations[0].dist = 0;
-            elevations[0].slopeOnTrack = 0;
-
-            var elevationsResampled = [];
-            elevationsResampled.push(elevations[0]);
-
-            var j=0;
-            for (var i = 1; i < elevations.length; i++) {
-                var localDistance = _haversineDistance([elevations[i].lon, elevations[i].lat], [elevationsResampled[j].lon, elevationsResampled[j].lat]); // m
-                if (localDistance > 10) {
-                    distance += localDistance / 1000;   // km
-
-                    elevationsResampled.push(elevations[i]);
-                    j++;
-
-                    elevationsResampled[j].dist = distance;
-                    elevationsResampled[j].slopeOnTrack = Math.atan((Math.round(elevationsResampled[j].z) - Math.round(elevationsResampled[j-1].z)) / localDistance) * 180 / Math.PI;
-
-                    if (j > 5) {
-                        var previous = (elevationsResampled[j-5].slopeOnTrack + elevationsResampled[j-4].slopeOnTrack + elevationsResampled[j-3].slopeOnTrack + elevationsResampled[j-2].slopeOnTrack + elevationsResampled[j-1].slopeOnTrack) / 5
-                        elevationsResampled[j].slopeOnTrack = (previous + elevationsResampled[j].slopeOnTrack) / 2;
-                    }
-
-                    if (elevationsResampled[j].z < altMin)
-                        altMin = elevationsResampled[j].z;
-                    if (elevationsResampled[j].z > altMax)
-                        altMax = elevationsResampled[j].z;
-
-                    if (elevationsResampled[j].slopeOnTrack > slopeMax)
-                        slopeMax = elevationsResampled[j].slopeOnTrack;
-                    if (elevationsResampled[j].slopeOnTrack < slopeMin)
-                        slopeMin = elevationsResampled[j].slopeOnTrack;
-
-                    if (elevationsResampled[j].z < elevationsResampled[j-1].z)
-                        denivNeg += (Math.round(elevationsResampled[j-1].z) - Math.round(elevationsResampled[j].z));
-                    else
-                        denivPos += (Math.round(elevationsResampled[j].z) - Math.round(elevationsResampled[j-1].z));
-                }
-            }
-
-            return {elevations: elevationsResampled, distance: distance, altMin: altMin, altMax: altMax, slopeMin: slopeMin, slopeMax: slopeMax, denivPos: denivPos, denivNeg: denivNeg};
-        }
-
         var plotMarker = null;
 
         if (!isSmallScreen) {
@@ -1275,18 +1309,51 @@ window.onload = function() {
         }
 
         function replot() {
-            var stats = computeStats();
+            var elevations = [];
+            var distance = 0;
+            var altMin = Number.MAX_VALUE;
+            var altMax = Number.MIN_VALUE;
+            var slopeMax = 0;
+            var slopeMin = 0;
+            var denivPos = 0;
+            var denivNeg = 0;
 
-            if (stats.elevations) {
+            $.each(routes, function(i, group) {
+                if (group != null) {
+                    var e = group[0].getElevations();
+                    if (e.length > 0) {
+                        for (var i = 0; i < e.length; i++) {
+                            e[i].dist += distance;
+                        }
+                        elevations = elevations.concat(e);
+                        distance += group[0].getDistance();
+
+                        if (group[0].getAltMin() < altMin)
+                            altMin = group[0].getAltMin();
+                        if (group[0].getAltMax() > altMax)
+                            altMax = group[0].getAltMax();
+
+                        if (group[0].getSlopeMax() > slopeMax)
+                            slopeMax = group[0].getSlopeMax();
+                        if (group[0].getSlopeMin() < slopeMin)
+                            slopeMin = group[0].getSlopeMin();
+
+                        denivNeg += group[0].getDenivNeg();
+                        denivPos += group[0].getDenivPos();
+                    }
+                }
+            });
+
+            if (elevations.length > 0) {
                 var data = [];
                 var data2 = [];
                 var data3 = [];
 
                 if (!isSmallScreen) {
-                    for (var j = 0 ; j < stats.elevations.length; j++) {
-                        data.push({x: stats.elevations[j].dist, y: stats.elevations[j].z, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
-                        data2.push({x: stats.elevations[j].dist, y: stats.elevations[j].slopeOnTrack, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
-                        data3.push({x: stats.elevations[j].dist, y: stats.elevations[j].slope, lat: stats.elevations[j].lat, lon: stats.elevations[j].lon});
+                    for (var j = 0 ; j < elevations.length; j++) {
+                        data.push({x: elevations[j].dist, y: elevations[j].z, lat: elevations[j].lat, lon: elevations[j].lon});
+                        data2.push({x: elevations[j].dist, y: elevations[j].slopeOnTrack, lat: elevations[j].lat, lon: elevations[j].lon});
+                        data3.push({x: elevations[j].dist, y: elevations[j].slope, lat: elevations[j].lat, lon: elevations[j].lon});
                     }
 
                     chart.options.scales.xAxes[0].ticks.max = data[data.length-1].x;
@@ -1294,16 +1361,16 @@ window.onload = function() {
                     chart.config.data.datasets[1].data = data2;
                     chart.config.data.datasets[2].data = data3;
 
-                    chart.options.annotation.annotations[0].value = stats.altMax;
-                    chart.options.annotation.annotations[0].label.content = "Altitude max: " + Math.round(stats.altMax) + "m; D+: " + Math.round(stats.denivPos) + "m";
-                    chart.options.annotation.annotations[1].value = stats.altMin;
-                    chart.options.annotation.annotations[1].label.content = "Altitude min: " + Math.round(stats.altMin) + "m; D-: " + Math.round(stats.denivNeg) + "m";
+                    chart.options.annotation.annotations[0].value = altMax;
+                    chart.options.annotation.annotations[0].label.content = "Altitude max: " + Math.round(altMax) + "m; D+: " + Math.round(denivPos) + "m";
+                    chart.options.annotation.annotations[1].value = altMin;
+                    chart.options.annotation.annotations[1].label.content = "Altitude min: " + Math.round(altMin) + "m; D-: " + Math.round(denivNeg) + "m";
                     chart.options.annotation.annotations[2].value = data[data.length-1].x;
                     chart.options.annotation.annotations[2].label.content = "Distance: " + Math.round(data[data.length-1].x*100)/100 + "km";
 
                     var gradient = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
-                    var maxSlope = Math.ceil(stats.slopeMax/10)*10;
-                    var minSlope = Math.floor(stats.slopeMin/10)*10;
+                    var maxSlope = Math.ceil(slopeMax/10)*10;
+                    var minSlope = Math.floor(slopeMin/10)*10;
 
                     var totalSlope = -minSlope + maxSlope;
                     if (totalSlope != 0) {
@@ -1352,7 +1419,7 @@ window.onload = function() {
                     chart.options.annotation = old;
                     chart.update();
                 } else {
-                    $("#data").html("<ul><li>Altitude max: " + Math.round(stats.altMax) + "m; D+: " + Math.round(stats.denivPos) + "m</li><li>Altitude min: " + Math.round(stats.altMin) + "m; D-: " + Math.round(stats.denivNeg) + "m</li><li>Distance: " + Math.round(stats.elevations[stats.elevations.length-1].dist*100)/100 + "km</li></ul>");
+                    $("#data").html("<ul><li>Altitude max: " + Math.round(altMax) + "m; D+: " + Math.round(denivPos) + "m</li><li>Altitude min: " + Math.round(altMin) + "m; D-: " + Math.round(denivNeg) + "m</li><li>Distance: " + Math.round(elevations[elevations.length-1].dist*100)/100 + "km</li></ul>");
                 }
                 $("#data-empty").slideUp();
             } else {
