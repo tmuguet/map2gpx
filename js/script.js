@@ -1244,7 +1244,7 @@ window.onload = function() {
                                 value: 0,
                                 borderColor: 'rgba(12, 173, 98, 0.5)',
                                 borderWidth: 1,
-                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal",},
+                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", yAdjust: 10},
                                 //onClick: onClickAlt,
                             },{
                                 id: 'altmin',
@@ -1254,7 +1254,7 @@ window.onload = function() {
                                 value: 0,
                                 borderColor: 'rgba(12, 173, 98, 0.5)',
                                 borderWidth: 1,
-                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal"},
+                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", yAdjust: -10},
                                 //onClick: onClickAlt,
                             },{
                                 id: 'distance',
