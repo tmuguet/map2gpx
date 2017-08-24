@@ -400,11 +400,11 @@ window.onload = function() {
                                                 });
                                             };
 
-                                            marker.bindPopup('<input type="button" value="Supprimer l\'import" class="track-delete-button"/>');
+                                            marker.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
                                             marker.on("popupopen", deleteTrack);
-                                            marker2.bindPopup('<input type="button" value="Supprimer l\'import" class="track-delete-button"/>');
+                                            marker2.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
                                             marker2.on("popupopen", deleteTrack);
-                                            track.bindPopup('<input type="button" value="Supprimer l\'import" class="track-delete-button"/>');
+                                            track.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
                                             track.on("popupopen", deleteTrack);
 
                                             map.fitBounds(track.getBounds(), {padding: [200, 200]});
@@ -748,7 +748,7 @@ window.onload = function() {
                 riseOnHover: true,
                 draggable: true,
                 opacity: 0.5
-            }).bindPopup("<input type='button' value='Supprimer ce marqueur' class='marker-delete-button'/>");
+            }).bindPopup("<button class='marker-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer ce marqueur</button>");
             marker.on("popupopen", function() {
                 var o = this;
                 $(".marker-delete-button:visible").click(function() {
