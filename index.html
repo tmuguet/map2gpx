@@ -23,6 +23,9 @@
 
     <script src="leaflet/L.Polyline.SnakeAnim.js"></script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" integrity="sha256-EFpFyBbuttUJtoocYzsBnERPWee2JYz4cn5nkUBjW0A=" crossorigin="anonymous" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js" integrity="sha256-IqiRR5X1QtAdcq5lG4vBB1/WxwrRCkkjno4pfvWyag0=" crossorigin="anonymous"></script>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet-easybutton@2.0.0/src/easy-button.css">
     <script src="https://unpkg.com/leaflet-easybutton@2.0.0/src/easy-button.js"></script>
 
@@ -70,6 +73,7 @@
             <li><a href="https://github.com/ebrelsford/Leaflet.loading">Leaflet.loading</a> (MIT license)</li>
             <li><a href="https://github.com/Norkart/Leaflet-MiniMap">Leaflet.MiniMap</a> (BSD 2-clause "Simplified" License)</li>
             <li>Version modifiée de <a href="https://github.com/mpetazzoni/leaflet-gpx/">GPX plugin for Leaflet</a> (BSD 2-clause license)</li>
+            <li><a href="https://github.com/lvoogdt/Leaflet.awesome-markers">Leaflet.AwesomeMarkers</a> (MIT license)</li>
             <li><a href="http://www.chartjs.org/">chart.js</a> (MIT license)</li>
             <li><a href="https://github.com/chartjs/chartjs-plugin-annotation">chartjs-plugin-annotation.js</a> (MIT license)</li>
             <li><a href="https://github.com/eligrey/FileSaver.js/">FileSaver.js</a> (MIT license)</li>
@@ -81,7 +85,7 @@
         <canvas id="chart" width="100%" height="100%"></canvas>
     </div>
 
-    <div id="data-empty" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-bar-chart fa-3x" aria-hidden="true"></i><br/>Rien à montrer ici...</h2>Commencez à tracer votre itinéraire pour voir les données le concernant.</i></div>
+    <div id="data-empty" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br/>Rien à montrer ici...</h2>Commencez à tracer votre itinéraire pour voir les données le concernant.</i></div>
     <div id="data-invalid" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-exclamation-triangle fa-3x" aria-hidden="true"></i><br/>Tracé invalide !</h2>Le tracé est invalide: l'itinéraire n'a pas pu être calculé avec le dernier marqueur. Déplacez le marqueur translucide pour ré-essayer un nouvel itinéraire.</i></div>
     <div id="data-computing" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Calculs en cours...</h2></div>
 

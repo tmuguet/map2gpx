@@ -62,6 +62,10 @@ window.onload = function() {
         var slopes = {}; // Cache of computed slopes for each points of routes computed so far
         var mode = null;
 
+        L.LayerGroup.include({
+            // TODO: legend
+        });
+
         L.FeatureGroup.include({
             _elevations: [],
             _distance: 0,
@@ -233,21 +237,39 @@ window.onload = function() {
             }
         });
 
-        var stepMarker = L.AwesomeMarkers.icon({
-            icon: 'pause',
-            markerColor: 'purple',
-            prefix: 'fa'
-        });
+        var colorMap = {'red': '#D63E2A', 'orange': '#F59630', 'green': '#72B026', 'blue': '#38AADD', 'purple': '#D252B9',
+            'darkred': '#A23336', 'darkblue': '#0067A3', 'darkgreen': '#728224', 'darkpurple': '#5B396B', 'cadetblue': '#436978',
+            'lightred': '#FF8E7F', 'beige': '#FFCB92', 'lightgreen': '#BBF970', 'lightblue': '#8ADAFF', 'pink': '#FF91EA',
+            'white': '#FBFBFB', 'lightgray': '#A3A3A3', 'gray': '#575757', 'black': '#303030'};
+        var colors = ['blue', 'green', 'orange', 'purple', 'red', 'darkblue', 'darkpurple', 'lightblue', 'lightgreen', 'beige', 'pink', 'lightred'];
+        var currentColor = 0;
+        function nextColor() {
+            currentColor = (currentColor + 1) % colors.length;
+            return currentColor;
+        }
 
         L.Marker.include({
             __type: 'waypoint',
+            __color: currentColor,
+            getColorCode: function() {return colors[this.__color];},
+            getColorRgb: function() {return colorMap[colors[this.__color]];},
+            getColorIndex: function() {return this.__color;},
+            setColorIndex: function(i) {this.__color = i;},
             getType: function() {return this.__type;},
             setType: function(type) {
                 this.__type = type;
                 if (type == "waypoint") {
-                    this.setIcon(new L.Icon.Default());
+                    this.setIcon(L.AwesomeMarkers.icon({
+                        icon: 'circle',
+                        markerColor: this.getColorCode(),
+                        prefix: 'fa'
+                    }));
                 } else {
-                    this.setIcon(stepMarker);
+                    this.setIcon(L.AwesomeMarkers.icon({
+                        icon: 'asterisk',
+                        markerColor: this.getColorCode(),
+                        prefix: 'fa'
+                    }));
                 }
             }
         });
@@ -714,7 +736,7 @@ window.onload = function() {
                 }];
 
                 var geojson = L.geoJSON(lines, {
-                    color: "#ED7F10",
+                    color: start.getColorRgb(),
                     weight: 5,
                     opacity: 0.75,
                     snakingPause: 0, snakingSpeed: 1000
@@ -723,6 +745,7 @@ window.onload = function() {
                 var done = function() {
                     routes[index] = [geojson, 'straight'];
                     geojson.addTo(map);
+                    geojson.bindPopup("Calculs en cours...");
                     geojson.snakeIn();
                     start.setOpacity(1);
                     end.setOpacity(1);
@@ -789,7 +812,7 @@ window.onload = function() {
                         worked = true;
                         if (results) {
                             var geojson = L.geoJSON([], {
-                                color: "#ED7F10",
+                                color: start.getColorRgb(),
                                 weight: 5,
                                 opacity: 0.75,
                                 snakingPause: 0, snakingSpeed: 1000
@@ -813,6 +836,7 @@ window.onload = function() {
                             var done = function() {
                                 routes[index] = [geojson, 'auto'];
                                 geojson.addTo(map);
+                                geojson.bindPopup("Calculs en cours...");
                                 geojson.snakeIn();
                                 start.setOpacity(1);
                                 end.setOpacity(1);
@@ -856,13 +880,40 @@ window.onload = function() {
                 riseOnHover: true,
                 draggable: true,
                 opacity: 0.5
-            }).bindPopup("<button class='marker-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer ce marqueur</button>");
+            }).bindPopup("<button class='marker-promote-button'><i class='fa fa-asterisk' aria-hidden='true'></i> Marquer comme étape</button> <button class='marker-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer ce marqueur</button>");
             marker.on("popupopen", function() {
                 var o = this;
                 $(".marker-delete-button:visible").click(function() {
                     map.removeLayer(o); // Routes will be deleted when marker gets deleted
                 });
+                $(".marker-promote-button:visible").click(function() {
+                    o.setColorIndex(nextColor());
+                    o.setType('step');
+                    var colorRgb = o.getColorRgb();
+
+                    var markerIndex = markers.indexOf(o);
+                    if (markerIndex > -1) {
+                        for (var i = markerIndex + 1; i < markers.length; i++) {
+                            if (i > 0) {
+                                var routeTo = routes[i - 1];    // Route ending at this marker
+                                routeTo[0].setStyle({color: colorRgb});
+                            }
+
+                            if (markers[i].getType() == "step") {
+                                break;
+                            }
+                            markers[i].setColorIndex(currentColor);
+                            markers[i].setType(markers[i].getType());
+                        }
+                    }
+                    replot();
+                });
             });
+            if (markers.length > 0) {
+                marker.setColorIndex(markers[markers.length - 1].getColorIndex());
+            } else {
+                marker.setColorIndex(currentColor);
+            }
             marker.setType('waypoint');
             markers.push(marker);
             marker.addTo(map);
@@ -941,6 +992,21 @@ window.onload = function() {
 
                 var markerIndex = markers.indexOf(event.target);
                 if (markerIndex > -1) {
+                    if (event.target.getType() == "step" && markerIndex > 0) {
+                        for (var i = markerIndex + 1; i < markers.length; i++) {
+                            if (i > 0) {
+                                var routeTo = routes[i - 1];    // Route ending at this marker
+                                routeTo[0].setStyle({color: markers[markerIndex - 1].getColorRgb()});
+                            }
+
+                            if (markers[i].getType() == "step") {
+                                break;
+                            }
+                            markers[i].setColorIndex(markers[markerIndex - 1].getColorIndex());
+                            markers[i].setType(markers[i].getType());
+                        }
+                    }
+
                     if (markerIndex == 0) {
                         if (routes.length > 0) {
                             // Remove route starting at this marker
@@ -1200,7 +1266,11 @@ window.onload = function() {
 
                                     if (plotMarker == null) {
                                         plotMarker = L.marker(L.latLng(item.lat, item.lon), {
-                                            icon : new L.Icon.Default("orange"),
+                                            icon : L.AwesomeMarkers.icon({
+                                                icon: 'area-chart',
+                                                markerColor: 'cadetblue',
+                                                prefix: 'fa'
+                                            }),
                                             draggable : false,
                                             clickable : false,
                                             zIndexOffset : 1000
@@ -1270,37 +1340,7 @@ window.onload = function() {
                     },
                     annotation: {
                         //events: ['click'],
-                        annotations: [{
-                                id: 'altmax',
-                                type: 'line',
-                                mode: 'horizontal',
-                                scaleID: 'alt',
-                                value: 0,
-                                borderColor: 'rgba(12, 173, 98, 0.5)',
-                                borderWidth: 1,
-                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", yAdjust: 10},
-                                //onClick: onClickAlt,
-                            },{
-                                id: 'altmin',
-                                type: 'line',
-                                mode: 'horizontal',
-                                scaleID: 'alt',
-                                value: 0,
-                                borderColor: 'rgba(12, 173, 98, 0.5)',
-                                borderWidth: 1,
-                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", yAdjust: -10},
-                                //onClick: onClickAlt,
-                            },{
-                                id: 'distance',
-                                type: 'line',
-                                mode: 'vertical',
-                                scaleID: 'distance',
-                                value: 0,
-                                borderColor: 'rgba(0, 0, 0, 0.5)',
-                                borderWidth: 1,
-                                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", xAdjust: -50},
-                                //onClick: onClickAlt,
-                            }],
+                        annotations: [],
                     }
                 }
             });
@@ -1318,12 +1358,79 @@ window.onload = function() {
             var denivPos = 0;
             var denivNeg = 0;
 
+            var localDistance = 0;
+            var localAltMin = Number.MAX_VALUE;
+            var localAltMax = Number.MIN_VALUE;
+            var localSlopeMax = 0;
+            var localSlopeMin = 0;
+            var localDenivPos = 0;
+            var localDenivNeg = 0;
+
+            var annotations = [{
+                id: 'altmax',
+                type: 'line',
+                mode: 'horizontal',
+                scaleID: 'alt',
+                value: 0,
+                borderColor: 'rgba(12, 173, 98, 0.5)',
+                borderWidth: 1,
+                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", yAdjust: 10},
+                //onClick: onClickAlt,
+            },{
+                id: 'altmin',
+                type: 'line',
+                mode: 'horizontal',
+                scaleID: 'alt',
+                value: 0,
+                borderColor: 'rgba(12, 173, 98, 0.5)',
+                borderWidth: 1,
+                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", yAdjust: -10},
+                //onClick: onClickAlt,
+            },{
+                id: 'distance',
+                type: 'line',
+                mode: 'vertical',
+                scaleID: 'distance',
+                value: 0,
+                borderColor: 'rgba(0, 0, 0, 0.5)',
+                borderWidth: 1,
+                label: {enabled: true, position: "left", backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: "normal", xAdjust: -50},
+                //onClick: onClickAlt,
+            }];
+
+            var previousStep = 0;
             $.each(routes, function(i, group) {
                 if (group != null) {
+
+                    if (markers[i].getType() == "step") {
+                        annotations.push({
+                            id: 'distance-'+i,
+                            type: 'line',
+                            mode: 'vertical',
+                            scaleID: 'distance',
+                            value: distance,
+                            borderColor: 'rgba(0, 0, 0, 0.5)',
+                            borderWidth: 1,
+                        });
+
+                        for (var j = previousStep; j < i; j++) {
+                            routes[j][0].setPopupContent("<ul class='legend " + markers[j].getColorCode() + "'><li>Altitude max: " + Math.round(localAltMax) + "m</li><li>D+: " + Math.round(localDenivPos) + "m</li><li>Altitude min: " + Math.round(localAltMin) + "m</li><li>D-: " + Math.round(localDenivNeg) + "m</li><li>Distance: " + Math.round(localDistance*100)/100 + "km</li></ul>");
+                        }
+
+                        previousStep = i;
+                        localDistance = 0;
+                        localAltMin = Number.MAX_VALUE;
+                        localAltMax = Number.MIN_VALUE;
+                        localSlopeMax = 0;
+                        localSlopeMin = 0;
+                        localDenivPos = 0;
+                        localDenivNeg = 0;
+                    }
+
                     var e = group[0].getElevations();
                     if (e.length > 0) {
-                        for (var i = 0; i < e.length; i++) {
-                            e[i].dist += distance;
+                        for (var j = 0; j < e.length; j++) {
+                            e[j].dist += distance;
                         }
                         elevations = elevations.concat(e);
                         distance += group[0].getDistance();
@@ -1340,9 +1447,31 @@ window.onload = function() {
 
                         denivNeg += group[0].getDenivNeg();
                         denivPos += group[0].getDenivPos();
-                    }
+
+
+                        localDistance += group[0].getDistance();
+
+                        if (group[0].getAltMin() < localAltMin)
+                            localAltMin = group[0].getAltMin();
+                        if (group[0].getAltMax() > localAltMax)
+                            localAltMax = group[0].getAltMax();
+
+                        if (group[0].getSlopeMax() > localSlopeMax)
+                            localSlopeMax = group[0].getSlopeMax();
+                        if (group[0].getSlopeMin() < localSlopeMin)
+                            localSlopeMin = group[0].getSlopeMin();
+
+                        localDenivNeg += group[0].getDenivNeg();
+                        localDenivPos += group[0].getDenivPos();
+
+                    };
                 }
             });
+            if (localDistance > 0) {
+                for (var j = previousStep; j < routes.length; j++) {
+                    routes[j][0].setPopupContent("<ul class='legend " + markers[j].getColorCode() + "'><li>Altitude max: " + Math.round(localAltMax) + "m</li><li>D+: " + Math.round(localDenivPos) + "m</li><li>Altitude min: " + Math.round(localAltMin) + "m</li><li>D-: " + Math.round(localDenivNeg) + "m</li><li>Distance: " + Math.round(localDistance*100)/100 + "km</li></ul>");
+                }
+            }
 
             if (elevations.length > 0) {
                 var data = [];
@@ -1361,12 +1490,12 @@ window.onload = function() {
                     chart.config.data.datasets[1].data = data2;
                     chart.config.data.datasets[2].data = data3;
 
-                    chart.options.annotation.annotations[0].value = altMax;
-                    chart.options.annotation.annotations[0].label.content = "Altitude max: " + Math.round(altMax) + "m; D+: " + Math.round(denivPos) + "m";
-                    chart.options.annotation.annotations[1].value = altMin;
-                    chart.options.annotation.annotations[1].label.content = "Altitude min: " + Math.round(altMin) + "m; D-: " + Math.round(denivNeg) + "m";
-                    chart.options.annotation.annotations[2].value = data[data.length-1].x;
-                    chart.options.annotation.annotations[2].label.content = "Distance: " + Math.round(data[data.length-1].x*100)/100 + "km";
+                    annotations[0].value = altMax;
+                    annotations[0].label.content = "Altitude max: " + Math.round(altMax) + "m; D+: " + Math.round(denivPos) + "m";
+                    annotations[1].value = altMin;
+                    annotations[1].label.content = "Altitude min: " + Math.round(altMin) + "m; D-: " + Math.round(denivNeg) + "m";
+                    annotations[2].value = data[data.length-1].x;
+                    annotations[2].label.content = "Distance: " + Math.round(data[data.length-1].x*100)/100 + "km";
 
                     var gradient = document.getElementById('chart').getContext('2d').createLinearGradient(0, 0, 0, 120);
                     var maxSlope = Math.ceil(slopeMax/10)*10;
@@ -1416,7 +1545,7 @@ window.onload = function() {
                     var old = chart.options.annotation;
                     chart.options.annotation = {};  // TODO: potential bug with annotations where old 'value' of annotations are kept in graph
                     chart.update();
-                    chart.options.annotation = old;
+                    chart.options.annotation = {annotations: annotations};
                     chart.update();
                 } else {
                     $("#data").html("<ul><li>Altitude max: " + Math.round(altMax) + "m; D+: " + Math.round(denivPos) + "m</li><li>Altitude min: " + Math.round(altMin) + "m; D-: " + Math.round(denivNeg) + "m</li><li>Distance: " + Math.round(elevations[elevations.length-1].dist*100)/100 + "km</li></ul>");
