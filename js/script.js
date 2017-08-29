@@ -62,10 +62,7 @@ window.onload = function() {
         var slopes = {}; // Cache of computed slopes for each points of routes computed so far
         var mode = null;
 
-        L.LayerGroup.include({
-            // TODO: legend
-        });
-
+        // TODO: these functions should only exist for classes that define getLatLngs
         L.Layer.include({
             _elevations: [],
             _distance: 0,
