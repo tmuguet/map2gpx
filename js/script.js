@@ -911,6 +911,7 @@ window.onload = function() {
                     map.removeLayer(o); // Routes will be deleted when marker gets deleted
                 });
                 $(".marker-promote-button:visible").click(function() {
+                    o.setPopupContent("<button class='marker-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer ce marqueur</button>");
                     o.setColorIndex(nextColor());
                     o.setType('step');
                     var colorRgb = o.getColorRgb();
