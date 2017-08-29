@@ -460,6 +460,12 @@ window.onload = function() {
                 onClick: function(btn, map) {
                     importPopup.setLatLng(map.getCenter()).openOn(map);
                     var o = this;
+                    if (routes.length > 0) {
+                        $(".import-gpx-status:visible").html("<strong>Attention:</strong> l'import va effacer l'itinéraire existant!");
+                    } else {
+                        $(".import-gpx-status:visible").text("");
+                    }
+
                     $(".import-gpx-button:visible").click(function() {
                         var btn = $(this);
 
@@ -526,6 +532,7 @@ window.onload = function() {
                                         };
 
                                         map.fitBounds(gpx.getBounds(), {padding: [50, 50]});
+                                        importPopup.setLatLng(gpx.getBounds().getCenter());
                                         gpx.addTo(map);
 
                                         var promises = [];
