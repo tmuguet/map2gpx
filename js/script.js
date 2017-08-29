@@ -1289,7 +1289,7 @@ window.onload = function() {
                         pointRadius: 0,
                         yAxisID: 'slope'
                     },{
-                        label: 'Pente',
+                        label: 'Pente du terrain',
                         data: [],
                         fill: true,
                         //lineTension: 0,
