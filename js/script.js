@@ -1606,5 +1606,7 @@ window.onload = function() {
             }
         }
         replot();
+
+        $("#loading").fadeOut();
     });
 }
