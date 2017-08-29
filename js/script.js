@@ -66,7 +66,7 @@ window.onload = function() {
             // TODO: legend
         });
 
-        L.FeatureGroup.include({
+        L.Layer.include({
             _elevations: [],
             _distance: 0,
             _altMin: 0,
@@ -481,15 +481,16 @@ window.onload = function() {
                         reader.onload = (function(theFile) {
                             return function(e) {
 
+                                var lines = [];
                                 var line = new L.GPX(e.target.result, {
-                                    async: false,
+                                    async: true,
                                     onFail: function() {
                                         console.log("Failed to retrieve track");
                                         $(".import-gpx-status:visible").text("Imposible de traiter ce fichier");
                                         btn.removeAttr("disabled");
                                         updateButtons(true);
                                     },
-                                    onSuccess: function(track) {
+                                    onSuccess: function(gpx) {
                                         $(".import-gpx-status:visible").text("Récupération des données géographiques en cours...");
                                         // Re-init routes/markers
                                         var oldRoutes = routes;
@@ -503,49 +504,71 @@ window.onload = function() {
                                             map.removeLayer(this);
                                         });
 
-                                        track.computeStats().then(function() {
+                                        var deleteTrack = function() {
+                                            var o = this;
+                                            $(".track-delete-button:visible").click(function() {
+                                                // Re-init routes/markers
+                                                var oldRoutes = routes;
+                                                routes = [];
+                                                $.each(oldRoutes, function() {
+                                                    map.removeLayer(this[0]);
+                                                });
+                                                var oldMarkers = markers;
+                                                markers = [];
+                                                $.each(oldMarkers, function() {
+                                                    map.removeLayer(this);
+                                                });
+                                                map.removeLayer(gpx);
 
+                                                updateButtons(true);
+                                                replot();
+                                            });
+                                        };
+
+                                        map.fitBounds(gpx.getBounds(), {padding: [50, 50]});
+                                        gpx.addTo(map);
+
+                                        var promises = [];
+                                        $.each(lines, function(idx, track) {
                                             // Add new route+markers
                                             routes.push([track, 'import']);
 
-                                            var start = track.getLatLngs()[0];
+                                            if (idx == 0) {
+                                                var start = track.getLatLngs()[0];
+                                                var marker = L.marker(start, {draggable: false, opacity: 0.5});
+                                                marker.setColorIndex(currentColor);
+                                                marker.setType('waypoint');
+                                                markers.push(marker);
+                                                marker.addTo(map);
+
+                                                marker.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
+                                                marker.on("popupopen", deleteTrack);
+                                            }
+
                                             var end = track.getLatLngs()[track.getLatLngs().length-1];
-
-                                            var marker = L.marker(start, {draggable: false});
-                                            marker.setType('waypoint');
-                                            markers.push(marker);
-                                            marker.addTo(map);
-
-                                            var marker2 = L.marker(end, {draggable: false});
+                                            var marker2 = L.marker(end, {draggable: false, opacity: 0.5});
+                                            marker2.setColorIndex(nextColor());
                                             marker2.setType('step');
                                             markers.push(marker2);
                                             marker2.addTo(map);
 
-                                            var deleteTrack = function() {
-                                                var o = this;
-                                                $(".track-delete-button:visible").click(function() {
-                                                    map.removeLayer(track);
-                                                    map.removeLayer(marker);
-                                                    map.removeLayer(marker2);
+                                            track.setStyle({weight: 5, color: markers[idx].getColorRgb(), opacity: 0.5});    // Use color of starting marker
+                                            track.bindPopup("Calculs en cours...");
 
-                                                    routes = [];
-                                                    markers = [];
-
-                                                    updateButtons(true);
-                                                    replot();
-                                                });
-                                            };
-
-                                            marker.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
-                                            marker.on("popupopen", deleteTrack);
                                             marker2.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
                                             marker2.on("popupopen", deleteTrack);
-                                            track.bindPopup("<button class='track-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer l'import</button>");
-                                            track.on("popupopen", deleteTrack);
 
-                                            map.fitBounds(track.getBounds(), {padding: [200, 200]});
-                                            track.addTo(map);
-                                            track.snakeIn();
+                                            promises.push(track.computeStats());
+                                        });
+
+                                        $.when.apply($, promises).done(function() {
+
+                                            $.each(routes, function() {
+                                                this[0].setStyle({opacity: 0.75});
+                                            });
+                                            $.each(markers, function() {
+                                                this.setOpacity(1);
+                                            });
 
                                             updateButtons(true);
                                             replot();
@@ -557,7 +580,7 @@ window.onload = function() {
                                             updateButtons(true);
                                         });
                                     }
-                                });
+                                }).on('addline', function(e) {lines.push(e.line);});
                             };
                         })(f);
 
@@ -594,16 +617,13 @@ window.onload = function() {
         // Logic
         function updateButtons(enabled) {
             if (enabled) {
-                if (routes.length == 1 && routes[0][1] == "import") {
+                if (routes.length > 0 && routes[0][1] == "import") {
                     automatedBtn.disable();
                     automatedBtn.state('loaded');
                     lineBtn.disable();
                     lineBtn.state('loaded');
                     mode = null;
                     map.doubleClickZoom.enable();
-
-                    closeLoop.disable();
-                    exportButton.disable();
                 } else {
                     automatedBtn.enable();
                     lineBtn.enable();
@@ -1157,6 +1177,13 @@ window.onload = function() {
                 xml += '        <name>' + filename + '</name>\n';
                 xml += '        <trkseg>\n';
                 $.each(routes, function(i, group) {
+                    if (markers[i].getType() == "step") {
+                        xml += '        </trkseg>\n';
+                        xml += '    </trk>\n';
+                        xml += '    <trk>\n';
+                        xml += '        <name>' + filename + '-' + i + '</name>\n';
+                        xml += '        <trkseg>\n';
+                    }
                     $.each(group[0].getLatLngs(), function(j, coords) {
                         xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
                         if (coords.lng + '/' + coords.lat in altitudes) {
@@ -1165,7 +1192,9 @@ window.onload = function() {
                         xml += '</trkpt>\n';
                     });
                 });
-                xml += '        </trkseg>\n    </trk>\n</gpx>\n';
+                xml += '        </trkseg>\n';
+                xml += '    </trk>\n';
+                xml += '</gpx>\n';
                 var blob = new Blob([xml], {
                     type: "application/gpx+xml;charset=utf-8"
                 });
@@ -1195,6 +1224,17 @@ window.onload = function() {
                 xml += '                <coordinates>\n';
                 xml += '                    ';
                 $.each(routes, function(i, group) {
+                    if (markers[i].getType() == "step") {
+                        xml += '\n                </coordinates>\n';
+                        xml += '            </LineString>\n';
+                        xml += '        </Placemark>\n';
+                        xml += '        <Placemark>\n';
+                        xml += '            <name>' + filename + '-' + i + '</name>\n';
+                        xml += '            <LineString>\n';
+                        xml += '                <tessellate>1</tessellate>\n';
+                        xml += '                <coordinates>\n';
+                    }
+
                     $.each(group[0].getLatLngs(), function(j, coords) {
                         xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
