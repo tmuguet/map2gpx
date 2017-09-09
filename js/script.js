@@ -282,9 +282,7 @@ window.onload = function() {
         }
 
         // Central map
-        var map = L.map('map', {
-            loadingControl: true
-        }).setView(view, 13);
+        var map = L.map('map', {}).setView(view, 13);
 
         L.geoportalLayer.WMTS({
             layer: "ORTHOIMAGERY.ORTHOPHOTOS",
