@@ -61,6 +61,7 @@ window.onload = function() {
         var altitudes = {}; // Cache of computed altitudes for each points of routes computed so far
         var slopes = {}; // Cache of computed slopes for each points of routes computed so far
         var mode = null;
+        var computing = false;
 
         // TODO: these functions should only exist for classes that define getLatLngs
         L.Layer.include({
@@ -656,7 +657,9 @@ window.onload = function() {
                     $("#data-invalid").hide();
                 }
                 $("#data-computing").fadeOut();
+                computing = false;
             } else {
+                computing = true;
                 $("#data-computing").fadeIn();
                 closeLoop.state('computing');
                 exportButton.state('computing');
@@ -890,7 +893,7 @@ window.onload = function() {
         }
 
         function addMarker(e) {
-            if (mode == null) {
+            if (mode == null || computing) {
                 return;
             }
 
