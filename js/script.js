@@ -596,7 +596,9 @@ window.onload = function() {
 
         if (!isSmallScreen) {
             var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
-            var infoButton = L.easyButton({
+            var welcomePopup = L.popup().setContent(L.DomUtil.get("welcome"));
+
+            var infoBtn = L.easyButton({
                 position: 'bottomright',
                 states: [{
                     icon: 'fa-info-circle',
@@ -605,9 +607,20 @@ window.onload = function() {
                     },
                     title: 'A propos & crédits'
                 }]
-            }).addTo(map);
+            });
+            var helpBtn = L.easyButton({
+                position: 'bottomright',
+                states: [{
+                    icon: 'fa-question-circle',
+                    onClick: function(btn, map) {
+                        welcomePopup.setLatLng(map.getCenter()).openOn(map);
+                    },
+                    title: 'Aide'
+                }]
+            });
 
-            var welcomePopup = L.popup().setContent(L.DomUtil.get("welcome"));
+            L.easyBar([infoBtn, helpBtn], {position: 'bottomright'}).addTo(map);
+
             welcomePopup.setLatLng(map.getCenter()).openOn(map);
         }
 
