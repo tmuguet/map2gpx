@@ -804,7 +804,6 @@ window.onload = function() {
 
             return $.Deferred(function() {
                 var self = this;
-                var worked = false;
 
                 var onFail = function(error) {
                     console.log(error);
@@ -834,7 +833,6 @@ window.onload = function() {
                     viaPoints: [],
                     apiKey: keyIgn,
                     onSuccess: function(results) {
-                        worked = true;
                         if (results) {
                             var geojson = L.geoJSON([], {
                                 color: start.getColorRgb(),
@@ -878,17 +876,10 @@ window.onload = function() {
                         }
                     },
                     onFailure: function(error) {    // seems to never be called
-                        worked = true;
                         onFail("Impossible d'obtenir la route: " + error.message);
                     }
                 };
                 Gp.Services.route(options);
-
-                var timeout = delay(4000);
-                timeout.then(function(){
-                    if (!worked)
-                        onFail("Impossible d'obtenir la route: timeout");
-                });
             });
         }
 
