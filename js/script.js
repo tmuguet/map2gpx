@@ -79,6 +79,7 @@
 
     $.Shepherd.Tour = function() {
         var _tour;
+        var _steps = 0;
 
         var init = function(settings) {
             var opts = $.extend({}, settings, {
@@ -94,41 +95,63 @@
         var add = function(name, settings) {
             var self = this;
 
+            var currentStep = _steps;
+            _steps++;
+
+
             var opts = $.extend({}, settings, {
                 classes: 'shepherd shepherd-open shepherd-theme-arrows shepherd-transparent-text',
             });
 
-            if (opts.last) {
-                opts.buttons = [{
-                        text: 'Fermer',
-                        classes: 'shepherd-button-secondary',
-                        action: this.cancel
-                    }, {
-                        text: 'Suivant',
-                        action: function() {
-                            self.next();
-                            var currentShepherdIndex = tutorials.indexOf(self);
+            opts.buttons = [{
+                    text: 'Fermer',
+                    classes: 'shepherd-button-secondary',
+                    action: function() {
+                        if (hasLocalStorage) {
+                            localStorage.setItem('tutorial' + tutorials.indexOf(self), -2);
+                        }
+                        self.cancel();
+                    }
+                }, {
+                    text: 'Suivant',
+                    action: function() {
+                        var currentShepherdIndex = tutorials.indexOf(self);
+
+                        if (hasLocalStorage) {
+                            localStorage.setItem('tutorial' + currentShepherdIndex, currentStep);
+                        }
+                        self.next();
+
+                        if (currentStep == _steps-1) {
+                            // Last step of current tutorial
                             if (currentShepherdIndex < tutorials.length - 1)
-                                tutorials[currentShepherdIndex+1].start();
-                        },
-                        classes: 'shepherd-button-example-primary'
-                    }];
-            } else {
-                opts.buttons = [{
-                        text: 'Fermer',
-                        classes: 'shepherd-button-secondary',
-                        action: this.cancel
-                    }, {
-                        text: 'Suivant',
-                        action: this.next,
-                        classes: 'shepherd-button-example-primary'
-                    }];
-            }
+                                tutorials[currentShepherdIndex+1].start(true);
+                        }
+                    },
+                    classes: 'shepherd-button-example-primary'
+                }];
+
             _tour.addStep(name, opts);
             return this;
         };
 
-        var start = function() {_tour.start(); return this;};
+        var start = function(force) {
+            force = (typeof force !== 'undefined') ?  force : false;    // Force display
+
+            var id = 0;
+
+            if (!force) {
+                var currentShepherdIndex = tutorials.indexOf(this);
+                if (hasLocalStorage && localStorage.getItem('tutorial' + currentShepherdIndex) !== null) {
+                    id = parseInt(localStorage.getItem('tutorial' + currentShepherdIndex)) + 1;
+                }
+            }
+
+            if (id >= 0 && id < _steps) {
+                _tour.show(id);
+            }
+            return this;
+        };
         var cancel = function() {_tour.cancel(); return this;};
         var next = function() {_tour.next(); return this;};
 
@@ -156,15 +179,48 @@
 
 })(jQuery);
 
+function storageAvailable(type) {
+    try {
+        var storage = window[type],
+            x = '__storage_test__';
+        storage.setItem(x, x);
+        storage.removeItem(x);
+        return true;
+    }
+    catch(e) {
+        return e instanceof DOMException && (
+            // everything except Firefox
+            e.code === 22 ||
+            // Firefox
+            e.code === 1014 ||
+            // test name field too, because code might not be present
+            // everything except Firefox
+            e.name === 'QuotaExceededError' ||
+            // Firefox
+            e.name === 'NS_ERROR_DOM_QUOTA_REACHED') &&
+            // acknowledge QuotaExceededError only if there's something already stored
+            storage.length !== 0;
+    }
+}
+
+var isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
+var hasLocalStorage = storageAvailable('localStorage');
+
 window.onload = function() {
 
     // First, find the current view
     $.Deferred(function() {
         var self = this;
 
-        var view = [44.96777356135154, 6.06822967529297];   // Center in les Ecrins because I love this place
+        var view = [44.96777356135154, 6.06822967529297, 13];   // Center in les Ecrins because I love this place
+
+        if (hasLocalStorage) {
+            if (localStorage.getItem('view') !== null)
+                view = JSON.parse(localStorage.getItem('view'));
+        }
+
         if ('lat' in $.QueryString && 'lng' in $.QueryString) {
-            view = [$.QueryString['lat'], $.QueryString['lng']];
+            view = [$.QueryString['lat'], $.QueryString['lng'], 15];
         }
 
         if ('loc' in $.QueryString) {
@@ -175,7 +231,7 @@ window.onload = function() {
                 "apiKey": keyIgn,
                 onSuccess: function(results) {
                     if (results && 'suggestedLocations' in results && results['suggestedLocations'].length > 0) {
-                        self.resolveWith([results['suggestedLocations'][0]['position']['y'], results['suggestedLocations'][0]['position']['x']]);
+                        self.resolveWith([results['suggestedLocations'][0]['position']['y'], results['suggestedLocations'][0]['position']['x'], 15]);
                     } else {
                         console.log("No results?");
                         self.resolveWith(view); // Use default view
@@ -410,8 +466,6 @@ window.onload = function() {
             }
         });
 
-        var isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
-
         if (isSmallScreen) {
             var popup = $('<div style="position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0" id="mobile-warning"><strong>Attention:</strong> ce site n\'est pas destiné aux mobiles. <button>Ok, j\'ai compris</button></div>');
             popup.find("button").click(function() {
@@ -421,11 +475,12 @@ window.onload = function() {
         }
 
         // Central map
-        var map = L.map('map', {}).setView(view, 13);
+        var map = L.map('map', {}).setView([view[0], view[1]], view[2]);
 
+        // TODO: add support of localStorage for opacity&visiblity
         var layerPhotos = L.geoportalLayer.WMTS({
             layer: "ORTHOIMAGERY.ORTHOPHOTOS",
-            apiKey: keyIgn
+            apiKey: keyIgn,
         }).addTo(map);
         var layerSlopes =  L.geoportalLayer.WMTS({
             layer: "GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN",
@@ -762,7 +817,7 @@ window.onload = function() {
                 states: [{
                     icon: 'fa-question-circle',
                     onClick: function(btn, map) {
-                        $.Shepherd.get(0).start();
+                        $.Shepherd.get(0).start(true);
                     },
                     title: 'Aide'
                 }]
@@ -776,6 +831,8 @@ window.onload = function() {
         var outOfRangeDrop = undefined;
         map.on('zoomend', function() {
             console.log("Zoomed to ", map.getZoom());
+            if (hasLocalStorage)
+                localStorage.setItem('view', JSON.stringify([map.getCenter().lat, map.getCenter().lng, map.getZoom()]));
 
             var outOfRange = undefined; var outOfRangeTarget = undefined;
             if ((layerPhotos.options.minZoom > map.getZoom() || layerPhotos.options.maxZoom < map.getZoom()) && map.hasLayer(layerPhotos)) {
@@ -806,7 +863,11 @@ window.onload = function() {
                 outOfRangeDrop = null;
             }
         });
-        map.on('moveend', function() {console.log("Moved to ", map.getCenter());});
+        map.on('moveend', function() {
+            console.log("Moved to ", map.getCenter());
+            if (hasLocalStorage)
+                localStorage.setItem('view', JSON.stringify([map.getCenter().lat, map.getCenter().lng, map.getZoom()]));
+        });
 
 
         // Logic
