@@ -796,8 +796,37 @@ window.onload = function() {
                         reader.readAsText(f);
                     });
                 }
+            },{
+                stateName: 'computing',
+                icon: 'fa-spinner fa-pulse',
+                title: 'Importer (calcul en cours...)'
             }]
-        }).addTo(map);
+        });
+        var resetButton = L.easyButton({
+            id: "btn-reset",
+            states: [{
+                stateName: 'loaded',
+                icon: 'fa-trash',
+                title: 'Effacer l\'itinéraire',
+                onClick: function(btn, map) {
+                    var oldRoutes = routes;
+                    routes = [];
+                    $.each(oldRoutes, function() {
+                        map.removeLayer(this[0]);
+                    });
+                    var oldMarkers = markers;
+                    markers = [];
+                    $.each(oldMarkers, function() {
+                        map.removeLayer(this);
+                    });
+                }
+            },{
+                stateName: 'computing',
+                icon: 'fa-spinner fa-pulse',
+                title: 'Effacer l\'itinéraire (calcul en cours...)'
+            }]
+        });
+        L.easyBar([importButton, resetButton]).addTo(map);
 
         if (!isSmallScreen) {
             var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
@@ -895,6 +924,11 @@ window.onload = function() {
                     }
                 }
 
+                importButton.enable();
+                resetButton.enable();
+                importButton.state('loaded');
+                resetButton.state('loaded');
+
                 var invalid = false;
                 $.each(routes, function(i, group) {
                     if (group == null) {
@@ -919,8 +953,12 @@ window.onload = function() {
                 $("#data-computing").fadeIn();
                 closeLoop.state('computing');
                 exportButton.state('computing');
+                importButton.state('computing');
+                resetButton.state('computing');
                 closeLoop.disable();
                 exportButton.disable();
+                importButton.disable();
+                resetButton.disable();
             }
         }
         updateButtons(true);
