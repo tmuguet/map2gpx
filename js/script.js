@@ -285,17 +285,17 @@ window.onload = function() {
         // Central map
         var map = L.map('map', {}).setView(view, 13);
 
-        L.geoportalLayer.WMTS({
+        var layerPhotos = L.geoportalLayer.WMTS({
             layer: "ORTHOIMAGERY.ORTHOPHOTOS",
             apiKey: keyIgn
         }).addTo(map);
-        var slopes =  L.geoportalLayer.WMTS({
+        var layerSlopes =  L.geoportalLayer.WMTS({
             layer: "GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN",
             apiKey: keyIgn
         }, {
             opacity: 0.25
         }).addTo(map);
-        L.geoportalLayer.WMTS({
+        var layerMaps = L.geoportalLayer.WMTS({
             layer: "GEOGRAPHICALGRIDSYSTEMS.MAPS",
             apiKey: keyIgn
         }, {
@@ -320,7 +320,8 @@ window.onload = function() {
             collapsed : isSmallScreen
         });
         map.addControl(layerSwitcher);
-        layerSwitcher.setVisibility(slopes, false);
+        layerSwitcher.setVisibility(layerSlopes, false);
+        $(".GPlayerRemove").remove();
 
         if (!isSmallScreen) {
             map.addControl(L.control.scale({
