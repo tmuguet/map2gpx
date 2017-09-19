@@ -989,9 +989,11 @@ window.onload = function() {
                         var start = markers[markerIndex];
                         var end = markers[markerIndex + 1];
 
-                        var _mode = "auto";
+                        var _mode = mode;
                         if (mode == null && routeFrom != null) {
                             _mode = routeFrom[1];
+                        } else if (mode == null) {
+                            _mode = "auto";
                         }
                         promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex)
                             : computeStraightRoute(start, end, markerIndex));
@@ -1006,9 +1008,12 @@ window.onload = function() {
 
                         var start = markers[markerIndex - 1];
                         var end = markers[markerIndex];
-                        var _mode = "auto";
+
+                        var _mode = mode;
                         if (mode == null && routeTo != null) {
                             _mode = routeTo[1];
+                        } else if (mode == null) {
+                            _mode = "auto";
                         }
                         promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex - 1)
                             : computeStraightRoute(start, end, markerIndex -1));
@@ -1081,9 +1086,11 @@ window.onload = function() {
                         // Re-compute new route between previous & next markers
                         var start = markers[markerIndex - 1];
                         var end = markers[markerIndex + 1];
-                        var _mode = "auto";
+                        var _mode = mode;
                         if (mode == null && routeTo != null) {
-                            _mode = routeTo[1];
+                            _mode = routeTo[1]; // If no mode is selected, use mode of route ending at this marker
+                        } else if (mode == null) {
+                            _mode = "auto";
                         }
                         promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex - 1)
                             : computeStraightRoute(start, end, markerIndex -1));
