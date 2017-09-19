@@ -44,41 +44,97 @@
 
     <script src="js/FileSaver.min.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha256-gL1ibrbVcRIHKlCO5OXOPC/lZz/gpdApgQAzskqqXp8=" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shepherd/1.8.1/css/shepherd-theme-arrows.css" integrity="sha256-XjBIttg1lZsdXiJYSjAnXlkYMJ6eOmh+EPf++3oTBes=" crossorigin="anonymous" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shepherd/1.8.1/js/shepherd.min.js" integrity="sha256-VNIXGR9qep13/ex/Msp25dtsojZo7ecq7C/4peacEas=" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tether-drop/1.4.2/css/drop-theme-arrows.min.css" integrity="sha256-/QPHkS0U/zX5IkcTHsRU2AMYUq7fi4fwPWqRBXF+WSQ=" crossorigin="anonymous" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether-drop/1.4.2/js/drop.min.js" integrity="sha256-JCUUk3sUBrBY4l7yTK/BLKRZSC8DTHo25st8OlfjO8g=" crossorigin="anonymous"></script>
+
     <link rel="stylesheet" href="css/default.css" />
 </head>
 
 <body>
-    <div style="display: none"><div id="welcome">
-        Cet outil <strong>map2gpx</strong> vous laisse tracer des itinéraires (pour la randonnée par exemple) et les exporter en format GPX ou KML.
-        Utilisant les données issues de <a href="https://www.geoportail.gouv.fr/" target="_blank" rel="noopener noreferrer">Géoportail</a>, cet outil ne fonctionne que sur le territoire français.<hr/>
-        Pour démarrer une trace, cliquez sur le bouton <i class="fa fa-map-signs"></i> en haut à gauche de la carte pour sélectionner le mode de tracé automatique, puis double-cliquez sur la carte au point de départ pour ajouter un marqueur.<br>
-        Double-cliquez pour rajouter de nouveaux marqueurs aux points de passage; le tracé sera automatiquement calculé en fonction des chemins répertoriés.
-        Utilisez le mode <i class="fa fa-map-marker"></i> pour tracer des lignes droites entre les marqueurs au lieu du tracé automatique.<br>
-        Vous pouvez déplacer les marqueurs en les glissant, ou les supprimer en cliquant dessus et en sélectionnant "Supprimer ce marqueur".<br/>
-        Vous pouvez fermer la boucle de l'itinéraire via le bouton <i class="fa fa-magic"></i> en haut à gauche de la carte.<br/>
-        Une fois terminé, vous pouvez exporter l'itinéraire via le bouton <i class="fa fa-cloud-download"></i>.<hr/>
-        Pour rapporter un problème ou proposer des améliorations, n'hésitez pas à ouvrir un ticket sur le projet <a href="https://github.com/tmuguet/map2gpx" target="_blank" rel="noopener noreferrer">GitHub</a>.
-    </div></div>
-    <div style="display: none"><div id="about">
-        Cet outil a été créé par <a href="https://tmuguet.me" target="_blank" rel="noopener noreferrer">Thomas Muguet</a>, sous licence MIT.
-        Le code source est disponible sur <a href="https://github.com/tmuguet/map2gpx" target="_blank" rel="noopener noreferrer">GitHub</a> (vous aurez besoin de votre propre clé <a href="http://professionnels.ign.fr/" target="_blank" rel="noopener noreferrer">Géoservices API</a>).<hr/>
-        map2gpx utilise:
-        <ul>
-            <li><a href="http://fontawesome.io" target="_blank" rel="noopener noreferrer">Font Awesome</a> par Dave Gandy (SIL OFL 1.1)</li>
-            <li><a href="http://jquery.com/" target="_blank" rel="noopener noreferrer">jQuery</a> (MIT license)</li>
-            <li><a href="http://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> (BSD 2-clause "Simplified" License)</li>
-            <li><a href="https://github.com/IvanSanchez/Leaflet.Polyline.SnakeAnim" target="_blank" rel="noopener noreferrer">Leaflet.Polyline.SnakeAnim</a> par ivan@sanchezortega.es ("THE BEER-WARE LICENSE")</li>
-            <li><a href="https://github.com/CliffCloud/Leaflet.EasyButton" target="_blank" rel="noopener noreferrer">L.EasyButton</a> (MIT license)</li>
-            <li><a href="https://github.com/IGNF/geoportal-extensions" target="_blank" rel="noopener noreferrer">Extensions Géoportail</a> (CeCILL-B)</li>
-            <li><a href="https://github.com/Norkart/Leaflet-MiniMap" target="_blank" rel="noopener noreferrer">Leaflet.MiniMap</a> (BSD 2-clause "Simplified" License)</li>
-            <li>Version modifiée de <a href="https://github.com/mpetazzoni/leaflet-gpx/" target="_blank" rel="noopener noreferrer">GPX plugin for Leaflet</a> (BSD 2-clause license)</li>
-            <li><a href="https://github.com/lvoogdt/Leaflet.awesome-markers" target="_blank" rel="noopener noreferrer">Leaflet.AwesomeMarkers</a> (MIT license)</li>
-            <li><a href="http://www.chartjs.org/" target="_blank" rel="noopener noreferrer">chart.js</a> (MIT license)</li>
-            <li><a href="https://github.com/chartjs/chartjs-plugin-annotation" target="_blank" rel="noopener noreferrer">chartjs-plugin-annotation.js</a> (MIT license)</li>
-            <li><a href="https://github.com/eligrey/FileSaver.js/" target="_blank" rel="noopener noreferrer">FileSaver.js</a> (MIT license)</li>
-            <li>Icones KML et GPX par <a href="http://www.freepik.com" title="Freepik" target="_blank" rel="noopener noreferrer">Freepik</a> sur <a href="http://www.flaticon.com" title="Flaticon" target="_blank" rel="noopener noreferrer">www.flaticon.com</a> (<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank" rel="noopener noreferrer">CC 3.0 BY</a>)</li>
-        </ul>
-    </div></div>
+    <div style="display: none">
+        <div id="help-welcome">
+            <p>Cet outil <strong>map2gpx</strong> vous laisse tracer des itinéraires (pour la randonnée par exemple) et les exporter en format GPX ou KML.
+                Il vous est aussi posible d'importer vos propres fichiers GPX pour afficher leurs données.<br>
+                Utilisant les données issues de <a href="https://www.geoportail.gouv.fr/" target="_blank" rel="noopener noreferrer">Géoportail</a>, cet outil ne fonctionne que sur le territoire français.</p>
+            <hr>
+            <p>Pour rapporter un problème ou proposer des améliorations, n'hésitez pas à ouvrir un ticket sur le projet <a href="https://github.com/tmuguet/map2gpx" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+        </div>
+        <div id="help-layers">
+            <p>Plusieurs couches sont disponibles.
+                Par défaut, le fond de <em>Cartes IGN</em> est affiché en transparence au dessus des <em>Photographies aériennes</em>.<br>
+                Vous pouvez régler l'opacité et la visibilité des couches.</p>
+        </div>
+        <div id="help-search">
+            <p>Vous pouvez rechercher un lieu ou une adresse, pour y centrer la carte.</p>
+        </div>
+        <div id="help-autotrace">
+            <p>Pour démarrer une trace, cliquez sur ce bouton <i class="fa fa-map-signs"></i> pour <span class="mode-active">activer</span> le mode de tracé <em>automatique</em>, puis double-cliquez sur la carte pour ajouter un marqueur.<br>
+            Double-cliquez pour rajouter de nouveaux marqueurs aux points de passage; le tracé sera automatiquement calculé en fonction des chemins répertoriés.</p>
+            <p><strong>Attention:</strong> en mode tracé, vous devez utilisez le bouton <span class="leaflet-control-zoom-in">+</span> pour zoomer.</p>
+        </div>
+        <div id="help-straighttrace">
+            <p><span class="mode-active">Activez</span> le mode de tracé en <em>ligne droite</em> <i class="fa fa-location-arrow"></i> pour tracer des lignes droites entre les marqueurs au lieu du tracé <em>automatique</em> <i class="fa fa-map-signs"></i>.</p>
+        </div>
+        <div id="help-data">
+            <p>Le graphe vous affiche par défaut l'altitude et la pente sur la totalité de l'itinéraire.
+                La pente de l'itinéraire est une estimation de la pente sur le sentier (i.e. la pente que vous avez à monter/descendre).
+                Cette donnée, calculée par ce site, n'est fournie qu'à titre indicatif.</p>
+            <p>En cliquant sur &quot;<span style="white-space: nowrap">Pente du terrain</span>&quot; dans la légende, vous pouvez aussi afficher la pente du terrain sur lequel passe l'itinéraire, telle qu'affichée par la couche &quot;<span style="white-space: nowrap">Carte des pentes</span>&quot;.<br>
+                Une valeur de <em>45</em> indique une pente supérieure à 45°. <em>40</em> indique une pente entre 40° et 45°, etc. Une valeur de <em>0</em> indique une pente inférieure à 30°.</p>
+        </div>
+        <div id="help-closeloop">
+            <p>Lorsque vous avez au moins 2 marqueurs, vous pouvez fermer la boucle de l'itinéraire via le bouton <i class="fa fa-magic"></i>.<br>
+            Vous devrez avoir <span class="mode-active">activé</span> le mode <em>automatique</em> <i class="fa fa-map-signs"></i> ou le mode <em>ligne droite</em> <i class="fa fa-location-arrow"></i>.</p>
+        </div>
+        <div id="help-export">
+            <p>Une fois terminé, vous pouvez exporter l'itinéraire via le bouton <i class="fa fa-cloud-download"></i>.<br>
+            Vous pouvez exporter aux formats GPX ou KML (Google Earth).</p>
+        </div>
+        <div id="help-movemarker">
+            <p>Vous pouvez déplacer les marqueurs en les glissant, ou les supprimer en cliquant dessus et en sélectionnant &quot;<span style="white-space: nowrap"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</span>&quot;.</p>
+        </div>
+        <div id="help-movemarker2">
+            <p>En déplaçant un marqueur intermédiaire, les tracés seront automatiquement recalculés.<br>
+                Si un mode de tracé est <span class="mode-active">actif</span> (mode <em>automatique</em> <i class="fa fa-map-signs"></i> ou le mode <em>ligne droite</em> <i class="fa fa-location-arrow"></i>), il sera utilisé pour recalculer le tracé vers et à partir du marqueur.
+                Sinon, le mode utilisé initialement sera réutilisé.</p>
+            <p>En supprimant un marqueur intermédiaire, un nouveau tracé sera calculé entre les marqueurs précédent et suivant.<br>
+                Si un mode de tracé est <span class="mode-active">actif</span>, il sera utilisé.
+                Sinon, c'est le mode utilisé initialement pour le tracé allant au marqueur qui sera réutilisé.</p>
+        </div>
+        <div id="help-steps">
+            <p>Vous pouvez définir des points d'étapes, en cliquant sur un marqueur et en sélectionnant &quot;<span style="white-space: nowrap"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</span>&quot;.<br>
+            Vous pouvez cliquer sur chaque itinéraire d'étape pour voir ses données.</p>
+        </div>
+        <div id="about">
+            <p>Cet outil a été créé par <a href="https://tmuguet.me" target="_blank" rel="noopener noreferrer">Thomas Muguet</a>, sous licence MIT.<br>
+            Le code source est disponible sur <a href="https://github.com/tmuguet/map2gpx" target="_blank" rel="noopener noreferrer">GitHub</a> (vous aurez besoin de votre propre clé <a href="http://professionnels.ign.fr/" target="_blank" rel="noopener noreferrer">Géoservices API</a>).</p>
+            <hr>
+            <p>map2gpx utilise:</p>
+            <ul>
+                <li><a href="http://fontawesome.io" target="_blank" rel="noopener noreferrer">Font Awesome</a> par Dave Gandy (SIL OFL 1.1)</li>
+                <li><a href="http://jquery.com/" target="_blank" rel="noopener noreferrer">jQuery</a> (MIT license)</li>
+                <li><a href="http://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> (BSD 2-clause "Simplified" License)</li>
+                <li><a href="https://github.com/IvanSanchez/Leaflet.Polyline.SnakeAnim" target="_blank" rel="noopener noreferrer">Leaflet.Polyline.SnakeAnim</a> par ivan@sanchezortega.es ("THE BEER-WARE LICENSE")</li>
+                <li><a href="https://github.com/CliffCloud/Leaflet.EasyButton" target="_blank" rel="noopener noreferrer">L.EasyButton</a> (MIT license)</li>
+                <li><a href="https://github.com/IGNF/geoportal-extensions" target="_blank" rel="noopener noreferrer">Extensions Géoportail</a> (CeCILL-B)</li>
+                <li><a href="https://github.com/Norkart/Leaflet-MiniMap" target="_blank" rel="noopener noreferrer">Leaflet.MiniMap</a> (BSD 2-clause "Simplified" License)</li>
+                <li>Version modifiée de <a href="https://github.com/mpetazzoni/leaflet-gpx/" target="_blank" rel="noopener noreferrer">GPX plugin for Leaflet</a> (BSD 2-clause license)</li>
+                <li><a href="https://github.com/lvoogdt/Leaflet.awesome-markers" target="_blank" rel="noopener noreferrer">Leaflet.AwesomeMarkers</a> (MIT license)</li>
+                <li><a href="http://www.chartjs.org/" target="_blank" rel="noopener noreferrer">chart.js</a> (MIT license)</li>
+                <li><a href="https://github.com/chartjs/chartjs-plugin-annotation" target="_blank" rel="noopener noreferrer">chartjs-plugin-annotation.js</a> (MIT license)</li>
+                <li><a href="https://github.com/eligrey/FileSaver.js/" target="_blank" rel="noopener noreferrer">FileSaver.js</a> (MIT license)</li>
+                <li><a href="http://github.hubspot.com/shepherd/" target="_blank" rel="noopener noreferrer">Shepherd</a> (MIT license)</li>
+                <li><a href="http://github.hubspot.com/drop/" target="_blank" rel="noopener noreferrer">Drop</a> (MIT license)</li>
+                <li><a href="http://tether.io/" target="_blank" rel="noopener noreferrer">Tether</a> (MIT license)</li>
+                <li>Icones KML et GPX par <a href="http://www.freepik.com" title="Freepik" target="_blank" rel="noopener noreferrer">Freepik</a> sur <a href="http://www.flaticon.com" title="Flaticon" target="_blank" rel="noopener noreferrer">www.flaticon.com</a> (<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank" rel="noopener noreferrer">CC 3.0 BY</a>)</li>
+            </ul>
+        </div>
+    </div>
     <div id="map" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 150px;"></div>
     <div id="data" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px;">
         <canvas id="chart" width="100%" height="100%"></canvas>

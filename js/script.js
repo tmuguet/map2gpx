@@ -18,6 +18,144 @@
     })(window.location.search.substr(1).split('&'))
 })(jQuery);
 
+(function($) {
+    var tutorials = [];
+
+    $.Shepherd = {};
+    $.Shepherd.Step = function() {
+        var _name;
+        var _shepherd;
+        var _opts;
+
+        var init = function(name, settings) {
+            _name = name;
+            _opts = $.extend({}, settings, {
+                classes: 'shepherd shepherd-open shepherd-theme-arrows shepherd-transparent-text',
+            });
+            return this;
+        };
+
+        var addTo = function(shepherd) {
+            var opts = $.extend({}, _opts, {});
+
+            if (opts.last) {
+                opts.buttons = [{
+                        text: 'Fermer',
+                        classes: 'shepherd-button-secondary',
+                        action: shepherd.cancel
+                    }, {
+                        text: 'Suivant',
+                        action: function() {
+                            shepherd.next();
+                            var currentShepherdIndex = tutorials.indexOf(shepherd);
+                            if (currentShepherdIndex < tutorials.length - 1)
+                                tutorials[currentShepherdIndex+1].start();
+                        },
+                        classes: 'shepherd-button-example-primary'
+                    }];
+            } else {
+                opts.buttons = [{
+                        text: 'Fermer',
+                        classes: 'shepherd-button-secondary',
+                        action: shepherd.cancel
+                    }, {
+                        text: 'Suivant',
+                        action: shepherd.next,
+                        classes: 'shepherd-button-example-primary'
+                    }];
+            }
+            shepherd.addStep(_name, opts);
+            return this;
+        };
+
+        return {
+            init: init,
+            addTo: addTo
+        }
+    };
+    $.Shepherd.step = function(name, settings) {
+        return $.Shepherd.Step().init(name, settings);
+    };
+
+    $.Shepherd.Tour = function() {
+        var _tour;
+
+        var init = function(settings) {
+            var opts = $.extend({}, settings, {
+                defaults: {
+                    classes: 'shepherd-element shepherd-open shepherd-theme-arrows',
+                    showCancelLink: true
+                }
+            });
+            _tour = new Shepherd.Tour(opts);
+            return this;
+        };
+
+        var add = function(name, settings) {
+            var self = this;
+
+            var opts = $.extend({}, settings, {
+                classes: 'shepherd shepherd-open shepherd-theme-arrows shepherd-transparent-text',
+            });
+
+            if (opts.last) {
+                opts.buttons = [{
+                        text: 'Fermer',
+                        classes: 'shepherd-button-secondary',
+                        action: this.cancel
+                    }, {
+                        text: 'Suivant',
+                        action: function() {
+                            self.next();
+                            var currentShepherdIndex = tutorials.indexOf(self);
+                            if (currentShepherdIndex < tutorials.length - 1)
+                                tutorials[currentShepherdIndex+1].start();
+                        },
+                        classes: 'shepherd-button-example-primary'
+                    }];
+            } else {
+                opts.buttons = [{
+                        text: 'Fermer',
+                        classes: 'shepherd-button-secondary',
+                        action: this.cancel
+                    }, {
+                        text: 'Suivant',
+                        action: this.next,
+                        classes: 'shepherd-button-example-primary'
+                    }];
+            }
+            _tour.addStep(name, opts);
+            return this;
+        };
+
+        var start = function() {_tour.start(); return this;};
+        var cancel = function() {_tour.cancel(); return this;};
+        var next = function() {_tour.next(); return this;};
+
+        return {
+            init: init,
+            add: add,
+            start: start,
+            cancel: cancel,
+            next: next
+        }
+    };
+    $.Shepherd.tour = function(settings) {
+        var tour = $.Shepherd.Tour().init(settings);
+        tutorials.push(tour);
+        return tour;
+    };
+
+    $.Shepherd.get = function(idx) {
+        return tutorials[idx];
+    };
+
+    $.Shepherd.has = function(idx) {
+        return (tutorials.length > idx);
+    };
+
+})(jQuery);
+
 window.onload = function() {
 
     // First, find the current view
@@ -331,6 +469,7 @@ window.onload = function() {
         }
 
         var automatedBtn = L.easyButton({
+            id: "btn-autotrace",
             states: [{
                 stateName: 'loaded',
                 icon: 'fa-map-signs',
@@ -360,9 +499,10 @@ window.onload = function() {
             }]
         });
         var lineBtn = L.easyButton({
+            id: "btn-straighttrace",
             states: [{
                 stateName: 'loaded',
-                icon: 'fa-map-marker',
+                icon: 'fa-location-arrow',
                 title: 'Tracer l\'itinéraire en ligne droite',
                 onClick: function(btn, map) {
                     btn.state('active');
@@ -374,7 +514,7 @@ window.onload = function() {
                 }
             },{
                 stateName: 'active',
-                icon: 'fa-map-marker',
+                icon: 'fa-location-arrow',
                 title: 'Tracer l\'itinéraire en ligne droite',
                 onClick: function(btn, map) {
                     btn.state('loaded');
@@ -384,11 +524,12 @@ window.onload = function() {
                 }
             },{
                 stateName: 'invalid',
-                icon: 'fa-map-marker',
+                icon: 'fa-location-arrow',
                 title: 'Tracer l\'itinéraire en ligne droite'
             }]
         });
         var closeLoop = L.easyButton({
+            id: "btn-closeloop",
             states: [{
                 stateName: 'loaded',
                 icon: 'fa-magic',
@@ -415,6 +556,7 @@ window.onload = function() {
 
         var exportPopup = L.popup().setContent('<input type="text" value="nom" class="export-filename"/><br/><button class="export-gpx-button"><span class="ico gpx"></span></button><button class="export-kml-button"><span class="ico kml"></span></button>');
         var exportButton = L.easyButton({
+            id: "btn-export",
             states: [{
                 stateName: 'loaded',
                 icon: 'fa-cloud-download',
@@ -456,6 +598,7 @@ window.onload = function() {
 
         var importPopup = L.popup().setContent('<form enctype="multipart/form-data"><input class="import-gpx-file" type="file" name="files[]"/></form><br/><button class="import-gpx-button"><span class="ico gpx"></span></button><br/><span class="import-gpx-status"></span>');
         var importButton = L.easyButton({
+            id: "btn-import",
             states: [{
                 stateName: 'loaded',
                 icon: 'fa-cloud-upload',
@@ -603,7 +746,6 @@ window.onload = function() {
 
         if (!isSmallScreen) {
             var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
-            var welcomePopup = L.popup().setContent(L.DomUtil.get("welcome"));
 
             var infoBtn = L.easyButton({
                 position: 'bottomright',
@@ -620,21 +762,51 @@ window.onload = function() {
                 states: [{
                     icon: 'fa-question-circle',
                     onClick: function(btn, map) {
-                        welcomePopup.setLatLng(map.getCenter()).openOn(map);
+                        $.Shepherd.get(0).start();
                     },
                     title: 'Aide'
                 }]
             });
 
             L.easyBar([infoBtn, helpBtn], {position: 'bottomright'}).addTo(map);
-
-            welcomePopup.setLatLng(map.getCenter()).openOn(map);
         }
 
         // Map interactions
         map.on('dblclick', addMarker);
-        map.on('zoomend ', function() {console.log("Zoomed to ", map.getZoom());});
-        map.on('moveend  ', function() {console.log("Moved to ", map.getCenter());});
+        var outOfRangeDrop = undefined;
+        map.on('zoomend', function() {
+            console.log("Zoomed to ", map.getZoom());
+
+            var outOfRange = undefined; var outOfRangeTarget = undefined;
+            if ((layerPhotos.options.minZoom > map.getZoom() || layerPhotos.options.maxZoom < map.getZoom()) && map.hasLayer(layerPhotos)) {
+                outOfRange = "Photographies aériennes"; outOfRangeTarget = $(".GPlayerSwitcher_layer:eq(2)");
+            } else if ((layerMaps.options.minZoom > map.getZoom() || layerMaps.options.maxZoom < map.getZoom()) && map.hasLayer(layerMaps)) {
+                outOfRange = "Cartes IGN"; outOfRangeTarget = $(".GPlayerSwitcher_layer:eq(0)");
+            } else if ((layerSlopes.options.minZoom > map.getZoom() || layerSlopes.options.maxZoom < map.getZoom()) && map.hasLayer(layerSlopes)) {
+                outOfRange = "Carte des pentes"; outOfRangeTarget = $(".GPlayerSwitcher_layer:eq(1)");
+            }
+
+            if (outOfRange !== undefined && outOfRangeDrop === undefined) {
+                outOfRangeDrop = new Drop({
+                  target: outOfRangeTarget[0],
+                  classes: 'drop-theme-arrows',
+                  position: 'left middle',
+                  constrainToWindow: false,
+                  constrainToScrollParent: false,
+                  openOn: null,
+                  content: "La couche '" + outOfRange + "' n'est pas disponible à ce niveau de zoom",
+                });
+                outOfRangeDrop.open();
+                $(outOfRangeDrop.content).on('click', function() {
+                    outOfRangeDrop.destroy();
+                    outOfRangeDrop = null;
+                });
+            } else if (outOfRange === undefined && outOfRangeDrop !== undefined && outOfRangeDrop !== null) {
+                outOfRangeDrop.destroy();
+                outOfRangeDrop = null;
+            }
+        });
+        map.on('moveend', function() {console.log("Moved to ", map.getCenter());});
 
 
         // Logic
@@ -959,6 +1131,44 @@ window.onload = function() {
             marker.addTo(map);
 
             if (markers.length > 1) {
+                if (!isSmallScreen && !$.Shepherd.has(1)) {
+                    $.Shepherd.tour()
+                        .add('data', {
+                            text: $("#help-data")[0],
+                            attachTo: {element: $("#data")[0], on: 'top'},
+                        })
+                        .add('closeloop', {
+                            text: $("#help-closeloop")[0],
+                            attachTo: {element: $("#btn-closeloop")[0], on: 'right'},
+                        })
+                        .add('export', {
+                            text: $("#help-export")[0],
+                            attachTo: {element: $("#btn-export")[0], on: 'right'},
+                            last: true
+                        })
+                        .start();
+                }
+
+                if (markers.length > 2) {
+                    if (!isSmallScreen && !$.Shepherd.has(2)) {
+                        $.Shepherd.tour()
+                            .add('movemarker', {
+                                text: $("#help-movemarker")[0],
+                                attachTo: {element: $(".awesome-marker").last()[0], on: 'bottom'},
+                            })
+                            .add('movemarker2', {
+                                text: $("#help-movemarker2")[0],
+                                attachTo: {element: $(".awesome-marker").eq(-2)[0], on: 'bottom'},
+                            })
+                            .add('steps', {
+                                text: $("#help-steps")[0],
+                                attachTo: {element: $(".awesome-marker").last()[0], on: 'bottom'},
+                                last: true
+                            })
+                            .start();
+                    }
+                }
+
                 // Compute route between this new marker and the previous one
                 var markerIndex = markers.length - 1;
                 var start = markers[markerIndex - 1]; // previous
@@ -1630,6 +1840,30 @@ window.onload = function() {
         }
         replot();
 
+        if (!isSmallScreen) {
+            $.Shepherd.tour()
+                .add('welcome', {
+                    text: $("#help-welcome")[0],
+                })
+                .add('layers', {
+                    text: $("#help-layers")[0],
+                    attachTo: {element: $(".GPlayerName").closest(".GPwidget")[0], on: 'left'},
+                })
+                .add('search', {
+                    text: $("#help-search")[0],
+                    attachTo: {element: $(".GPshowAdvancedToolOpen").closest(".GPwidget")[0], on: 'right'},
+                })
+                .add('autotrace', {
+                    text: $("#help-autotrace")[0],
+                    attachTo: {element: $("#btn-autotrace")[0], on: 'right'},
+                })
+                .add('straighttrace', {
+                    text: $("#help-straighttrace")[0],
+                    attachTo: {element: $("#btn-straighttrace")[0], on: 'right'},
+                    last: true
+                })
+                .start();
+        }
         $("#loading").fadeOut();
     });
 }
