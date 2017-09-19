@@ -338,6 +338,8 @@ window.onload = function() {
                 onClick: function(btn, map) {
                     btn.state('active');
                     lineBtn.state('loaded');
+                    if (routes.length > 0 && routes[0][1] != "import")
+                        closeLoop.enable();
                     mode = "auto";
                     map.doubleClickZoom.disable();
                 }
@@ -347,6 +349,7 @@ window.onload = function() {
                 title: 'Tracer automatiquement l\'itinéraire',
                 onClick: function(btn, map) {
                     btn.state('loaded');
+                    closeLoop.disable();
                     mode = null;
                     map.doubleClickZoom.enable();
                 }
@@ -364,6 +367,8 @@ window.onload = function() {
                 onClick: function(btn, map) {
                     btn.state('active');
                     automatedBtn.state('loaded');
+                    if (routes.length > 0 && routes[0][1] != "import")
+                        closeLoop.enable();
                     mode = "straight";
                     map.doubleClickZoom.disable();
                 }
@@ -373,6 +378,7 @@ window.onload = function() {
                 title: 'Tracer l\'itinéraire en ligne droite',
                 onClick: function(btn, map) {
                     btn.state('loaded');
+                    closeLoop.disable();
                     mode = null;
                     map.doubleClickZoom.enable();
                 }
@@ -645,7 +651,10 @@ window.onload = function() {
                     automatedBtn.enable();
                     lineBtn.enable();
                     if (markers.length > 1) {
-                        closeLoop.enable();
+                        if (mode !== null)
+                            closeLoop.enable();
+                        else
+                            closeLoop.disable();
                         exportButton.enable();
                     } else {
                         closeLoop.disable();
