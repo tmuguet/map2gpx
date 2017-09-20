@@ -179,6 +179,30 @@
 
 })(jQuery);
 
+(function($) {
+    var mode = null;
+    var computing = false;
+
+    $.State = {};
+
+    $.State.setMode = function(mode) {
+        this.mode = mode;
+        $("body").trigger($.Event("map2gpx:modechange", {mode: this.mode, computing: this.computing}));
+    };
+    $.State.setComputing = function(computing) {
+        this.computing = computing;
+        $("body").trigger($.Event("map2gpx:computingchange", {mode: this.mode, computing: this.computing}));
+    };
+
+    $.State.triggerMarkersChanged = function() {
+        $("body").trigger($.Event("map2gpx:markerschange", {mode: this.mode, computing: this.computing}));
+    };
+
+    $.State.getMode = function() {return this.mode;}
+    $.State.getComputing = function() {return this.computing;}
+
+})(jQuery);
+
 function storageAvailable(type) {
     try {
         var storage = window[type],
@@ -254,8 +278,6 @@ window.onload = function() {
         var routes = [];    // Cache of computed routes
         var altitudes = {}; // Cache of computed altitudes for each points of routes computed so far
         var slopes = {}; // Cache of computed slopes for each points of routes computed so far
-        var mode = null;
-        var computing = false;
 
         // TODO: these functions should only exist for classes that define getLatLngs
         L.Layer.include({
@@ -466,6 +488,16 @@ window.onload = function() {
             }
         });
 
+        function setEnabled(obj, enabled) {
+            if (enabled)
+                obj.enable();
+            else
+                obj.disable();
+        }
+        L.Control.EasyButton.include({
+            setEnabled: function(enabled) {setEnabled(this, enabled);}
+        });
+
         if (isSmallScreen) {
             var popup = $('<div style="position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0" id="mobile-warning"><strong>Attention:</strong> ce site n\'est pas destiné aux mobiles. <button>Ok, j\'ai compris</button></div>');
             popup.find("button").click(function() {
@@ -476,6 +508,9 @@ window.onload = function() {
 
         // Central map
         var map = L.map('map', {}).setView([view[0], view[1]], view[2]);
+        $("body").on("map2gpx:modechange", function(e) {
+            setEnabled(map.doubleClickZoom, (e.mode === null));
+        });
 
         // TODO: add support of localStorage for opacity&visiblity
         var layerPhotos = L.geoportalLayer.WMTS({
@@ -530,28 +565,25 @@ window.onload = function() {
                 icon: 'fa-map-signs',
                 title: 'Tracer automatiquement l\'itinéraire',
                 onClick: function(btn, map) {
-                    btn.state('active');
-                    lineBtn.state('loaded');
-                    if (routes.length > 0 && routes[0][1] != "import")
-                        closeLoop.enable();
-                    mode = "auto";
-                    map.doubleClickZoom.disable();
+                    $.State.setMode("auto");
                 }
             },{
                 stateName: 'active',
                 icon: 'fa-map-signs',
                 title: 'Tracer automatiquement l\'itinéraire',
                 onClick: function(btn, map) {
-                    btn.state('loaded');
-                    closeLoop.disable();
-                    mode = null;
-                    map.doubleClickZoom.enable();
+                    $.State.setMode(null);
                 }
-            },{
-                stateName: 'invalid',
-                icon: 'fa-map-signs',
-                title: 'Tracer automatiquement l\'itinéraire',
             }]
+        });
+        $("body").on("map2gpx:modechange map2gpx:markerschange", function(e) {
+            if (e.mode == "auto") {
+                automatedBtn.state('active');
+                automatedBtn.enable();
+            } else {
+                automatedBtn.state('loaded');
+                automatedBtn.setEnabled((routes.length == 0 || routes[0][1] != "import"));
+            }
         });
         var lineBtn = L.easyButton({
             id: "btn-straighttrace",
@@ -560,28 +592,25 @@ window.onload = function() {
                 icon: 'fa-location-arrow',
                 title: 'Tracer l\'itinéraire en ligne droite',
                 onClick: function(btn, map) {
-                    btn.state('active');
-                    automatedBtn.state('loaded');
-                    if (routes.length > 0 && routes[0][1] != "import")
-                        closeLoop.enable();
-                    mode = "straight";
-                    map.doubleClickZoom.disable();
+                    $.State.setMode("straight");
                 }
             },{
                 stateName: 'active',
                 icon: 'fa-location-arrow',
                 title: 'Tracer l\'itinéraire en ligne droite',
                 onClick: function(btn, map) {
-                    btn.state('loaded');
-                    closeLoop.disable();
-                    mode = null;
-                    map.doubleClickZoom.enable();
+                    $.State.setMode(null);
                 }
-            },{
-                stateName: 'invalid',
-                icon: 'fa-location-arrow',
-                title: 'Tracer l\'itinéraire en ligne droite'
             }]
+        });
+        $("body").on("map2gpx:modechange map2gpx:markerschange", function(e) {
+            if (e.mode == "straight") {
+                lineBtn.state('active');
+                lineBtn.enable();
+            } else {
+                lineBtn.state('loaded');
+                lineBtn.setEnabled((routes.length == 0 || routes[0][1] != "import"));
+            }
         });
         var closeLoop = L.easyButton({
             id: "btn-closeloop",
@@ -601,11 +630,16 @@ window.onload = function() {
                 stateName: 'computing',
                 icon: 'fa-spinner fa-pulse',
                 title: 'Fermer la boucle (calcul en cours...)'
-            }, {
-                stateName: 'invalid',
-                icon: 'fa-magic',
-                title: 'Fermer la boucle (invalide!)'
             }]
+        });
+        $("body").on("map2gpx:modechange map2gpx:computingchange map2gpx:markerschange", function(e) {
+            if (e.computing) {
+                closeLoop.state('computing');
+                closeLoop.disable();
+            } else {
+                closeLoop.state('loaded');
+                closeLoop.setEnabled((e.mode !== null && routes.length > 0 && routes[0][1] != "import"));
+            }
         });
         L.easyBar([automatedBtn, lineBtn, closeLoop]).addTo(map);
 
@@ -644,12 +678,17 @@ window.onload = function() {
                 stateName: 'computing',
                 icon: 'fa-spinner fa-pulse',
                 title: 'Exporter (calcul en cours...)'
-            }, {
-                stateName: 'invalid',
-                icon: 'fa-cloud-download',
-                title: 'Exporter (invalide!)'
             }]
         }).addTo(map);
+        $("body").on("map2gpx:computingchange map2gpx:markerschange", function(e) {
+            if (e.computing) {
+                exportButton.state('computing');
+                exportButton.disable();
+            } else {
+                exportButton.state('loaded');
+                exportButton.setEnabled((markers.length > 0));
+            }
+        });
 
         var importPopup = L.popup().setContent('<form enctype="multipart/form-data"><input class="import-gpx-file" type="file" name="files[]"/></form><br/><button class="import-gpx-button"><span class="ico gpx"></span></button><br/><span class="import-gpx-status"></span>');
         var importButton = L.easyButton({
@@ -680,7 +719,7 @@ window.onload = function() {
                         }
 
                         btn.attr("disabled", "disabled");
-                        updateButtons(false);
+                        $.State.setComputing(true);
                         $(".import-gpx-status:visible").text("Importation en cours...");
 
                         var reader = new FileReader();
@@ -695,7 +734,7 @@ window.onload = function() {
                                         console.log("Failed to retrieve track");
                                         $(".import-gpx-status:visible").text("Imposible de traiter ce fichier");
                                         btn.removeAttr("disabled");
-                                        updateButtons(true);
+                                        $.State.setComputing(false);
                                     },
                                     onSuccess: function(gpx) {
                                         $(".import-gpx-status:visible").text("Récupération des données géographiques en cours...");
@@ -715,6 +754,8 @@ window.onload = function() {
                                             var o = this;
                                             $(".track-delete-button:visible").click(function() {
                                                 // Re-init routes/markers
+                                                $.State.setComputing(true);
+
                                                 var oldRoutes = routes;
                                                 routes = [];
                                                 $.each(oldRoutes, function() {
@@ -727,8 +768,8 @@ window.onload = function() {
                                                 });
                                                 map.removeLayer(gpx);
 
-                                                updateButtons(true);
-                                                replot();
+                                                $.State.triggerMarkersChanged();
+                                                $.State.setComputing(false);
                                             });
                                         };
 
@@ -778,14 +819,17 @@ window.onload = function() {
                                                 this.setOpacity(1);
                                             });
 
-                                            updateButtons(true);
-                                            replot();
                                             importPopup.remove();
+
+                                            $.State.triggerMarkersChanged();
+                                            $.State.setMode(null);  // Disable any other tracing
+                                            $.State.setComputing(false);
+
                                         }).fail(function() {
                                             console.log("Fail");
                                             $(".import-gpx-status:visible").text("Impossible de récupérer les données géographiques de ce parcours");
                                             btn.removeAttr("disabled");
-                                            updateButtons(true);
+                                            $.State.setComputing(false);
                                         });
                                     }
                                 }).on('addline', function(e) {lines.push(e.line);});
@@ -809,6 +853,8 @@ window.onload = function() {
                 icon: 'fa-trash',
                 title: 'Effacer l\'itinéraire',
                 onClick: function(btn, map) {
+                    $.State.setComputing(true);
+
                     var oldRoutes = routes;
                     routes = [];
                     $.each(oldRoutes, function() {
@@ -819,6 +865,9 @@ window.onload = function() {
                     $.each(oldMarkers, function() {
                         map.removeLayer(this);
                     });
+
+                    $.State.triggerMarkersChanged();
+                    $.State.setComputing(false);
                 }
             },{
                 stateName: 'computing',
@@ -827,6 +876,13 @@ window.onload = function() {
             }]
         });
         L.easyBar([importButton, resetButton]).addTo(map);
+        $("body").on("map2gpx:computingchange", function(e) {
+            importButton.state(e.computing ? 'computing' : 'loaded');
+            resetButton.state(e.computing ? 'computing' : 'loaded');
+
+            importButton.setEnabled(!e.computing);
+            resetButton.setEnabled(!e.computing);
+        });
 
         if (!isSmallScreen) {
             var infoPopup = L.popup().setContent(L.DomUtil.get("about"));
@@ -898,70 +954,14 @@ window.onload = function() {
                 localStorage.setItem('view', JSON.stringify([map.getCenter().lat, map.getCenter().lng, map.getZoom()]));
         });
 
-
-        // Logic
-        function updateButtons(enabled) {
-            if (enabled) {
-                if (routes.length > 0 && routes[0][1] == "import") {
-                    automatedBtn.disable();
-                    automatedBtn.state('loaded');
-                    lineBtn.disable();
-                    lineBtn.state('loaded');
-                    mode = null;
-                    map.doubleClickZoom.enable();
-                } else {
-                    automatedBtn.enable();
-                    lineBtn.enable();
-                    if (markers.length > 1) {
-                        if (mode !== null)
-                            closeLoop.enable();
-                        else
-                            closeLoop.disable();
-                        exportButton.enable();
-                    } else {
-                        closeLoop.disable();
-                        exportButton.disable();
-                    }
-                }
-
-                importButton.enable();
-                resetButton.enable();
-                importButton.state('loaded');
-                resetButton.state('loaded');
-
-                var invalid = false;
-                $.each(routes, function(i, group) {
-                    if (group == null) {
-                        invalid = true;
-                    }
-                });
-                if (invalid) {
-                    closeLoop.state('invalid');
-                    exportButton.state('invalid');
-                    closeLoop.disable();
-                    exportButton.disable();
-                    $("#data-invalid").show();
-                } else {
-                    closeLoop.state('loaded');
-                    exportButton.state('loaded');
-                    $("#data-invalid").hide();
-                }
-                $("#data-computing").fadeOut();
-                computing = false;
-            } else {
-                computing = true;
+        $("body").on("map2gpx:computingchange", function(e) {
+            if (e.computing) {
                 $("#data-computing").fadeIn();
-                closeLoop.state('computing');
-                exportButton.state('computing');
-                importButton.state('computing');
-                resetButton.state('computing');
-                closeLoop.disable();
-                exportButton.disable();
-                importButton.disable();
-                resetButton.disable();
+            } else {
+                replot();
+                $("#data-computing").fadeOut();
             }
-        }
-        updateButtons(true);
+        });
 
         const LON=0;
         const LAT=1;
@@ -1178,11 +1178,12 @@ window.onload = function() {
         }
 
         function addMarker(e) {
-            if (mode == null || computing) {
+            if ($.State.getMode() === null || $.State.getComputing()) {
                 return;
             }
 
-            updateButtons(false); // Disabled while computations
+            $.State.setComputing(true);
+
             var promises = [];
 
             var latlng = L.latLng(Math.roundE8(e.latlng.lat), Math.roundE8(e.latlng.lng));
@@ -1197,6 +1198,8 @@ window.onload = function() {
                     map.removeLayer(o); // Routes will be deleted when marker gets deleted
                 });
                 $(".marker-promote-button:visible").click(function() {
+                    $.State.setComputing(true);
+
                     o.setPopupContent("<button class='marker-delete-button'><i class='fa fa-trash' aria-hidden='true'></i> Supprimer ce marqueur</button>");
                     o.setColorIndex(nextColor());
                     o.setType('step');
@@ -1217,7 +1220,9 @@ window.onload = function() {
                             markers[i].setType(markers[i].getType());
                         }
                     }
-                    replot();
+
+                    $.State.triggerMarkersChanged();
+                    $.State.setComputing(false);
                 });
             });
             if (markers.length > 0) {
@@ -1276,13 +1281,13 @@ window.onload = function() {
                 if (routes.length != markerIndex - 1)
                     console.log("Something wrong"); // but we can probably recover
 
-                promises.push(mode == "auto" ? computeRoute(start, end, markerIndex - 1)
+                promises.push($.State.getMode() == "auto" ? computeRoute(start, end, markerIndex - 1)
                     : computeStraightRoute(start, end, markerIndex - 1));
             }
 
             marker.on('moveend', function(event) {
                 // Update routes when moving this marker
-                updateButtons(false);
+                $.State.setComputing(true);
                 event.target.setOpacity(0.5);
                 var promises = [];
 
@@ -1298,13 +1303,13 @@ window.onload = function() {
                         var start = markers[markerIndex];
                         var end = markers[markerIndex + 1];
 
-                        var _mode = mode;
+                        var mode = $.State.getMode();
                         if (mode == null && routeFrom != null) {
-                            _mode = routeFrom[1];
+                            mode = routeFrom[1];
                         } else if (mode == null) {
-                            _mode = "auto";
+                            mode = "auto";
                         }
-                        promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex)
+                        promises.push((mode == "auto") ? computeRoute(start, end, markerIndex)
                             : computeStraightRoute(start, end, markerIndex));
                     }
 
@@ -1318,30 +1323,28 @@ window.onload = function() {
                         var start = markers[markerIndex - 1];
                         var end = markers[markerIndex];
 
-                        var _mode = mode;
+                        var mode = $.State.getMode();
                         if (mode == null && routeTo != null) {
-                            _mode = routeTo[1];
+                            mode = routeTo[1];
                         } else if (mode == null) {
-                            _mode = "auto";
+                            mode = "auto";
                         }
-                        promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex - 1)
+                        promises.push((mode == "auto") ? computeRoute(start, end, markerIndex - 1)
                             : computeStraightRoute(start, end, markerIndex -1));
                     }
                 }
 
                 $.when.apply($, promises).done(function() {
-                    replot();
+                    $.State.setComputing(false);
                     event.target.setOpacity(1);
-                    updateButtons(true);
                 }).fail(function() {
-                    replot();
-                    updateButtons(true);
+                    $.State.setComputing(false);
                 });
             });
 
             marker.on('remove', function(event) {
                 // Remove/update routes when removing this marker
-                updateButtons(false);
+                $.State.setComputing(true);
                 var promises = [];
 
                 var markerIndex = markers.indexOf(event.target);
@@ -1370,7 +1373,6 @@ window.onload = function() {
                                 map.removeLayer(routeFrom[0]);
                             routes.splice(0, 1);
 
-                            replot();
                         }
                     } else if (markerIndex == markers.length - 1) {
                         // Remove route ending at this marking
@@ -1380,7 +1382,6 @@ window.onload = function() {
                                 map.removeLayer(routeTo[0]);
                         routes.splice(markerIndex - 1, 1);
 
-                        replot();
                     } else {
                         // Remove route ending at this marker & route starting at this marker
                         var routeTo = routes[markerIndex - 1];
@@ -1395,33 +1396,29 @@ window.onload = function() {
                         // Re-compute new route between previous & next markers
                         var start = markers[markerIndex - 1];
                         var end = markers[markerIndex + 1];
-                        var _mode = mode;
+                        var mode = $.State.getMode();
                         if (mode == null && routeTo != null) {
-                            _mode = routeTo[1]; // If no mode is selected, use mode of route ending at this marker
+                            mode = routeTo[1]; // If no mode is selected, use mode of route ending at this marker
                         } else if (mode == null) {
-                            _mode = "auto";
+                            mode = "auto";
                         }
-                        promises.push((_mode == "auto") ? computeRoute(start, end, markerIndex - 1)
+                        promises.push((mode == "auto") ? computeRoute(start, end, markerIndex - 1)
                             : computeStraightRoute(start, end, markerIndex -1));
                     }
                     markers.splice(markerIndex, 1);
                 }
                 $.when.apply($, promises).done(function() {
-                    replot();
-                    updateButtons(true);
+                    $.State.setComputing(false);
                 }).fail(function() {
-                    replot();
-                    updateButtons(true);
+                    $.State.setComputing(false);
                 });
             });
 
             $.when.apply($, promises).done(function() {
-                replot();
                 marker.setOpacity(1);
-                updateButtons(true);
+                $.State.setComputing(false);
             }).fail(function() {
-                replot();
-                updateButtons(true);
+                $.State.setComputing(false);
             });
         }
 
@@ -1937,7 +1934,10 @@ window.onload = function() {
                 $("#data-empty").slideDown();
             }
         }
-        replot();
+
+        $.State.setMode(null);
+        $.State.triggerMarkersChanged();
+        $.State.setComputing(false);
 
         if (!isSmallScreen) {
             $.Shepherd.tour()
