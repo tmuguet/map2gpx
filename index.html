@@ -134,6 +134,18 @@
                 <li>Icones KML et GPX par <a href="http://www.freepik.com" title="Freepik" target="_blank" rel="noopener noreferrer">Freepik</a> sur <a href="http://www.flaticon.com" title="Flaticon" target="_blank" rel="noopener noreferrer">www.flaticon.com</a> (<a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank" rel="noopener noreferrer">CC 3.0 BY</a>)</li>
             </ul>
         </div>
+        <div id="form-import">
+            <form enctype="multipart/form-data">
+                <input class="import-gpx-file" type="file" name="files[]"/>
+            </form><br>
+            <button class="import-gpx-button"><span class="ico gpx"></span></button><br>
+            <span class="import-gpx-status"></span>
+        </div>
+        <div id="form-export">
+            <input type="text" value="nom" class="export-filename"/><br>
+            <button class="export-gpx-button"><span class="ico gpx"></span></button>
+            <button class="export-kml-button"><span class="ico kml"></span></button>
+        </div>
     </div>
     <div id="map" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 150px;"></div>
     <div id="data" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px;">
@@ -144,6 +156,7 @@
     <div id="data-invalid" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-exclamation-triangle fa-3x" aria-hidden="true"></i><br/>Tracé invalide !</h2>Le tracé est invalide: l'itinéraire n'a pas pu être calculé avec le dernier marqueur. Déplacez le marqueur translucide pour ré-essayer un nouvel itinéraire.</i></div>
     <div id="data-computing" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Calculs en cours...</h2></div>
     <div id="loading" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Chargement en cours...</h2></div>
+    <div id="mobile-warning" style="display: none; position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0"><strong>Attention:</strong> ce site n'est pas destiné aux mobiles. <button>Ok, j'ai compris</button></div>
 
     <script src="js/script.js"></script>
 </body>
