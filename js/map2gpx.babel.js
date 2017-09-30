@@ -1,5 +1,20 @@
 'use strict';
 
+// Rounds to 8 decimals (IGN API does not support/give more precise data)
+Math.roundE8 = function (value) {
+    return Math.round(value * Math.pow(10, 8)) / Math.pow(10, 8);
+};
+
+// Converts from degrees to radians.
+Math.radians = function (degrees) {
+    return degrees * Math.PI / 180;
+};
+
+// Converts from radians to degrees.
+Math.degrees = function (radians) {
+    return radians * 180 / Math.PI;
+};
+
 /* from https://stackoverflow.com/a/3855394 */
 (function ($) {
     $.QueryString = function (paramsArray) {
@@ -105,12 +120,12 @@
             return this;
         };
 
-        var start = function start(forceShow) {
-            var force = typeof forceShow !== 'undefined' ? forceShow : false; // Force display
+        var start = function start() {
+            var forceShow = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
 
             var id = 0;
 
-            if (!force) {
+            if (!forceShow) {
                 var currentShepherdIndex = tutorials.indexOf(this);
                 if (hasLocalStorage && localStorage.getItem('tutorial' + currentShepherdIndex) !== null) {
                     id = parseInt(localStorage.getItem('tutorial' + currentShepherdIndex));
@@ -236,8 +251,9 @@
         return _markers.length;
     };
 
-    $.Cache.hasMarkers = function (n) {
-        var size = typeof n !== 'undefined' ? n : 1;
+    $.Cache.hasMarkers = function () {
+        var size = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1;
+
         return _markers.length >= size;
     };
 
@@ -380,9 +396,59 @@ window.onload = function () {
     }).done(function () {
         var view = this; // jscs:ignore safeContextKeyword
 
+        // Can't use L.LatLng.include() because not defined
         L.LatLng.prototype.roundE8 = function () {
             return L.latLng(Math.roundE8(this.lat), Math.roundE8(this.lng));
         };
+
+        L.LatLng.prototype.toTilePixel = function (crs, zoom, tileSize, pixelOrigin) {
+            var layerPoint = crs.latLngToPoint(this, zoom).floor();
+            var tile = layerPoint.divideBy(tileSize).floor();
+            var tileCorner = tile.multiplyBy(tileSize).subtract(pixelOrigin);
+            var tilePixel = layerPoint.subtract(pixelOrigin).subtract(tileCorner);
+            return { tile: tile, tilePixel: tilePixel };
+        };
+
+        // from https://gis.stackexchange.com/questions/157693/getting-all-vertex-lat-long-coordinates-every-1-meter-between-two-known-points
+        L.LatLng.prototype.getDestinationAlong = function (azimuth, distance) {
+            var R = 6378137; // Radius of the Earth in m
+            var brng = Math.radians(azimuth); // Bearing is degrees converted to radians.
+            var lat1 = Math.radians(this.lat); //Current dd lat point converted to radians
+            var lon1 = Math.radians(this.lng); //Current dd long point converted to radians
+            var lat2 = Math.asin(Math.sin(lat1) * Math.cos(distance / R) + Math.cos(lat1) * Math.sin(distance / R) * Math.cos(brng));
+            var lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distance / R) * Math.cos(lat1), Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2));
+
+            //convert back to degrees
+            lat2 = Math.degrees(lat2);
+            lon2 = Math.degrees(lon2);
+            return L.latLng(Math.roundE8(lat2), Math.roundE8(lon2));
+        };
+
+        L.LatLng.prototype.bearingTo = function (other) {
+            var startLat = Math.radians(this.lat);
+            var startLong = Math.radians(this.lng);
+            var endLat = Math.radians(other.lat);
+            var endLong = Math.radians(other.lng);
+            var dPhi = Math.log(Math.tan(endLat / 2.0 + Math.PI / 4.0) / Math.tan(startLat / 2.0 + Math.PI / 4.0));
+            var dLong = endLong - startLong;
+            if (Math.abs(dLong) > Math.PI) {
+                if (dLong > 0.0) dLong = -(2.0 * Math.PI - dLong);else dLong = 2.0 * Math.PI + dLong;
+            }
+
+            return (Math.degrees(Math.atan2(dLong, dPhi)) + 360.0) % 360.0;
+        };
+
+        L.Handler.include({
+            setEnabled: function setEnabled(enabled) {
+                if (enabled) this.enable();else this.disable();
+            }
+        });
+
+        L.Control.EasyButton.include({
+            setEnabled: function setEnabled(enabled) {
+                if (enabled) this.enable();else this.disable();
+            }
+        });
 
         // TODO: these functions should only exist for classes that define getLatLngs
         L.Layer.include({
@@ -455,17 +521,18 @@ window.onload = function () {
 
                         var j = 0;
                         for (var i = 1; i < elevations.length; i++) {
-                            var localDistance = _haversineDistance(elevations[i], track._elevations[j]); // m
+                            var localDistance = L.latLng(elevations[i]).distanceTo(L.latLng(track._elevations[j])); // m
                             if (localDistance > 10) {
-                                j++;
 
                                 track._distance += localDistance / 1000; // km
 
+                                j++;
                                 track._elevations[j] = elevations[i];
                                 track._elevations[j].dist = track._distance;
                                 track._elevations[j].slopeOnTrack = Math.degrees(Math.atan((Math.round(track._elevations[j].z) - Math.round(track._elevations[j - 1].z)) / localDistance));
 
                                 if (j > 5) {
+                                    // FIXME: should maybe do an average with 2 points before & 2 points after
                                     var previous = (track._elevations[j - 5].slopeOnTrack + track._elevations[j - 4].slopeOnTrack + track._elevations[j - 3].slopeOnTrack + track._elevations[j - 2].slopeOnTrack + track._elevations[j - 1].slopeOnTrack) / 5;
                                     track._elevations[j].slopeOnTrack = (previous + track._elevations[j].slopeOnTrack) / 2;
                                 }
@@ -519,9 +586,9 @@ window.onload = function () {
                 $.each(this.getLatLngs(), function (j, coords) {
                     if (!$.Cache.hasSlope(coords)) {
                         // Skip already cached values
-                        var _latlngToTilePixel = latlngToTilePixel(coords, map.options.crs, 16, 256, map.getPixelOrigin()),
-                            tile = _latlngToTilePixel.tile,
-                            tilePixel = _latlngToTilePixel.tilePixel;
+                        var _coords$toTilePixel = coords.toTilePixel(map.options.crs, 16, 256, map.getPixelOrigin()),
+                            tile = _coords$toTilePixel.tile,
+                            tilePixel = _coords$toTilePixel.tilePixel;
 
                         if (!(tile.x in tiles)) tiles[tile.x] = {};
                         if (!(tile.y in tiles[tile.x])) tiles[tile.x][tile.y] = [[]];
@@ -611,16 +678,6 @@ window.onload = function () {
             }
         });
 
-        function _setEnabled(obj, enabled) {
-            if (enabled) obj.enable();else obj.disable();
-        }
-
-        L.Control.EasyButton.include({
-            setEnabled: function setEnabled(enabled) {
-                _setEnabled(this, enabled);
-            }
-        });
-
         if (isSmallScreen) {
             $('#mobile-warning').show().find('button').click(function () {
                 popup.hide();
@@ -630,10 +687,10 @@ window.onload = function () {
         // Central map
         var map = L.map('map', {}).setView([view[0], view[1]], view[2]);
         $('body').on('map2gpx:modechange', function (e) {
-            _setEnabled(map.doubleClickZoom, e.mode === null);
+            map.doubleClickZoom.setEnabled(e.mode === null);
         });
 
-        // TODO: add support of localStorage for opacity&visiblity
+        // TODO: add support of localStorage for opacity&visiblity (#4)
         var layerPhotos = L.geoportalLayer.WMTS({
             layer: 'ORTHOIMAGERY.ORTHOPHOTOS',
             apiKey: keyIgn
@@ -1083,60 +1140,6 @@ window.onload = function () {
             }
         });
 
-        // Rounds to 8 decimals (IGN API does not support/give more precise data)
-        Math.roundE8 = function (value) {
-            return Math.round(value * Math.pow(10, 8)) / Math.pow(10, 8);
-        };
-
-        // Converts from degrees to radians.
-        Math.radians = function (degrees) {
-            return degrees * Math.PI / 180;
-        };
-
-        // Converts from radians to degrees.
-        Math.degrees = function (radians) {
-            return radians * 180 / Math.PI;
-        };
-
-        /** Returns the distance from c1 to c2 using the haversine formula */
-        function _haversineDistance(c1, c2) {
-            var lat1 = Math.radians(c1.lat);
-            var lat2 = Math.radians(c2.lat);
-            var deltaLatBy2 = (lat2 - lat1) / 2;
-            var deltaLonBy2 = Math.radians(c2.lng - c1.lng) / 2;
-            var a = Math.sin(deltaLatBy2) * Math.sin(deltaLatBy2) + Math.sin(deltaLonBy2) * Math.sin(deltaLonBy2) * Math.cos(lat1) * Math.cos(lat2);
-            return 2 * 6378137 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        }
-
-        // from https://gis.stackexchange.com/questions/157693/getting-all-vertex-lat-long-coordinates-every-1-meter-between-two-known-points
-        function getDestinationLatLong(start, azimuth, distance) {
-            var R = 6378137; // Radius of the Earth in m
-            var brng = Math.radians(azimuth); // Bearing is degrees converted to radians.
-            var lat1 = Math.radians(start.lat); //Current dd lat point converted to radians
-            var lon1 = Math.radians(start.lng); //Current dd long point converted to radians
-            var lat2 = Math.asin(Math.sin(lat1) * Math.cos(distance / R) + Math.cos(lat1) * Math.sin(distance / R) * Math.cos(brng));
-            var lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distance / R) * Math.cos(lat1), Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2));
-
-            //convert back to degrees
-            lat2 = Math.degrees(lat2);
-            lon2 = Math.degrees(lon2);
-            return L.latLng(Math.roundE8(lat2), Math.roundE8(lon2));
-        }
-
-        function _bearing(c1, c2) {
-            var startLat = Math.radians(c1.lat);
-            var startLong = Math.radians(c1.lng);
-            var endLat = Math.radians(c2.lat);
-            var endLong = Math.radians(c2.lng);
-            var dPhi = Math.log(Math.tan(endLat / 2.0 + Math.PI / 4.0) / Math.tan(startLat / 2.0 + Math.PI / 4.0));
-            var dLong = endLong - startLong;
-            if (Math.abs(dLong) > Math.PI) {
-                if (dLong > 0.0) dLong = -(2.0 * Math.PI - dLong);else dLong = 2.0 * Math.PI + dLong;
-            }
-
-            return (Math.degrees(Math.atan2(dLong, dPhi)) + 360.0) % 360.0;
-        }
-
         function computeStraightRoute(start, end, index) {
             return $.Deferred(function () {
                 var _this = this;
@@ -1149,14 +1152,14 @@ window.onload = function () {
 
                 var c1 = start.getLatLng().roundE8();
                 var c2 = end.getLatLng().roundE8();
-                var d = _haversineDistance(c1, c2);
-                var azimuth = _bearing(c1, c2);
+                var d = c1.distanceTo(c2);
+                var azimuth = c1.bearingTo(c2);
 
                 var latlngs = [c1];
 
-                var interval = 5;
+                var interval = 10;
                 for (var counter = interval; counter < d; counter += interval) {
-                    latlngs.push(getDestinationLatLong(c1, azimuth, counter));
+                    latlngs.push(c1.getDestinationAlong(azimuth, counter));
                 }
 
                 latlngs.push(c2);
@@ -1183,14 +1186,6 @@ window.onload = function () {
                     onFail('Impossible d\'obtenir les données de la route');
                 });
             });
-        }
-
-        function latlngToTilePixel(latlng, crs, zoom, tileSize, pixelOrigin) {
-            var layerPoint = crs.latLngToPoint(latlng, zoom).floor();
-            var tile = layerPoint.divideBy(tileSize).floor();
-            var tileCorner = tile.multiplyBy(tileSize).subtract(pixelOrigin);
-            var tilePixel = layerPoint.subtract(pixelOrigin).subtract(tileCorner);
-            return { tile: tile, tilePixel: tilePixel };
         }
 
         function computeRoute(start, end, index) {
