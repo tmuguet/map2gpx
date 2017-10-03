@@ -308,9 +308,11 @@
                     });
 
                     var current = marker;
-                    while (current && current.getType() != 'step' && current.hasRouteToHere()) {
+                    while (current && current.hasRouteToHere()) {
                         current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
                         current = current._previousMarker;
+                        if (current.getType() == 'step')
+                            break;
                     }
 
                     local = _this._initStats();
@@ -353,9 +355,11 @@
 
             if (local.distance > 0) {
                 var current = $.Track.getLastMarker();
-                while (current && current.getType() != 'step' && current.hasRouteToHere()) {
+                while (current && current.hasRouteToHere()) {
                     current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
                     current = current._previousMarker;
+                    if (current.getType() == 'step')
+                        break;
                 }
             }
 
