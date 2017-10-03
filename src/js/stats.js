@@ -12,7 +12,7 @@ function fetchAltitude(geometry) {
                         $.Cache.addAltitude(val.lat, val.lon, val.z);
                     });
 
-                    _this.resolve();
+                    _this.resolveWith({ size: result.elevations.length });
                 } else {
                     console.log('Impossible d\'obtenir les données d\'altitude: résultats invalides');
                     _this.reject();
@@ -64,7 +64,7 @@ function fetchSlope(tilex, tiley, coords) {
                     $.Cache.addSlope(val.lat, val.lon, val.slope);
                 });
 
-                _this.resolve();
+                _this.resolveWith({ size: r.results.length });
             } else {
                 console.log('Impossible d\'obtenir les données de pente: résultats invalides');
                 _this.reject();
@@ -107,8 +107,21 @@ L.Layer.include({
         const _this = this;
         return $.Deferred(function () {
             const deferred = this;  // jscs:ignore safeContextKeyword
-            $.when.apply($, _this._fetchAltitude().concat(_this._fetchSlope()))
-                .fail(function () { deferred.reject(); })
+            const promises = _this._fetchAltitude().concat(_this._fetchSlope());
+            const total = promises.length;
+
+            deferred.notify({ progress: 0, status: 'Récupération des données géographiques...' });
+
+            var i = 0;
+            $.each(promises, function () {
+                this.done(function () {
+                    i++;
+                    deferred.notify({ progress: i / (total + 1), step: this.size + ' points récupérés' });
+                });
+            });
+
+            $.when.apply($, promises)
+                .fail(deferred.reject)
                 .then(function () {
                     _this._computeStats();
                     deferred.resolve();

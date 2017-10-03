@@ -19,6 +19,7 @@
 
                     _this._findAuto(start, end, index)
                         .done(deferred.resolve)
+                        .progress(deferred.notify)
                         .fail(function () {
                             console.log(this.error);
                             console.log('Trying straight line...');
@@ -54,7 +55,7 @@
                 const deferred = this;  // jscs:ignore safeContextKeyword
 
                 geojson.prepareForMap(_this.map);
-                geojson.computeStats().then(function () {
+                geojson.computeStats().progress(deferred.notify).then(function () {
                     geojson.addTo(_this.map);
                     geojson.bindPopup('Calculs en cours...');
                     geojson.snakeIn();
@@ -119,7 +120,12 @@
 
                             geojson.addData(_geometry);
 
+                            deferred.notify({ progress: 0.5, step: 'Route calculée' });
                             _this._add(geojson, start, end, index, 'auto')
+                                .progress(function (progress) {
+                                    progress.progress = 0.5 + progress.progress / 2;
+                                    deferred.notify(progress);
+                                })
                                 .done(deferred.resolve)
                                 .fail(deferred.reject);
                         } else {
@@ -130,6 +136,7 @@
                         deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
                     },
                 };
+                deferred.notify({ progress: 0, status: 'Calcul de la route...' });
                 Gp.Services.route(options);
             });
         },
@@ -139,6 +146,8 @@
 
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
+
+                deferred.notify({ progress: 0, status: 'Calcul de la route...' });
 
                 const c1 = start.getLatLng().roundE8();
                 const c2 = end.getLatLng().roundE8();
@@ -162,7 +171,12 @@
                     snakingSpeed: 1000,
                 });
 
+                deferred.notify({ progress: 0.5, step: 'Route calculée' });
                 _this._add(geojson, start, end, index, 'straight')
+                    .progress(function (progress) {
+                        progress.progress = 0.5 + progress.progress / 2;
+                        deferred.notify(progress);
+                    })
                     .done(deferred.resolve)
                     .fail(deferred.reject);
             });

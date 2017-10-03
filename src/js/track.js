@@ -380,6 +380,7 @@
                     const mode = $.State.getMode() || this._mode || 'auto';
 
                     promise = previous.computeRouteTo(next, mode);
+
                 }
             }
 
