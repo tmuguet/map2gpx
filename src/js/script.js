@@ -318,6 +318,7 @@ window.onload = function () {
                                                     marker.setOpacity(1);
                                                 });
 
+                                                $btn.attr('disabled', 'disabled');
                                                 importPopup.remove();
 
                                                 $.State.triggerMarkersChanged();
