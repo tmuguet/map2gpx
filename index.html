@@ -15,8 +15,36 @@
     <link rel="apple-touch-icon-precomposed" href="ico/logo-medium-57.png">
 
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/map2gpx.min.css" />
 
     <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+
+    <script>
+        var msgs = [
+            'Génération des montagnes...',
+            'Ajout des ruisseaux...',
+            'Remplissage des lacs...',
+            'Danse du soleil...',
+            'Appel des marmottes...',
+            'Plantation de lis des Alpes...',
+            'Ajout des bouquetins...',
+            'Surveillance des salamandres tachetées...',
+            'Recherche de campanule barbue...',
+            'Découverte d\'une hermine...',
+            'Tentative de lutte contre le réchauffement climatique...',
+        ];
+
+        var interval = window.setInterval(function () {
+            var m = msgs.shift();
+            if (m === undefined)
+                m = Math.random().toString(36).substr(2);
+
+            $('<div>' + m + '</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+
+        }, 800);
+
+        $('<div>Chargement des bibliothèques...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+    </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"></script>
@@ -51,8 +79,6 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tether-drop/1.4.2/css/drop-theme-arrows.min.css" integrity="sha256-/QPHkS0U/zX5IkcTHsRU2AMYUq7fi4fwPWqRBXF+WSQ=" crossorigin="anonymous" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tether-drop/1.4.2/js/drop.min.js" integrity="sha256-JCUUk3sUBrBY4l7yTK/BLKRZSC8DTHo25st8OlfjO8g=" crossorigin="anonymous"></script>
-
-    <link rel="stylesheet" href="css/map2gpx.min.css" />
 </head>
 
 <body>
@@ -154,8 +180,8 @@
 
     <div id="data-empty" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br/>Rien à montrer ici...</h2>Commencez à tracer votre itinéraire pour voir les données le concernant.</i></div>
     <div id="data-invalid" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-exclamation-triangle fa-3x" aria-hidden="true"></i><br/>Tracé invalide !</h2>Le tracé est invalide: l'itinéraire n'a pas pu être calculé avec le dernier marqueur. Déplacez le marqueur translucide pour ré-essayer un nouvel itinéraire.</i></div>
-    <div id="data-computing" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Calculs en cours...</h2></div>
-    <div id="loading" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Chargement en cours...</h2></div>
+    <div id="data-computing" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center; overflow: hidden;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/><strong><span id="data-computing-progress"></span> <small>- <span id="data-computing-status">Calculs en cours...</span></small></h2></div>
+    <div id="loading" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; z-index: 5000; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Chargement en cours...</h2></div>
     <div id="mobile-warning" style="display: none; position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0"><strong>Attention:</strong> ce site n'est pas destiné aux mobiles. <button>Ok, j'ai compris</button></div>
 
     <script src="js/map2gpx.min.js"></script>

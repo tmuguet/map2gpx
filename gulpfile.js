@@ -1,6 +1,21 @@
 
 const sources_js = [
-    "src/js/*.js"
+    "src/js/jquery.localstorage.js",
+    "src/js/jquery.querystring.js",
+    "src/js/jquery.shepherd.js",
+    "src/js/maths.js",
+    "src/js/utils.js",
+    "src/js/state.js",
+    "src/js/cache.js",
+
+    "src/js/view.js",
+    "src/js/stats.js",
+    "src/js/chart.js",
+
+    "src/js/route.js",
+    "src/js/track.js",
+
+    "src/js/script.js"
 ];
 const sources_css = [
     "src/css/default.css"
