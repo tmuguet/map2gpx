@@ -54,10 +54,36 @@
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
 
-                geojson.prepareForMap(_this.map);
+                geojson.prepareForMap(_this.map, start, end);
                 geojson.computeStats().progress(deferred.notify).then(function () {
                     geojson.addTo(_this.map);
                     geojson.bindPopup('Calculs en cours...');
+                    geojson.on('popupopen', function (event) {
+                        const _this = this;
+
+                        $('.marker-add-button:visible').click(function () {
+                            if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
+                                return;
+
+                            $.State.setComputing(true);
+                            const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                riseOnHover: true,
+                                draggable: true,
+                                opacity: 0.5,
+                                color: start.getColorIndex(),
+                                type: 'waypoint',
+                            });
+
+                            marker.insert(geojson).progress($.State.updateComputing)
+                                .done(function () {
+                                    marker.setOpacity(1);
+                                    $.State.setComputing(false);
+                                }).fail(function () {
+                                    $.State.setComputing(false);
+                                });
+                        });
+                    });
+
                     geojson.snakeIn();
                     start.setOpacity(1);
                     end.setOpacity(1);

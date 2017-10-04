@@ -85,9 +85,14 @@ L.Layer.include({
     _denivPos: 0,
     _denivNeg: 0,
 
-    prepareForMap: function (map) {
+    prepareForMap: function (map, start, end) {
         this._mapToAdd = map;
+        this._start = start;
+        this._end = end;
     },
+
+    getStartMarker: function () { return this._start; },
+    getEndMarker: function () { return this._end; },
 
     getElevations: function () {
         return JSON.parse(JSON.stringify(this._elevations));   // return deep copy (isn't there a better way??)
@@ -248,7 +253,8 @@ L.Layer.include({
             '<li>D+: ' + Math.round(stats.denivPos) + 'm</li>' +
             '<li>Altitude min: ' + Math.round(stats.altMin) + 'm</li>' +
             '<li>D-: ' + Math.round(stats.denivNeg) + 'm</li>' +
-            '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>');
+            '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>' +
+            '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>');
     },
 });
 

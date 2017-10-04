@@ -322,6 +322,9 @@ window.onload = function () {
 
                                                 track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
                                                 track.bindPopup('Calculs en cours...');
+                                                track.on('popupopen', function (event) {
+                                                    $('.marker-add-button:visible').remove();
+                                                });
 
                                                 marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
                                                 marker.on('popupopen', deleteTrack);
@@ -487,88 +490,15 @@ window.onload = function () {
 
             $.State.setComputing(true);
 
-            const latlng = L.latLng(Math.roundE8(e.latlng.lat), Math.roundE8(e.latlng.lng));
-            const marker = L.Marker.routed(latlng, {
+            const marker = L.Marker.routed(e.latlng.roundE8(), {
                 riseOnHover: true,
                 draggable: true,
                 opacity: 0.5,
                 color: ($.Track.hasMarkers()) ? $.Track.getLastMarker().getColorIndex() : $.Track.getCurrentColor(),
                 type: 'waypoint',
-            }).bindPopup('<button class="marker-promote-button"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</button> ' +
-                '<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
-
-            marker.on('popupopen', function () {
-                const _this = this;
-
-                $('.marker-delete-button:visible').click(function () {
-                    if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
-                        return;
-
-                    $.State.setComputing(true);
-                    _this.remove().progress($.State.updateComputing).done(function () {
-                        $.State.setComputing(false);
-                    }).fail(function () {
-                        $.State.setComputing(false);
-                    });
-                });
-
-                $('.marker-promote-button:visible').click(function () {
-                    $.State.setComputing(true);
-                    _this.closePopup();
-
-                    _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
-                    _this.promoteToStep();
-
-                    $.State.setComputing(false);
-                });
             });
 
-            marker.on('moveend', function (event) {
-                // Update routes when moving this marker
-                $.State.setComputing(true);
-                event.target.setOpacity(0.5);
-                const promises = [];
-                const progresses = [];
-
-                if (event.target.hasRouteFromHere()) {
-                    // Re-compute route starting at this marker
-                    const idx = promises.length;
-
-                    progresses.push(0);
-                    promises.push(
-                        event.target.recomputeRouteFromHere($.State.getMode()).progress(function (progress) {
-                            progresses[idx] = progress.progress;
-                            progress.progress = progresses;
-                            $.State.updateComputing(progress);
-                        })
-                    );
-                }
-
-                if (event.target.hasRouteToHere()) {
-                    // Re-compute route ending at this marker
-                    const idx = promises.length;
-
-                    progresses.push(0);
-                    promises.push(
-                        event.target.recomputeRouteToHere($.State.getMode()).progress(function (progress) {
-                            progresses[idx] = progress.progress;
-                            progress.progress = progresses;
-                            $.State.updateComputing(progress);
-                        })
-                    );
-                }
-
-                $.when.apply($, promises).done(function () {
-                    $.State.setComputing(false);
-                    event.target.setOpacity(1);
-                }).fail(function () {
-                    $.State.setComputing(false);
-                });
-            });
-
-            var promise = $.Track.addMarker(marker);
-
-            promise.progress($.State.updateComputing).done(function () {
+            marker.add().progress($.State.updateComputing).done(function () {
                 marker.setOpacity(1);
                 $.State.setComputing(false);
             }).fail(function () {
@@ -606,6 +536,18 @@ window.onload = function () {
                         .add('steps', {
                             text: $('#help-steps')[0],
                             attachTo: { element: $('.awesome-marker').last()[0], on: 'bottom' },
+                        })
+                        .add('steps2', {
+                            beforeShowPromise: function () {
+                                return $.Deferred(function () {
+                                    const route = $.Track.getFirstMarker().getRouteFromHere();
+                                    const lngs = route.getLatLngs();
+                                    const item = lngs[Math.floor(lngs.length / 2)];
+                                    route.openPopup(item);
+                                    this.resolve();
+                                }).promise();
+                            },
+                            text: $('#help-steps2')[0],
                         })
                         .start();
                 }

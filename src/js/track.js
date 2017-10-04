@@ -111,6 +111,82 @@
                 });
         },
 
+        moveMarker: function (marker) {
+            const _this = this;
+
+            return $.Deferred(function () {
+                const deferred = this;  // jscs:ignore safeContextKeyword
+                const promises = [];
+                const progresses = [];
+
+                const mode = $.State.getMode() || marker.getRouteModeFromHere();
+
+                if (marker.hasRouteFromHere()) {
+                    // Re-compute route starting at this marker
+                    const idx = promises.length;
+
+                    progresses.push(0);
+                    promises.push(
+                        marker.recomputeRouteFromHere($.State.getMode()).progress(function (progress) {
+                            progresses[idx] = progress.progress;
+                            progress.progress = progresses;
+                            deferred.notify(progress);
+                        })
+                    );
+                }
+
+                if (marker.hasRouteToHere()) {
+                    // Re-compute route ending at this marker
+                    const idx = promises.length;
+
+                    progresses.push(0);
+                    promises.push(
+                        marker.recomputeRouteToHere($.State.getMode()).progress(function (progress) {
+                            progresses[idx] = progress.progress;
+                            progress.progress = progresses;
+                            deferred.notify(progress);
+                        })
+                    );
+                }
+
+                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+            });
+        },
+
+        insertMarker: function (marker, route) {
+            const _this = this;
+
+            return $.Deferred(function () {
+                const deferred = this;  // jscs:ignore safeContextKeyword
+                const promises = [];
+                const progresses = [];
+
+                const mode = $.State.getMode() || marker.getRouteModeFromHere();
+
+                progresses.push(0);
+                promises.push(
+                    route.getStartMarker().computeRouteTo(marker, $.State.getMode()).progress(function (progress) {
+                        progresses[0] = progress.progress;
+                        progress.progress = progresses;
+                        deferred.notify(progress);
+                    })
+                );
+                progresses.push(0);
+                promises.push(
+                    marker.computeRouteTo(route.getEndMarker(), $.State.getMode()).progress(function (progress) {
+                        progresses[1] = progress.progress;
+                        progress.progress = progresses;
+                        deferred.notify(progress);
+                    })
+                );
+
+                _this.markersLength++;
+                marker.addTo(_this.map);
+
+                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+            });
+        },
+
         exportGpx: function (filename) {
             let isFileSaverSupported = false;
             try {
@@ -351,6 +427,63 @@
                 to._previousMarker = this;
             this.routeFrom = route;
             this._mode = mode;
+        },
+
+        _bindEvents: function () {
+            const _this = this;
+
+            this.bindPopup('<button class="marker-promote-button"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</button> ' +
+                '<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
+
+            this.on('popupopen', function () {
+
+                $('.marker-delete-button:visible').click(function () {
+                    if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
+                        return;
+
+                    $.State.setComputing(true);
+                    _this.remove().progress($.State.updateComputing).done(function () {
+                        $.State.setComputing(false);
+                    }).fail(function () {
+                        $.State.setComputing(false);
+                    });
+                });
+
+                $('.marker-promote-button:visible').click(function () {
+                    $.State.setComputing(true);
+                    _this.closePopup();
+
+                    _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
+                    _this.promoteToStep();
+
+                    $.State.setComputing(false);
+                });
+            });
+
+            this.on('moveend', function (event) {
+                // Update routes when moving this marker
+                $.State.setComputing(true);
+                _this.setOpacity(0.5);
+
+                $.Track.moveMarker(_this)
+                    .progress($.State.updateComputing)
+                    .done(function () {
+                        $.State.setComputing(false);
+                        event.target.setOpacity(1);
+                    }).fail(function () {
+                        $.State.setComputing(false);
+                    });
+            });
+        },
+
+        add: function (computeRoute = true) {
+            this._bindEvents();
+            return $.Track.addMarker(this, computeRoute);
+        },
+
+        insert: function (route) {
+            this._bindEvents();
+            return $.Track.insertMarker(this, route);
         },
 
         remove: function (recompute = true) {
