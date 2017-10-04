@@ -162,9 +162,32 @@
                 const series2 = [];
                 const series3 = [];
 
+                let maxSlope = 0;
+                let minSlope = 0;
+
                 for (let j = 0; j < data.size; j++) {
+                    let correctedSlopeOnTrack;
+                    if (j > 3 && j < data.size - 4) {
+                        correctedSlopeOnTrack = (
+                            data.elevations[j - 3].slopeOnTrack +
+                            2 * data.elevations[j - 2].slopeOnTrack +
+                            4 * data.elevations[j - 1].slopeOnTrack +
+                            8 * data.elevations[j].slopeOnTrack +
+                            4 * data.elevations[j + 1].slopeOnTrack +
+                            2 * data.elevations[j + 2].slopeOnTrack +
+                            data.elevations[j + 3].slopeOnTrack
+                            ) / 22;
+                    } else {
+                        correctedSlopeOnTrack = data.elevations[j].slopeOnTrack;
+                    }
+
+                    if (correctedSlopeOnTrack > maxSlope)
+                        maxSlope = correctedSlopeOnTrack;
+                    if (correctedSlopeOnTrack < minSlope)
+                        minSlope = correctedSlopeOnTrack;
+
                     series1.push({ x: data.elevations[j].dist, y: data.elevations[j].z, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
-                    series2.push({ x: data.elevations[j].dist, y: data.elevations[j].slopeOnTrack, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
+                    series2.push({ x: data.elevations[j].dist, y: correctedSlopeOnTrack, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
                     series3.push({ x: data.elevations[j].dist, y: data.elevations[j].slope, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
                 }
 
@@ -183,8 +206,8 @@
                 data.annotations[2].label.content = 'Distance: ' + Math.round(series1[lastIndex].x * 100) / 100 + 'km';
 
                 const gradient = document.getElementById(chartId).getContext('2d').createLinearGradient(0, 0, 0, 120);
-                const maxSlope = Math.ceil(data.total.slopeMax / 10) * 10;
-                const minSlope = Math.floor(data.total.slopeMin / 10) * 10;
+                maxSlope = Math.ceil(maxSlope / 10) * 10;
+                minSlope = Math.floor(minSlope / 10) * 10;
 
                 const totalSlope = -minSlope + maxSlope;
                 if (totalSlope != 0) {
@@ -333,9 +356,6 @@
                     total.altMin = Math.min(total.altMin, route.getAltMin());
                     total.altMax = Math.max(total.altMax, route.getAltMax());
 
-                    total.slopeMax = Math.max(total.slopeMax, route.getSlopeMax());
-                    total.slopeMin = Math.min(total.slopeMin, route.getSlopeMin());
-
                     total.denivNeg += route.getDenivNeg();
                     total.denivPos += route.getDenivPos();
 
@@ -344,9 +364,6 @@
 
                     local.altMin = Math.min(local.altMin, route.getAltMin());
                     local.altMax = Math.max(local.altMax, route.getAltMax());
-
-                    local.slopeMax = Math.max(local.slopeMax, route.getSlopeMax());
-                    local.slopeMin = Math.min(local.slopeMin, route.getSlopeMin());
 
                     local.denivNeg += route.getDenivNeg();
                     local.denivPos += route.getDenivPos();

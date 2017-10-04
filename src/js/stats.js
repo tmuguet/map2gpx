@@ -82,8 +82,6 @@ L.Layer.include({
     _distance: 0,
     _altMin: 0,
     _altMax: 0,
-    _slopeMin: 0,
-    _slopeMax: 0,
     _denivPos: 0,
     _denivNeg: 0,
 
@@ -98,8 +96,6 @@ L.Layer.include({
     getDistance: function () { return this._distance; },
     getAltMin: function () { return this._altMin; },
     getAltMax: function () { return this._altMax; },
-    getSlopeMin: function () { return this._slopeMin; },
-    getSlopeMax: function () { return this._slopeMax; },
     getDenivPos: function () { return this._denivPos; },
     getDenivNeg: function () { return this._denivNeg; },
 
@@ -145,8 +141,6 @@ L.Layer.include({
         this._distance = 0;
         this._altMin = elevations[0].z;
         this._altMax = elevations[0].z;
-        this._slopeMax = 0;
-        this._slopeMin = 0;
         this._denivPos = 0;
         this._denivNeg = 0;
 
@@ -169,26 +163,10 @@ L.Layer.include({
                     Math.atan((Math.round(this._elevations[j].z) - Math.round(this._elevations[j - 1].z)) / localDistance)
                 );
 
-                if (j > 5) {
-                    // FIXME: should maybe do an average with 2 points before & 2 points after
-                    let previous = (
-                        this._elevations[j - 5].slopeOnTrack +
-                        this._elevations[j - 4].slopeOnTrack +
-                        this._elevations[j - 3].slopeOnTrack +
-                        this._elevations[j - 2].slopeOnTrack +
-                        this._elevations[j - 1].slopeOnTrack) / 5;
-                    this._elevations[j].slopeOnTrack = (previous + this._elevations[j].slopeOnTrack) / 2;
-                }
-
                 if (this._elevations[j].z < this._altMin)
                     this._altMin = this._elevations[j].z;
                 if (this._elevations[j].z > this._altMax)
                     this._altMax = this._elevations[j].z;
-
-                if (this._elevations[j].slopeOnTrack > this._slopeMax)
-                    this._slopeMax = this._elevations[j].slopeOnTrack;
-                if (this._elevations[j].slopeOnTrack < this._slopeMin)
-                    this._slopeMin = this._elevations[j].slopeOnTrack;
 
                 if (this._elevations[j].z < this._elevations[j - 1].z)
                     this._denivNeg += (Math.round(this._elevations[j - 1].z - this._elevations[j].z));
