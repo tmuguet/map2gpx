@@ -60,6 +60,16 @@
                 },
                 options: {
                     maintainAspectRatio: false,
+                    onClick: function (event, active) {
+                        if (active && active.length > 0) {
+                            const idx = active[0]._index;
+                            const item = chart.config.data.datasets[0].data[idx];
+
+                            if (item.route) {
+                                item.route.openPopup(L.latLng(item.lat, item.lng));
+                            }
+                        }
+                    },
                     hover: {
                         mode: 'index',
                         intersect: false,
@@ -186,9 +196,9 @@
                     if (correctedSlopeOnTrack < minSlope)
                         minSlope = correctedSlopeOnTrack;
 
-                    series1.push({ x: data.elevations[j].dist, y: data.elevations[j].z, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
-                    series2.push({ x: data.elevations[j].dist, y: correctedSlopeOnTrack, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
-                    series3.push({ x: data.elevations[j].dist, y: data.elevations[j].slope, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
+                    series1.push({ x: data.elevations[j].dist, y: data.elevations[j].z, lat: data.elevations[j].lat, lng: data.elevations[j].lng, route: data.elevations[j].route });
+                    series2.push({ x: data.elevations[j].dist, y: correctedSlopeOnTrack });
+                    series3.push({ x: data.elevations[j].dist, y: data.elevations[j].slope });
                 }
 
                 const lastIndex = data.size - 1;
@@ -348,6 +358,7 @@
 
                     for (var j = 0; j < e.length; j++) {
                         e[j].dist += total.distance;
+                        e[j].route = route;
                     }
 
                     elevations = elevations.concat(e);
