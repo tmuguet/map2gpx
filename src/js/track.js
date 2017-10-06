@@ -57,6 +57,10 @@
             return this.lastMarker;
         },
 
+        isLoop: function () {
+            return this.firstMarker && this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
+        },
+
         clear: function () {
             this.eachMarker(function (i, marker) { marker.remove(false); });
             $.State.triggerMarkersChanged();
@@ -117,7 +121,6 @@
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
-                const progresses = [];
 
                 const mode = $.State.getMode() || marker.getRouteModeFromHere();
 
@@ -125,13 +128,8 @@
                     // Re-compute route starting at this marker
                     const idx = promises.length;
 
-                    progresses.push(0);
                     promises.push(
-                        marker.recomputeRouteFromHere($.State.getMode()).progress(function (progress) {
-                            progresses[idx] = progress.progress;
-                            progress.progress = progresses;
-                            deferred.notify(progress);
-                        })
+                        marker.recomputeRouteFromHere($.State.getMode()).progress(deferred.notify)
                     );
                 }
 
@@ -139,13 +137,8 @@
                     // Re-compute route ending at this marker
                     const idx = promises.length;
 
-                    progresses.push(0);
                     promises.push(
-                        marker.recomputeRouteToHere($.State.getMode()).progress(function (progress) {
-                            progresses[idx] = progress.progress;
-                            progress.progress = progresses;
-                            deferred.notify(progress);
-                        })
+                        marker.recomputeRouteToHere($.State.getMode()).progress(deferred.notify)
                     );
                 }
 
@@ -159,25 +152,14 @@
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
-                const progresses = [];
 
                 const mode = $.State.getMode() || marker.getRouteModeFromHere();
 
-                progresses.push(0);
                 promises.push(
-                    route.getStartMarker().computeRouteTo(marker, $.State.getMode()).progress(function (progress) {
-                        progresses[0] = progress.progress;
-                        progress.progress = progresses;
-                        deferred.notify(progress);
-                    })
+                    route.getStartMarker().computeRouteTo(marker, $.State.getMode()).progress(deferred.notify)
                 );
-                progresses.push(0);
                 promises.push(
-                    marker.computeRouteTo(route.getEndMarker(), $.State.getMode()).progress(function (progress) {
-                        progresses[1] = progress.progress;
-                        progress.progress = progresses;
-                        deferred.notify(progress);
-                    })
+                    marker.computeRouteTo(route.getEndMarker(), $.State.getMode()).progress(deferred.notify)
                 );
 
                 _this.markersLength++;
@@ -402,15 +384,28 @@
         computeRouteTo: function (to, mode) {
             const _this = this;
 
-            if (this.routeFrom) {
-                mode = mode || this._mode || 'auto';
-                this.deleteRouteFromHere();
-            }
+            return $.Deferred(function () {
+                const deferred = this;  // jscs:ignore safeContextKeyword
 
-            return $.Route.find(this, to, 0, mode)
-                .done(function () {
-                    _this.attachRouteFrom(to, this.route, mode);
+                if (_this.routeFrom) {
+                    _this.routeFrom.setStyle({ opacity: 0.5 });
+                }
+
+                $(_this).clearCompute();
+                $(_this).startCompute(function (next) {
+                    mode = mode || _this._mode || 'auto';
+
+                    $.Route.find(_this, to, 0, mode)
+                        .progress(deferred.notify)
+                        .done(function () {
+                            _this.deleteRouteFromHere();
+                            _this.attachRouteFrom(to, this.route, mode);
+                            deferred.resolve();
+                        })
+                        .fail(deferred.reject)
+                        .always(() => $(_this).endCompute(next));
                 });
+            });
         },
 
         recomputeRouteFromHere: function (mode) {

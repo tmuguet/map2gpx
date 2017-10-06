@@ -111,13 +111,11 @@ L.Layer.include({
             const promises = _this._fetchAltitude().concat(_this._fetchSlope());
             const total = promises.length;
 
-            deferred.notify({ progress: 0, status: 'Récupération des données géographiques...' });
+            deferred.notify({ start: true, total: total, status: 'Récupération des données géographiques...' });
 
-            var i = 0;
             $.each(promises, function () {
                 this.done(function () {
-                    i++;
-                    deferred.notify({ progress: i / (total + 1), step: this.size + ' points récupérés' });
+                    deferred.notify({ step: this.size + ' points récupérés' });
                 });
             });
 

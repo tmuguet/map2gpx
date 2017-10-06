@@ -146,14 +146,12 @@
 
                             geojson.addData(_geometry);
 
-                            deferred.notify({ progress: 0.5, step: 'Route calculée' });
                             _this._add(geojson, start, end, index, 'auto')
-                                .progress(function (progress) {
-                                    progress.progress = 0.5 + progress.progress / 2;
-                                    deferred.notify(progress);
-                                })
+                                .progress(deferred.notify)
                                 .done(deferred.resolve)
                                 .fail(deferred.reject);
+
+                            deferred.notify({ step: 'Route calculée' });
                         } else {
                             deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
                         }
@@ -162,7 +160,7 @@
                         deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
                     },
                 };
-                deferred.notify({ progress: 0, status: 'Calcul de la route...' });
+                deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
                 Gp.Services.route(options);
             });
         },
@@ -173,7 +171,7 @@
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
 
-                deferred.notify({ progress: 0, status: 'Calcul de la route...' });
+                deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
 
                 const c1 = start.getLatLng().roundE8();
                 const c2 = end.getLatLng().roundE8();
@@ -197,14 +195,12 @@
                     snakingSpeed: 1000,
                 });
 
-                deferred.notify({ progress: 0.5, step: 'Route calculée' });
                 _this._add(geojson, start, end, index, 'straight')
-                    .progress(function (progress) {
-                        progress.progress = 0.5 + progress.progress / 2;
-                        deferred.notify(progress);
-                    })
+                    .progress(deferred.notify)
                     .done(deferred.resolve)
                     .fail(deferred.reject);
+
+                deferred.notify({ step: 'Route calculée' });
             });
         },
     };

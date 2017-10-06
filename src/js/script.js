@@ -160,21 +160,11 @@ window.onload = function () {
                             addMarker({ latlng: $.Track.getFirstMarker().getLatLng() });
                         }
                     },
-                }, {
-                    stateName: 'computing',
-                    icon: 'fa-spinner fa-pulse',
-                    title: 'Fermer la boucle (calcul en cours...)',
                 },
             ],
         });
         $('body').on('map2gpx:modechange map2gpx:computingchange map2gpx:markerschange', function (e) {
-            if (e.computing) {
-                closeLoop.state('computing');
-                closeLoop.disable();
-            } else {
-                closeLoop.state('loaded');
-                closeLoop.setEnabled((e.mode !== null && $.Track.hasRoutes() && !$.Track.isImport()));
-            }
+            closeLoop.setEnabled((e.mode !== null && $.Track.hasRoutes() && !$.Track.isImport() && !$.Track.isLoop()));
         });
 
         L.easyBar([automatedBtn, lineBtn, closeLoop]).addTo(map);
@@ -252,7 +242,7 @@ window.onload = function () {
 
                             $btn.attr('disabled', 'disabled');
                             $.State.setComputing(true);
-                            $.State.updateComputing({ progress: 0, status: 'Importation en cours...' });
+                            $.State.updateComputing({ start: true, total: 1, status: 'Importation en cours...' });
 
                             const reader = new FileReader();
 
@@ -269,7 +259,10 @@ window.onload = function () {
                                             $.State.setComputing(false);
                                         },
                                         onSuccess: function (gpx) {
-                                            $.State.updateComputing({ progress: 1 / (lines.length + 1), status: 'Récupération des données géographiques en cours...', step: 'Fichier traité' });
+                                            $.State.updateComputing([
+                                                { step: 'Fichier traité' },
+                                                { start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' },
+                                            ]);
 
                                             $.Track.clear();
 
@@ -291,7 +284,6 @@ window.onload = function () {
                                             };
 
                                             const promises = [];
-                                            const progresses = [1];
                                             var startMarker;
                                             $.each(lines, function (idx, track) {
                                                 // Add new route+markers
@@ -329,14 +321,13 @@ window.onload = function () {
                                                 marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
                                                 marker.on('popupopen', deleteTrack);
 
-                                                progresses.push(0);
-                                                promises.push(track.computeStats().progress(function (progress) {
-                                                    progresses[idx + 1] = progress.progress;
-                                                    progress.progress = progresses;
-                                                    $.State.updateComputing(progress);
-                                                }));
+                                                promises.push(track.computeStats().progress($.State.updateComputing));
 
                                                 startMarker = marker;
+                                            });
+
+                                            $.each(promises, function () {
+                                                this.done(() => $.State.updateComputing({}));
                                             });
 
                                             $.when.apply($, promises).done(function () {
@@ -384,8 +375,8 @@ window.onload = function () {
                     icon: 'fa-trash',
                     title: 'Effacer l\'itinéraire',
                     onClick: function (btn, map) {
-                        $.State.setComputing(true);
                         $.Track.clear();
+                        $.State.triggerMarkersChanged();
                         $.State.setComputing(false);
                     },
                 }, {
@@ -474,21 +465,19 @@ window.onload = function () {
 
         $('body').on('map2gpx:computingchange', function (e) {
             if (e.computing) {
-                $.State.updateComputing({ progress: 0, status: 'Calculs en cours...' });
+                $.State.updateComputing({ start: true, total: 1, status: 'Calculs en cours...' });
                 $('#data-computing').fadeIn();
             } else {
-                $.State.updateComputing({ progress: 1, status: 'Finalisation...' });
+                $.State.updateComputing({ end: true, status: 'Finalisation...' });
                 $.Chart.replot();
                 $('#data-computing').fadeOut();
             }
         });
 
         function addMarker(e) {
-            if ($.State.getMode() === null || $.State.getComputing()) {
+            if ($.State.getMode() === null) {
                 return;
             }
-
-            $.State.setComputing(true);
 
             const marker = L.Marker.routed(e.latlng.roundE8(), {
                 riseOnHover: true,
@@ -500,9 +489,6 @@ window.onload = function () {
 
             marker.add().progress($.State.updateComputing).done(function () {
                 marker.setOpacity(1);
-                $.State.setComputing(false);
-            }).fail(function () {
-                $.State.setComputing(false);
             });
 
             if (!isSmallScreen) {
