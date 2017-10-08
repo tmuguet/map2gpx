@@ -5,6 +5,7 @@ const sources_js = [
     "src/js/jquery.shepherd.js",
     "src/js/maths.js",
     "src/js/utils.js",
+    "src/js/queue.js",
     "src/js/state.js",
     "src/js/cache.js",
 

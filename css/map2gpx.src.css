@@ -40,3 +40,30 @@ ul.legend.black {border-left-color: #303030;}
 .shepherd-element.shepherd-theme-arrows .shepherd-content footer .shepherd-buttons li .shepherd-button {background: #24b835; transition:background .2s ease-out;}
 .shepherd-element.shepherd-theme-arrows .shepherd-content footer .shepherd-buttons li .shepherd-button:hover {background: #27cc3a; transition:background .3s ease-in;}
 .shepherd-element.shepherd-theme-arrows .shepherd-content footer .shepherd-buttons li .shepherd-button.shepherd-button-secondary:hover {background: #f4f4f4; transition:background .3s ease-in;}
+
+#map {
+    display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 150px;
+}
+.data {
+    display: none;
+    position: absolute;
+    overflow: hidden;
+    height: 150px;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+    background-color: #FFFFFF;
+    text-align: center;
+}
+#data.data, #data-empty.data {
+    display: block;
+}
+#data-computing-progressbar-container {
+    width: 400px; height: 3px; background-color: grey; margin:0px auto;
+}
+#data-computing-progressbar {
+    height: 100%; width: 0%; background-color: #24b835;
+}
+#mobile-warning {
+    display: none; position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0;
+}

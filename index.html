@@ -66,8 +66,8 @@
     <script src="leaflet/Control.MiniMap.min.js"></script>
     <script src="leaflet/gpx.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js" integrity="sha256-GcknncGKzlKm69d+sp+k3A2NyQE+jnu43aBl6rrDN2I=" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/0.5.3/chartjs-plugin-annotation.min.js" integrity="sha256-Qm/k4lfzTvOTP9EIMjrgiEwAkHLZtAfgXW1W/Do9hvk=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.0/Chart.min.js" integrity="sha256-UGwvyUFH6Qqn0PSyQVw4q3vIX0wV1miKTracNJzAWPc=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/0.5.5/chartjs-plugin-annotation.min.js" integrity="sha256-/C1C5fYwTKrHH6KPq9CnTsBllYnqnMwxiBPr9rWgQjQ=" crossorigin="anonymous"></script>
 
     <script src="js/FileSaver.min.js"></script>
 
@@ -134,8 +134,11 @@
                 Sinon, c'est le mode utilisé initialement pour le tracé allant au marqueur qui sera réutilisé.</p>
         </div>
         <div id="help-steps">
-            <p>Vous pouvez définir des points d'étapes, en cliquant sur un marqueur et en sélectionnant &quot;<span style="white-space: nowrap"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</span>&quot;.<br>
-            Vous pouvez cliquer sur chaque itinéraire d'étape pour voir ses données.</p>
+            <p>Vous pouvez définir des points d'étapes, en cliquant sur un marqueur et en sélectionnant &quot;<span style="white-space: nowrap"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</span>&quot;.</p>
+        </div>
+        <div id="help-steps2">
+            <p>Vous pouvez cliquer sur chaque itinéraire d'étape pour voir ses données.</p>
+            <p>Vous pourrez alors aussi ajouter un marqueur intermédiaire. Ceci peut être pratique pour éditer un tracé précédent, ou rajouter une étape.</p>
         </div>
         <div id="about">
             <p>Cet outil a été créé par <a href="https://tmuguet.me" target="_blank" rel="noopener noreferrer">Thomas Muguet</a>, sous licence MIT.<br>
@@ -174,16 +177,25 @@
             <button class="export-kml-button"><span class="ico kml"></span></button>
         </div>
     </div>
-    <div id="map" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 150px;"></div>
-    <div id="data" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px;">
+    <div id="map"></div>
+    <div id="data" class="data">
         <canvas id="chart" width="100%" height="100%"></canvas>
     </div>
 
-    <div id="data-empty" style="display: block; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br/>Rien à montrer ici...</h2>Commencez à tracer votre itinéraire pour voir les données le concernant.</i></div>
-    <div id="data-invalid" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center;"><h2><i class="fa fa-exclamation-triangle fa-3x" aria-hidden="true"></i><br/>Tracé invalide !</h2>Le tracé est invalide: l'itinéraire n'a pas pu être calculé avec le dernier marqueur. Déplacez le marqueur translucide pour ré-essayer un nouvel itinéraire.</i></div>
-    <div id="data-computing" style="display: none; position: absolute; height: 150px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; text-align: center; overflow: hidden;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/><strong><span id="data-computing-progress"></span> <small>- <span id="data-computing-status">Calculs en cours...</span></small></h2></div>
+    <div id="data-empty" class="data">
+        <h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br/>Rien à montrer ici...</h2>
+        Commencez à tracer votre itinéraire pour voir les données le concernant.
+    </div>
+    <div id="data-invalid" class="data">
+        <h2><i class="fa fa-exclamation-triangle fa-3x" aria-hidden="true"></i><br/>Tracé invalide !</h2>
+        Le tracé est invalide: l'itinéraire n'a pas pu être calculé avec le dernier marqueur. Déplacez le marqueur translucide pour ré-essayer un nouvel itinéraire.
+    </div>
+    <div id="data-computing" class="data">
+        <h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>
+            <strong><span id="data-computing-progress"></span> <small>- <span id="data-computing-status">Calculs en cours...</span></small></strong>
+            <div id="data-computing-progressbar-container"><div id="data-computing-progressbar"></div></div></h2></div>
     <div id="loading" style="display: block; position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; background-color: #FFFFFF; z-index: 5000; text-align: center;"><h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>Chargement en cours...</h2></div>
-    <div id="mobile-warning" style="display: none; position: fixed; top: 0px; bottom: 0px; left: 0px; right: 0px; z-index: 10000; background-color: #C0C0C0"><strong>Attention:</strong> ce site n'est pas destiné aux mobiles. <button>Ok, j'ai compris</button></div>
+    <div id="mobile-warning"><strong>Attention:</strong> ce site n'est pas destiné aux mobiles. <button>Ok, j'ai compris</button></div>
 
     <script src="js/map2gpx.min.js"></script>
 </body>

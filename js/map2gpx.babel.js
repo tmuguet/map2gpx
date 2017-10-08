@@ -265,12 +265,51 @@ L.Control.EasyButton.include({
 });
 
 (function ($) {
+    var queues = 0;
+
+    $.fn.clearCompute = function () {
+        return this.each(function () {
+            queues -= $(this).queue().length;
+            $(this).clearQueue();
+        });
+    };
+
+    $.fn.startCompute = function (cb) {
+        return this.each(function () {
+            $.State.setComputing(true);
+            queues++;
+            $(this).queue(cb);
+        });
+    };
+
+    $.fn.endCompute = function (next) {
+        return this.each(function () {
+            queues--;
+            next();
+
+            if (queues == 0) $.State.setComputing(false);
+        });
+    };
+
+    $.Queue = {
+        size: function size() {
+            return queues;
+        }
+    };
+})(jQuery);
+
+(function ($) {
     var _mode = null;
     var _computing = false;
 
+    var _progress = 0;
+    var _total = 0;
+
     var $h2 = $('#data-computing h2');
     var $progress = $('#data-computing-progress');
+    var $progressbar = $('#data-computing-progressbar');
     var $status = $('#data-computing-status');
+    var $pending = $('#data-computing-pending');
 
     $.State = {};
 
@@ -280,21 +319,50 @@ L.Control.EasyButton.include({
     };
 
     $.State.setComputing = function (computing) {
+        if (computing && !_computing) {
+            _progress = 0;
+            _total = 0;
+        }
+
         _computing = computing;
         $('body').trigger($.Event('map2gpx:computingchange', { mode: _mode, computing: _computing }));
     };
 
     $.State.updateComputing = function (progress) {
-        var p = progress.progress;
-        if (Array.isArray(progress.progress)) p = p.reduce(function (a, b) {
-            return a + b;
-        }) / p.length;
+        var display = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
 
-        $progress.text(Math.round(p * 100) + '%');
+        if (Array.isArray(progress)) {
+            $.each(progress, function () {
+                $.State.updateComputing(this, false);
+            });
+
+            $.State.displayComputing();
+
+            return;
+        }
+
+        if (progress.start) {
+            _total += progress.total;
+        } else if (progress.end) {
+            _progress = _total;
+        } else {
+            _progress++;
+        }
+
         if ('status' in progress && progress.status) $status.text(progress.status);
         if ('step' in progress && progress.step) $('<div><small>' + progress.step + '</small></div>').insertAfter($h2).fadeOut(400, function () {
             this.remove();
         });
+
+        if (display) $.State.displayComputing();
+    };
+
+    $.State.displayComputing = function () {
+        var p = 1;
+        if (_total > 0) p = _progress / _total;
+
+        $progress.text(Math.round(p * 100) + '%');
+        $progressbar.css('width', Math.round(p * 100) + '%');
 
         if (Math.round(p * 100) == 42) $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter($h2).fadeOut(400, function () {
             this.remove();
@@ -541,13 +609,20 @@ L.Layer.include({
     _distance: 0,
     _altMin: 0,
     _altMax: 0,
-    _slopeMin: 0,
-    _slopeMax: 0,
     _denivPos: 0,
     _denivNeg: 0,
 
-    prepareForMap: function prepareForMap(map) {
+    prepareForMap: function prepareForMap(map, start, end) {
         this._mapToAdd = map;
+        this._start = start;
+        this._end = end;
+    },
+
+    getStartMarker: function getStartMarker() {
+        return this._start;
+    },
+    getEndMarker: function getEndMarker() {
+        return this._end;
     },
 
     getElevations: function getElevations() {
@@ -563,12 +638,6 @@ L.Layer.include({
     getAltMax: function getAltMax() {
         return this._altMax;
     },
-    getSlopeMin: function getSlopeMin() {
-        return this._slopeMin;
-    },
-    getSlopeMax: function getSlopeMax() {
-        return this._slopeMax;
-    },
     getDenivPos: function getDenivPos() {
         return this._denivPos;
     },
@@ -583,13 +652,11 @@ L.Layer.include({
             var promises = _this._fetchAltitude().concat(_this._fetchSlope());
             var total = promises.length;
 
-            deferred.notify({ progress: 0, status: 'Récupération des données géographiques...' });
+            deferred.notify({ start: true, total: total, status: 'Récupération des données géographiques...' });
 
-            var i = 0;
             $.each(promises, function () {
                 this.done(function () {
-                    i++;
-                    deferred.notify({ progress: i / (total + 1), step: this.size + ' points récupérés' });
+                    deferred.notify({ step: this.size + ' points récupérés' });
                 });
             });
 
@@ -616,8 +683,6 @@ L.Layer.include({
         this._distance = 0;
         this._altMin = elevations[0].z;
         this._altMax = elevations[0].z;
-        this._slopeMax = 0;
-        this._slopeMin = 0;
         this._denivPos = 0;
         this._denivNeg = 0;
 
@@ -638,17 +703,8 @@ L.Layer.include({
                 this._elevations[j].dist = this._distance;
                 this._elevations[j].slopeOnTrack = Math.degrees(Math.atan((Math.round(this._elevations[j].z) - Math.round(this._elevations[j - 1].z)) / localDistance));
 
-                if (j > 5) {
-                    // FIXME: should maybe do an average with 2 points before & 2 points after
-                    var previous = (this._elevations[j - 5].slopeOnTrack + this._elevations[j - 4].slopeOnTrack + this._elevations[j - 3].slopeOnTrack + this._elevations[j - 2].slopeOnTrack + this._elevations[j - 1].slopeOnTrack) / 5;
-                    this._elevations[j].slopeOnTrack = (previous + this._elevations[j].slopeOnTrack) / 2;
-                }
-
                 if (this._elevations[j].z < this._altMin) this._altMin = this._elevations[j].z;
                 if (this._elevations[j].z > this._altMax) this._altMax = this._elevations[j].z;
-
-                if (this._elevations[j].slopeOnTrack > this._slopeMax) this._slopeMax = this._elevations[j].slopeOnTrack;
-                if (this._elevations[j].slopeOnTrack < this._slopeMin) this._slopeMin = this._elevations[j].slopeOnTrack;
 
                 if (this._elevations[j].z < this._elevations[j - 1].z) this._denivNeg += Math.round(this._elevations[j - 1].z - this._elevations[j].z);else this._denivPos += Math.round(this._elevations[j].z - this._elevations[j - 1].z);
             }
@@ -723,7 +779,7 @@ L.Layer.include({
     },
 
     setPopupContentWith: function setPopupContentWith(color, stats) {
-        this.setPopupContent('<ul class="legend ' + color + '">' + '<li>Altitude max: ' + Math.round(stats.altMax) + 'm</li>' + '<li>D+: ' + Math.round(stats.denivPos) + 'm</li>' + '<li>Altitude min: ' + Math.round(stats.altMin) + 'm</li>' + '<li>D-: ' + Math.round(stats.denivNeg) + 'm</li>' + '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>');
+        this.setPopupContent('<ul class="legend ' + color + '">' + '<li>Altitude max: ' + Math.round(stats.altMax) + 'm</li>' + '<li>D+: ' + Math.round(stats.denivPos) + 'm</li>' + '<li>Altitude min: ' + Math.round(stats.altMin) + 'm</li>' + '<li>D-: ' + Math.round(stats.denivNeg) + 'm</li>' + '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>' + '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>');
     }
 });
 
@@ -801,6 +857,16 @@ L.GeoJSON.include({
                 },
                 options: {
                     maintainAspectRatio: false,
+                    onClick: function onClick(event, active) {
+                        if (active && active.length > 0) {
+                            var idx = active[0]._index;
+                            var item = chart.config.data.datasets[0].data[idx];
+
+                            if (item.route) {
+                                item.route.openPopup(L.latLng(item.lat, item.lng));
+                            }
+                        }
+                    },
                     hover: {
                         mode: 'index',
                         intersect: false,
@@ -895,10 +961,23 @@ L.GeoJSON.include({
                 var series2 = [];
                 var series3 = [];
 
+                var maxSlope = 0;
+                var minSlope = 0;
+
                 for (var j = 0; j < data.size; j++) {
-                    series1.push({ x: data.elevations[j].dist, y: data.elevations[j].z, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
-                    series2.push({ x: data.elevations[j].dist, y: data.elevations[j].slopeOnTrack, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
-                    series3.push({ x: data.elevations[j].dist, y: data.elevations[j].slope, lat: data.elevations[j].lat, lng: data.elevations[j].lng });
+                    var correctedSlopeOnTrack = void 0;
+                    if (j > 3 && j < data.size - 4) {
+                        correctedSlopeOnTrack = (data.elevations[j - 3].slopeOnTrack + 2 * data.elevations[j - 2].slopeOnTrack + 4 * data.elevations[j - 1].slopeOnTrack + 8 * data.elevations[j].slopeOnTrack + 4 * data.elevations[j + 1].slopeOnTrack + 2 * data.elevations[j + 2].slopeOnTrack + data.elevations[j + 3].slopeOnTrack) / 22;
+                    } else {
+                        correctedSlopeOnTrack = data.elevations[j].slopeOnTrack;
+                    }
+
+                    if (correctedSlopeOnTrack > maxSlope) maxSlope = correctedSlopeOnTrack;
+                    if (correctedSlopeOnTrack < minSlope) minSlope = correctedSlopeOnTrack;
+
+                    series1.push({ x: data.elevations[j].dist, y: data.elevations[j].z, lat: data.elevations[j].lat, lng: data.elevations[j].lng, route: data.elevations[j].route });
+                    series2.push({ x: data.elevations[j].dist, y: correctedSlopeOnTrack });
+                    series3.push({ x: data.elevations[j].dist, y: data.elevations[j].slope });
                 }
 
                 var lastIndex = data.size - 1;
@@ -916,8 +995,8 @@ L.GeoJSON.include({
                 data.annotations[2].label.content = 'Distance: ' + Math.round(series1[lastIndex].x * 100) / 100 + 'km';
 
                 var gradient = document.getElementById(chartId).getContext('2d').createLinearGradient(0, 0, 0, 120);
-                var maxSlope = Math.ceil(data.total.slopeMax / 10) * 10;
-                var minSlope = Math.floor(data.total.slopeMin / 10) * 10;
+                maxSlope = Math.ceil(maxSlope / 10) * 10;
+                minSlope = Math.floor(minSlope / 10) * 10;
 
                 var totalSlope = -minSlope + maxSlope;
                 if (totalSlope != 0) {
@@ -1041,6 +1120,7 @@ L.GeoJSON.include({
 
                     for (var j = 0; j < e.length; j++) {
                         e[j].dist += total.distance;
+                        e[j].route = route;
                     }
 
                     elevations = elevations.concat(e);
@@ -1048,9 +1128,6 @@ L.GeoJSON.include({
 
                     total.altMin = Math.min(total.altMin, route.getAltMin());
                     total.altMax = Math.max(total.altMax, route.getAltMax());
-
-                    total.slopeMax = Math.max(total.slopeMax, route.getSlopeMax());
-                    total.slopeMin = Math.min(total.slopeMin, route.getSlopeMin());
 
                     total.denivNeg += route.getDenivNeg();
                     total.denivPos += route.getDenivPos();
@@ -1060,9 +1137,6 @@ L.GeoJSON.include({
 
                     local.altMin = Math.min(local.altMin, route.getAltMin());
                     local.altMax = Math.max(local.altMax, route.getAltMax());
-
-                    local.slopeMax = Math.max(local.slopeMax, route.getSlopeMax());
-                    local.slopeMin = Math.min(local.slopeMin, route.getSlopeMin());
 
                     local.denivNeg += route.getDenivNeg();
                     local.denivPos += route.getDenivPos();
@@ -1141,10 +1215,35 @@ L.GeoJSON.include({
             return $.Deferred(function () {
                 var deferred = this; // jscs:ignore safeContextKeyword
 
-                geojson.prepareForMap(_this.map);
+                geojson.prepareForMap(_this.map, start, end);
                 geojson.computeStats().progress(deferred.notify).then(function () {
                     geojson.addTo(_this.map);
                     geojson.bindPopup('Calculs en cours...');
+                    geojson.on('popupopen', function (event) {
+                        var _this = this;
+
+                        $('.marker-add-button:visible').click(function () {
+                            if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
+                                return;
+
+                            $.State.setComputing(true);
+                            var marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                riseOnHover: true,
+                                draggable: true,
+                                opacity: 0.5,
+                                color: start.getColorIndex(),
+                                type: 'waypoint'
+                            });
+
+                            marker.insert(geojson).progress($.State.updateComputing).done(function () {
+                                marker.setOpacity(1);
+                                $.State.setComputing(false);
+                            }).fail(function () {
+                                $.State.setComputing(false);
+                            });
+                        });
+                    });
+
                     geojson.snakeIn();
                     start.setOpacity(1);
                     end.setOpacity(1);
@@ -1207,11 +1306,9 @@ L.GeoJSON.include({
 
                             geojson.addData(_geometry);
 
-                            deferred.notify({ progress: 0.5, step: 'Route calculée' });
-                            _this._add(geojson, start, end, index, 'auto').progress(function (progress) {
-                                progress.progress = 0.5 + progress.progress / 2;
-                                deferred.notify(progress);
-                            }).done(deferred.resolve).fail(deferred.reject);
+                            _this._add(geojson, start, end, index, 'auto').progress(deferred.notify).done(deferred.resolve).fail(deferred.reject);
+
+                            deferred.notify({ step: 'Route calculée' });
                         } else {
                             deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
                         }
@@ -1221,7 +1318,7 @@ L.GeoJSON.include({
                         deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
                     }
                 };
-                deferred.notify({ progress: 0, status: 'Calcul de la route...' });
+                deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
                 Gp.Services.route(options);
             });
         },
@@ -1232,7 +1329,7 @@ L.GeoJSON.include({
             return $.Deferred(function () {
                 var deferred = this; // jscs:ignore safeContextKeyword
 
-                deferred.notify({ progress: 0, status: 'Calcul de la route...' });
+                deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
 
                 var c1 = start.getLatLng().roundE8();
                 var c2 = end.getLatLng().roundE8();
@@ -1256,11 +1353,9 @@ L.GeoJSON.include({
                     snakingSpeed: 1000
                 });
 
-                deferred.notify({ progress: 0.5, step: 'Route calculée' });
-                _this._add(geojson, start, end, index, 'straight').progress(function (progress) {
-                    progress.progress = 0.5 + progress.progress / 2;
-                    deferred.notify(progress);
-                }).done(deferred.resolve).fail(deferred.reject);
+                _this._add(geojson, start, end, index, 'straight').progress(deferred.notify).done(deferred.resolve).fail(deferred.reject);
+
+                deferred.notify({ step: 'Route calculée' });
             });
         }
     };
@@ -1328,6 +1423,10 @@ L.GeoJSON.include({
             return this.lastMarker;
         },
 
+        isLoop: function isLoop() {
+            return this.firstMarker && this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
+        },
+
         clear: function clear() {
             this.eachMarker(function (i, marker) {
                 marker.remove(false);
@@ -1378,6 +1477,52 @@ L.GeoJSON.include({
 
             if (promise) return promise;else return $.Deferred(function () {
                 this.resolve();
+            });
+        },
+
+        moveMarker: function moveMarker(marker) {
+            var _this = this;
+
+            return $.Deferred(function () {
+                var deferred = this; // jscs:ignore safeContextKeyword
+                var promises = [];
+
+                var mode = $.State.getMode() || marker.getRouteModeFromHere();
+
+                if (marker.hasRouteFromHere()) {
+                    // Re-compute route starting at this marker
+                    var idx = promises.length;
+
+                    promises.push(marker.recomputeRouteFromHere($.State.getMode()).progress(deferred.notify));
+                }
+
+                if (marker.hasRouteToHere()) {
+                    // Re-compute route ending at this marker
+                    var _idx = promises.length;
+
+                    promises.push(marker.recomputeRouteToHere($.State.getMode()).progress(deferred.notify));
+                }
+
+                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+            });
+        },
+
+        insertMarker: function insertMarker(marker, route) {
+            var _this = this;
+
+            return $.Deferred(function () {
+                var deferred = this; // jscs:ignore safeContextKeyword
+                var promises = [];
+
+                var mode = $.State.getMode() || marker.getRouteModeFromHere();
+
+                promises.push(route.getStartMarker().computeRouteTo(marker, $.State.getMode()).progress(deferred.notify));
+                promises.push(marker.computeRouteTo(route.getEndMarker(), $.State.getMode()).progress(deferred.notify));
+
+                _this.markersLength++;
+                marker.addTo(_this.map);
+
+                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
             });
         },
 
@@ -1593,13 +1738,25 @@ L.GeoJSON.include({
         computeRouteTo: function computeRouteTo(to, mode) {
             var _this = this;
 
-            if (this.routeFrom) {
-                mode = mode || this._mode || 'auto';
-                this.deleteRouteFromHere();
-            }
+            return $.Deferred(function () {
+                var deferred = this; // jscs:ignore safeContextKeyword
 
-            return $.Route.find(this, to, 0, mode).done(function () {
-                _this.attachRouteFrom(to, this.route, mode);
+                if (_this.routeFrom) {
+                    _this.routeFrom.setStyle({ opacity: 0.5 });
+                }
+
+                $(_this).clearCompute();
+                $(_this).startCompute(function (next) {
+                    mode = mode || _this._mode || 'auto';
+
+                    $.Route.find(_this, to, 0, mode).progress(deferred.notify).done(function () {
+                        _this.deleteRouteFromHere();
+                        _this.attachRouteFrom(to, this.route, mode);
+                        deferred.resolve();
+                    }).fail(deferred.reject).always(function () {
+                        return $(_this).endCompute(next);
+                    });
+                });
             });
         },
 
@@ -1616,6 +1773,62 @@ L.GeoJSON.include({
             if (to) to._previousMarker = this;
             this.routeFrom = route;
             this._mode = mode;
+        },
+
+        _bindEvents: function _bindEvents() {
+            var _this = this;
+
+            this.bindPopup('<button class="marker-promote-button"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</button> ' + '<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
+
+            this.on('popupopen', function () {
+
+                $('.marker-delete-button:visible').click(function () {
+                    if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
+                        return;
+
+                    $.State.setComputing(true);
+                    _this.remove().progress($.State.updateComputing).done(function () {
+                        $.State.setComputing(false);
+                    }).fail(function () {
+                        $.State.setComputing(false);
+                    });
+                });
+
+                $('.marker-promote-button:visible').click(function () {
+                    $.State.setComputing(true);
+                    _this.closePopup();
+
+                    _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
+                    _this.promoteToStep();
+
+                    $.State.setComputing(false);
+                });
+            });
+
+            this.on('moveend', function (event) {
+                // Update routes when moving this marker
+                $.State.setComputing(true);
+                _this.setOpacity(0.5);
+
+                $.Track.moveMarker(_this).progress($.State.updateComputing).done(function () {
+                    $.State.setComputing(false);
+                    event.target.setOpacity(1);
+                }).fail(function () {
+                    $.State.setComputing(false);
+                });
+            });
+        },
+
+        add: function add() {
+            var computeRoute = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+
+            this._bindEvents();
+            return $.Track.addMarker(this, computeRoute);
+        },
+
+        insert: function insert(route) {
+            this._bindEvents();
+            return $.Track.insertMarker(this, route);
         },
 
         remove: function remove() {
@@ -1825,20 +2038,10 @@ window.onload = function () {
                         addMarker({ latlng: $.Track.getFirstMarker().getLatLng() });
                     }
                 }
-            }, {
-                stateName: 'computing',
-                icon: 'fa-spinner fa-pulse',
-                title: 'Fermer la boucle (calcul en cours...)'
             }]
         });
         $('body').on('map2gpx:modechange map2gpx:computingchange map2gpx:markerschange', function (e) {
-            if (e.computing) {
-                closeLoop.state('computing');
-                closeLoop.disable();
-            } else {
-                closeLoop.state('loaded');
-                closeLoop.setEnabled(e.mode !== null && $.Track.hasRoutes() && !$.Track.isImport());
-            }
+            closeLoop.setEnabled(e.mode !== null && $.Track.hasRoutes() && !$.Track.isImport() && !$.Track.isLoop());
         });
 
         L.easyBar([automatedBtn, lineBtn, closeLoop]).addTo(map);
@@ -1913,7 +2116,7 @@ window.onload = function () {
 
                         $btn.attr('disabled', 'disabled');
                         $.State.setComputing(true);
-                        $.State.updateComputing({ progress: 0, status: 'Importation en cours...' });
+                        $.State.updateComputing({ start: true, total: 1, status: 'Importation en cours...' });
 
                         var reader = new FileReader();
 
@@ -1930,7 +2133,7 @@ window.onload = function () {
                                         $.State.setComputing(false);
                                     },
                                     onSuccess: function onSuccess(gpx) {
-                                        $.State.updateComputing({ progress: 1 / (lines.length + 1), status: 'Récupération des données géographiques en cours...', step: 'Fichier traité' });
+                                        $.State.updateComputing([{ step: 'Fichier traité' }, { start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' }]);
 
                                         $.Track.clear();
 
@@ -1952,7 +2155,6 @@ window.onload = function () {
                                         };
 
                                         var promises = [];
-                                        var progresses = [1];
                                         var startMarker;
                                         $.each(lines, function (idx, track) {
                                             // Add new route+markers
@@ -1983,18 +2185,22 @@ window.onload = function () {
 
                                             track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 }); // Use color of starting marker
                                             track.bindPopup('Calculs en cours...');
+                                            track.on('popupopen', function (event) {
+                                                $('.marker-add-button:visible').remove();
+                                            });
 
                                             marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
                                             marker.on('popupopen', deleteTrack);
 
-                                            progresses.push(0);
-                                            promises.push(track.computeStats().progress(function (progress) {
-                                                progresses[idx + 1] = progress.progress;
-                                                progress.progress = progresses;
-                                                $.State.updateComputing(progress);
-                                            }));
+                                            promises.push(track.computeStats().progress($.State.updateComputing));
 
                                             startMarker = marker;
+                                        });
+
+                                        $.each(promises, function () {
+                                            this.done(function () {
+                                                return $.State.updateComputing({});
+                                            });
                                         });
 
                                         $.when.apply($, promises).done(function () {
@@ -2042,8 +2248,8 @@ window.onload = function () {
                 icon: 'fa-trash',
                 title: 'Effacer l\'itinéraire',
                 onClick: function onClick(btn, map) {
-                    $.State.setComputing(true);
                     $.Track.clear();
+                    $.State.triggerMarkersChanged();
                     $.State.setComputing(false);
                 }
             }, {
@@ -2127,103 +2333,30 @@ window.onload = function () {
 
         $('body').on('map2gpx:computingchange', function (e) {
             if (e.computing) {
-                $.State.updateComputing({ progress: 0, status: 'Calculs en cours...' });
+                $.State.updateComputing({ start: true, total: 1, status: 'Calculs en cours...' });
                 $('#data-computing').fadeIn();
             } else {
-                $.State.updateComputing({ progress: 1, status: 'Finalisation...' });
+                $.State.updateComputing({ end: true, status: 'Finalisation...' });
                 $.Chart.replot();
                 $('#data-computing').fadeOut();
             }
         });
 
         function addMarker(e) {
-            if ($.State.getMode() === null || $.State.getComputing()) {
+            if ($.State.getMode() === null) {
                 return;
             }
 
-            $.State.setComputing(true);
-
-            var latlng = L.latLng(Math.roundE8(e.latlng.lat), Math.roundE8(e.latlng.lng));
-            var marker = L.Marker.routed(latlng, {
+            var marker = L.Marker.routed(e.latlng.roundE8(), {
                 riseOnHover: true,
                 draggable: true,
                 opacity: 0.5,
                 color: $.Track.hasMarkers() ? $.Track.getLastMarker().getColorIndex() : $.Track.getCurrentColor(),
                 type: 'waypoint'
-            }).bindPopup('<button class="marker-promote-button"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</button> ' + '<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
-
-            marker.on('popupopen', function () {
-                var _this = this;
-
-                $('.marker-delete-button:visible').click(function () {
-                    if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
-                        return;
-
-                    $.State.setComputing(true);
-                    _this.remove().progress($.State.updateComputing).done(function () {
-                        $.State.setComputing(false);
-                    }).fail(function () {
-                        $.State.setComputing(false);
-                    });
-                });
-
-                $('.marker-promote-button:visible').click(function () {
-                    $.State.setComputing(true);
-                    _this.closePopup();
-
-                    _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
-                    _this.promoteToStep();
-
-                    $.State.setComputing(false);
-                });
             });
 
-            marker.on('moveend', function (event) {
-                // Update routes when moving this marker
-                $.State.setComputing(true);
-                event.target.setOpacity(0.5);
-                var promises = [];
-                var progresses = [];
-
-                if (event.target.hasRouteFromHere()) {
-                    // Re-compute route starting at this marker
-                    var idx = promises.length;
-
-                    progresses.push(0);
-                    promises.push(event.target.recomputeRouteFromHere($.State.getMode()).progress(function (progress) {
-                        progresses[idx] = progress.progress;
-                        progress.progress = progresses;
-                        $.State.updateComputing(progress);
-                    }));
-                }
-
-                if (event.target.hasRouteToHere()) {
-                    // Re-compute route ending at this marker
-                    var _idx = promises.length;
-
-                    progresses.push(0);
-                    promises.push(event.target.recomputeRouteToHere($.State.getMode()).progress(function (progress) {
-                        progresses[_idx] = progress.progress;
-                        progress.progress = progresses;
-                        $.State.updateComputing(progress);
-                    }));
-                }
-
-                $.when.apply($, promises).done(function () {
-                    $.State.setComputing(false);
-                    event.target.setOpacity(1);
-                }).fail(function () {
-                    $.State.setComputing(false);
-                });
-            });
-
-            var promise = $.Track.addMarker(marker);
-
-            promise.progress($.State.updateComputing).done(function () {
+            marker.add().progress($.State.updateComputing).done(function () {
                 marker.setOpacity(1);
-                $.State.setComputing(false);
-            }).fail(function () {
-                $.State.setComputing(false);
             });
 
             if (!isSmallScreen) {
@@ -2250,6 +2383,17 @@ window.onload = function () {
                     }).add('steps', {
                         text: $('#help-steps')[0],
                         attachTo: { element: $('.awesome-marker').last()[0], on: 'bottom' }
+                    }).add('steps2', {
+                        beforeShowPromise: function beforeShowPromise() {
+                            return $.Deferred(function () {
+                                var route = $.Track.getFirstMarker().getRouteFromHere();
+                                var lngs = route.getLatLngs();
+                                var item = lngs[Math.floor(lngs.length / 2)];
+                                route.openPopup(item);
+                                this.resolve();
+                            }).promise();
+                        },
+                        text: $('#help-steps2')[0]
                     }).start();
                 }
             }
