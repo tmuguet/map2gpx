@@ -7,6 +7,7 @@
 
     const $h2 = $('#data-computing h2');
     const $progress = $('#data-computing-progress');
+    const $progressbar = $('#data-computing-progressbar');
     const $status = $('#data-computing-status');
     const $pending = $('#data-computing-pending');
 
@@ -61,6 +62,7 @@
             p = _progress / _total;
 
         $progress.text(Math.round(p * 100) + '%');
+        $progressbar.css('width', Math.round(p * 100) + '%');
 
         if (Math.round(p * 100) == 42)
             $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter($h2).fadeOut(400, function () {this.remove();});
