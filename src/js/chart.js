@@ -28,8 +28,6 @@
 
             this.$emptyElement = $(this.options.dataEmpty);
 
-            const _this = this;
-
             if (!this.options.isSmallScreen) {
                 this.$chart = $('<canvas width="100%" height="100%"></canvas>').appendTo(this.element);
 

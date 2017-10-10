@@ -40,7 +40,6 @@
         };
 
         const add = function (name, settings) {
-            const _this = this;
             const currentStep = _steps;
 
             const opts = $.extend({}, settings, {
@@ -51,22 +50,22 @@
                 {
                     text: 'Fermer',
                     classes: 'shepherd-button-secondary',
-                    action: function () {
-                        $.localStorage.set('tutorial' + tutorials.indexOf(_this), -1);
-                        _this.cancel();
+                    action: () => {
+                        $.localStorage.set('tutorial' + tutorials.indexOf(this), -1);
+                        this.cancel();
                     },
                 }, {
                     text: 'Suivant',
                     classes: 'shepherd-button-example-primary',
-                    action: function () {
-                        const currentShepherdIndex = tutorials.indexOf(_this);
+                    action: () => {
+                        const currentShepherdIndex = tutorials.indexOf(this);
 
                         if (currentShepherdIndex < 0)
                             console.log('Could not find current shepherd, something is probably wrong');
 
                         $.localStorage.set('tutorial' + currentShepherdIndex, currentStep + 1);   // Restore next step
 
-                        _this.next();
+                        this.next();
 
                         if (currentStep == _steps - 1) {
                             // Last step of current tutorial

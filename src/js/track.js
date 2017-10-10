@@ -116,8 +116,6 @@
         },
 
         moveMarker: function (marker) {
-            const _this = this;
-
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
@@ -180,14 +178,12 @@
         },
 
         computeStats: function () {
-            const _this = this;
-
             var steps = [];
             var elevations = [];
             var total = this._initStats();
             var local = this._initStats();
 
-            $.Track.eachMarker(function (i, marker) {
+            $.Track.eachMarker((i, marker) => {
                 if (marker.getType() == 'step') {
                     steps.push(total.distance);
 
@@ -199,7 +195,7 @@
                             break;
                     }
 
-                    local = _this._initStats();
+                    local = this._initStats();
                 }
 
                 const route = marker.getRouteFromHere();
@@ -506,44 +502,41 @@
         },
 
         _bindEvents: function () {
-            const _this = this;
-
             this.bindPopup('<button class="marker-promote-button"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</button> ' +
                 '<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
 
-            this.on('popupopen', function () {
-
-                $('.marker-delete-button:visible').click(function () {
+            this.on('popupopen', () => {
+                $('.marker-delete-button:visible').click(() => {
                     if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
                         return;
 
                     $.State.setComputing(true);
-                    _this.remove().progress($.State.updateComputing).done(function () {
+                    this.remove().progress($.State.updateComputing).done(function () {
                         $.State.setComputing(false);
                     }).fail(function () {
                         $.State.setComputing(false);
                     });
                 });
 
-                $('.marker-promote-button:visible').click(function () {
-                    _this.closePopup();
-                    _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
-                    _this.promoteToStep();
+                $('.marker-promote-button:visible').click(() => {
+                    this.closePopup();
+                    this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
+                    this.promoteToStep();
                     $.State.setComputing(false);    // Force replot
                 });
             });
 
-            this.on('moveend', function (event) {
+            this.on('moveend', (event) => {
                 // Update routes when moving this marker
                 $.State.setComputing(true);
-                _this.setOpacity(0.5);
+                this.setOpacity(0.5);
 
-                $.Track.moveMarker(_this)
+                $.Track.moveMarker(this)
                     .progress($.State.updateComputing)
-                    .done(function () {
+                    .done(() => {
                         $.State.setComputing(false);
-                        event.target.setOpacity(1);
-                    }).fail(function () {
+                        this.setOpacity(1);
+                    }).fail(() => {
                         $.State.setComputing(false);
                     });
             });

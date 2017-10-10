@@ -1,27 +1,26 @@
 
 function fetchAltitude(geometry) {
     return $.Deferred(function () {
-        const _this = this;
         const options = {
             apiKey: keyIgn,
             sampling: geometry.length,
             positions: geometry,
-            onSuccess: function (result) {
+            onSuccess: (result) => {
                 if (result) {
                     $.each(result.elevations, function (i, val) {
                         $.Cache.addAltitude(val.lat, val.lon, val.z);
                     });
 
-                    _this.resolveWith({ size: result.elevations.length });
+                    this.resolveWith({ size: result.elevations.length });
                 } else {
                     console.log('Impossible d\'obtenir les données d\'altitude: résultats invalides');
-                    _this.reject();
+                    this.reject();
                 }
             },
             /** callback onFailure */
-            onFailure: function (error) {
+            onFailure: (error) => {
                 console.log('Impossible d\'obtenir les données d\'altitude: ', error.message);
-                _this.reject();
+                this.reject();
             },
         };
 
@@ -32,8 +31,6 @@ function fetchAltitude(geometry) {
 
 function fetchSlope(tilex, tiley, coords) {
     return $.Deferred(function () {
-        const _this = this;
-
         const data = {
             tilematrix: 16,
             tilerow: tiley,
@@ -58,20 +55,20 @@ function fetchSlope(tilex, tiley, coords) {
             data.y += coord.y.toString();
         });
 
-        $.getJSON('slope.php', data, function (r) {
+        $.getJSON('slope.php', data, (r) => {
             if (r.results) {
                 $.each(r.results, function (i, val) {
                     $.Cache.addSlope(val.lat, val.lon, val.slope);
                 });
 
-                _this.resolveWith({ size: r.results.length });
+                this.resolveWith({ size: r.results.length });
             } else {
                 console.log('Impossible d\'obtenir les données de pente: résultats invalides');
-                _this.reject();
+                this.reject();
             }
-        }).fail(function (jqxhr, textStatus, error) {
+        }).fail((jqxhr, textStatus, error) => {
             console.log('Impossible d\'obtenir les données de pente: ', textStatus, error);
-            _this.reject();
+            this.reject();
         });
     });
 }
@@ -208,7 +205,6 @@ L.Layer.include({
     },
 
     _fetchSlope: function () {
-        const _this = this;
         const tiles = {};
         const promises = [];
         const map = (this._map || this._mapToAdd);
