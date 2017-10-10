@@ -266,7 +266,7 @@
         replot: function () {
             const data = this._compute();
 
-            data.annotations = Array.concat([
+            data.annotations = [
                 {
                     id: 'altmax',
                     type: 'line',
@@ -295,7 +295,7 @@
                     borderWidth: 1,
                     label: { enabled: true, position: 'left', backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: 'normal', xAdjust: -50 },
                 },
-            ], data.annotations);
+            ].concat(data.annotations);
 
             if (isSmallScreen)
                 this._replotSmallScreen(data);

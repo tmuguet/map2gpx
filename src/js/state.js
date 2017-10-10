@@ -50,7 +50,7 @@
         if ('status' in progress && progress.status)
             $status.text(progress.status);
         if ('step' in progress && progress.step)
-            $('<div><small>' + progress.step + '</small></div>').insertAfter($h2).fadeOut(400, function () {this.remove();});
+            $('<div><small>' + progress.step + '</small></div>').insertAfter($h2).fadeOut(400, function () {$(this).remove();});
 
         if (display)
             $.State.displayComputing();
@@ -65,7 +65,7 @@
         $progressbar.css('width', Math.round(p * 100) + '%');
 
         if (Math.round(p * 100) == 42)
-            $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter($h2).fadeOut(400, function () {this.remove();});
+            $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter($h2).fadeOut(400, function () {$(this).remove();});
     };
 
     $.State.triggerMarkersChanged = function () {

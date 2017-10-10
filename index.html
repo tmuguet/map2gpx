@@ -38,11 +38,11 @@
             if (m === undefined)
                 m = Math.random().toString(36).substr(2);
 
-            $('<div>' + m + '</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+            $('<div>' + m + '</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
 
         }, 800);
 
-        $('<div>Chargement des bibliothèques...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+        $('<div>Chargement des bibliothèques...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css" />

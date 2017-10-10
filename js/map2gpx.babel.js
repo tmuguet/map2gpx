@@ -351,7 +351,7 @@ L.Control.EasyButton.include({
 
         if ('status' in progress && progress.status) $status.text(progress.status);
         if ('step' in progress && progress.step) $('<div><small>' + progress.step + '</small></div>').insertAfter($h2).fadeOut(400, function () {
-            this.remove();
+            $(this).remove();
         });
 
         if (display) $.State.displayComputing();
@@ -365,7 +365,7 @@ L.Control.EasyButton.include({
         $progressbar.css('width', Math.round(p * 100) + '%');
 
         if (Math.round(p * 100) == 42) $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter($h2).fadeOut(400, function () {
-            this.remove();
+            $(this).remove();
         });
     };
 
@@ -1037,7 +1037,7 @@ L.GeoJSON.include({
         replot: function replot() {
             var data = this._compute();
 
-            data.annotations = Array.concat([{
+            data.annotations = [{
                 id: 'altmax',
                 type: 'line',
                 mode: 'horizontal',
@@ -1064,7 +1064,7 @@ L.GeoJSON.include({
                 borderColor: 'rgba(0, 0, 0, 0.5)',
                 borderWidth: 1,
                 label: { enabled: true, position: 'left', backgroundColor: 'rgba(0,0,0,0.4)', fontSize: 10, fontStyle: 'normal', xAdjust: -50 }
-            }], data.annotations);
+            }].concat(data.annotations);
 
             if (isSmallScreen) this._replotSmallScreen(data);else this._replotWideScreen(data);
 
@@ -1879,20 +1879,20 @@ L.GeoJSON.include({
 var isSmallScreen = window.innerWidth <= 800 && window.innerHeight <= 600;
 
 $('<div>Observation des faucons crécerelle...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {
-    this.remove();
+    $(this).remove();
 });
 
 window.onload = function () {
 
     $('<div>Localisation des chamois...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {
-        this.remove();
+        $(this).remove();
     });
 
     var map = L.map('map', {});
     map.initView().done(function () {
 
         $('<div>Suivi des renards roux...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {
-            this.remove();
+            $(this).remove();
         });
 
         if (isSmallScreen) {
@@ -2400,7 +2400,7 @@ window.onload = function () {
         }
 
         $('<div>Alignement des satellites...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {
-            this.remove();
+            $(this).remove();
         });
 
         $.Chart.init(map, 'chart', $('#data'), $('#data-empty'), isSmallScreen);

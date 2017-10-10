@@ -1,16 +1,16 @@
 
 const isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
 
-$('<div>Observation des faucons crécerelle...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+$('<div>Observation des faucons crécerelle...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
 
 window.onload = function () {
 
-    $('<div>Localisation des chamois...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+    $('<div>Localisation des chamois...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
 
     var map = L.map('map', {});
     map.initView().done(function () {
 
-        $('<div>Suivi des renards roux...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+        $('<div>Suivi des renards roux...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
 
         if (isSmallScreen) {
             $('#mobile-warning')
@@ -540,7 +540,7 @@ window.onload = function () {
             }
         }
 
-        $('<div>Alignement des satellites...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {this.remove();});
+        $('<div>Alignement des satellites...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
 
         $.Chart.init(map, 'chart', $('#data'), $('#data-empty'), isSmallScreen);
 
