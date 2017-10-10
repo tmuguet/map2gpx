@@ -169,6 +169,87 @@
             });
         },
 
+        _initStats: function () {
+            return {
+                distance: 0,
+                altMin: Number.MAX_VALUE,
+                altMax: Number.MIN_VALUE,
+                denivPos: 0,
+                denivNeg: 0,
+            };
+        },
+
+        computeStats: function () {
+            const _this = this;
+
+            var steps = [];
+            var elevations = [];
+            var total = this._initStats();
+            var local = this._initStats();
+
+            $.Track.eachMarker(function (i, marker) {
+                if (marker.getType() == 'step') {
+                    steps.push(total.distance);
+
+                    var current = marker;
+                    while (current && current.hasRouteToHere()) {
+                        current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                        current = current._previousMarker;
+                        if (current.getType() == 'step')
+                            break;
+                    }
+
+                    local = _this._initStats();
+                }
+
+                const route = marker.getRouteFromHere();
+                const e = route ? route.getElevations() : [];
+                if (e.length > 0) {
+                    // Compute stats on global track
+
+                    for (var j = 0; j < e.length; j++) {
+                        e[j].dist += total.distance;
+                        e[j].route = route;
+                    }
+
+                    elevations = elevations.concat(e);
+                    total.distance += route.getDistance();
+
+                    total.altMin = Math.min(total.altMin, route.getAltMin());
+                    total.altMax = Math.max(total.altMax, route.getAltMax());
+
+                    total.denivNeg += route.getDenivNeg();
+                    total.denivPos += route.getDenivPos();
+
+                    // Compute stats on current step
+                    local.distance += route.getDistance();
+
+                    local.altMin = Math.min(local.altMin, route.getAltMin());
+                    local.altMax = Math.max(local.altMax, route.getAltMax());
+
+                    local.denivNeg += route.getDenivNeg();
+                    local.denivPos += route.getDenivPos();
+                }
+            });
+
+            if (local.distance > 0) {
+                var current = $.Track.getLastMarker();
+                while (current && current.hasRouteToHere()) {
+                    current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                    current = current._previousMarker;
+                    if (current.getType() == 'step')
+                        break;
+                }
+            }
+
+            return {
+                size: elevations.length,
+                elevations,
+                total,
+                steps,
+            };
+        },
+
         exportGpx: function (filename) {
             let isFileSaverSupported = false;
             try {

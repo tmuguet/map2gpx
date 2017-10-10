@@ -469,7 +469,7 @@ window.onload = function () {
                 $('#data-computing').fadeIn();
             } else {
                 $.State.updateComputing({ end: true, status: 'Finalisation...' });
-                $.Chart.replot();
+                $('#data').data('map2gpx-chart').replot($.Track.computeStats());
                 $('#data-computing').fadeOut();
             }
         });
@@ -546,7 +546,7 @@ window.onload = function () {
 
         $('<div>Alignement des satellites...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
 
-        $.Chart.init(map, 'chart', $('#data'), $('#data-empty'), isSmallScreen);
+        $('#data').chart({ map, dataEmpty: '#data-empty', isSmallScreen });
 
         $.State.setMode(null);
         $.State.triggerMarkersChanged();

@@ -45,6 +45,8 @@
         $('<div>Chargement des bibliothèques...</div>').insertAfter($('#loading h2')).fadeOut(2000, function () {$(this).remove();});
     </script>
 
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"></script>
 
@@ -178,9 +180,7 @@
         </div>
     </div>
     <div id="map"></div>
-    <div id="data" class="data">
-        <canvas id="chart" width="100%" height="100%"></canvas>
-    </div>
+    <div id="data" class="data"></div>
 
     <div id="data-empty" class="data">
         <h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br/>Rien à montrer ici...</h2>
