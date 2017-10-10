@@ -2355,6 +2355,9 @@ window.onload = function () {
                 type: 'waypoint'
             });
 
+            // Ignore this marker if same as previous
+            if ($.Track.hasMarkers() && $.Track.getLastMarker().getLatLng().equals(marker.getLatLng())) return;
+
             marker.add().progress($.State.updateComputing).done(function () {
                 marker.setOpacity(1);
             });
