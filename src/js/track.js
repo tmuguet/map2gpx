@@ -445,13 +445,10 @@
                 });
 
                 $('.marker-promote-button:visible').click(function () {
-                    $.State.setComputing(true);
                     _this.closePopup();
-
                     _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
                     _this.promoteToStep();
-
-                    $.State.setComputing(false);
+                    $.State.setComputing(false);    // Force replot
                 });
             });
 
