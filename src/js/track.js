@@ -116,8 +116,6 @@
         },
 
         moveMarker: function (marker) {
-            const _this = this;
-
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
@@ -167,6 +165,85 @@
 
                 $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
             });
+        },
+
+        _initStats: function () {
+            return {
+                distance: 0,
+                altMin: Number.MAX_VALUE,
+                altMax: Number.MIN_VALUE,
+                denivPos: 0,
+                denivNeg: 0,
+            };
+        },
+
+        computeStats: function () {
+            var steps = [];
+            var elevations = [];
+            var total = this._initStats();
+            var local = this._initStats();
+
+            $.Track.eachMarker((i, marker) => {
+                if (marker.getType() == 'step') {
+                    steps.push(total.distance);
+
+                    var current = marker;
+                    while (current && current.hasRouteToHere()) {
+                        current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                        current = current._previousMarker;
+                        if (current.getType() == 'step')
+                            break;
+                    }
+
+                    local = this._initStats();
+                }
+
+                const route = marker.getRouteFromHere();
+                const e = route ? route.getElevations() : [];
+                if (e.length > 0) {
+                    // Compute stats on global track
+
+                    for (var j = 0; j < e.length; j++) {
+                        e[j].dist += total.distance;
+                        e[j].route = route;
+                    }
+
+                    elevations = elevations.concat(e);
+                    total.distance += route.getDistance();
+
+                    total.altMin = Math.min(total.altMin, route.getAltMin());
+                    total.altMax = Math.max(total.altMax, route.getAltMax());
+
+                    total.denivNeg += route.getDenivNeg();
+                    total.denivPos += route.getDenivPos();
+
+                    // Compute stats on current step
+                    local.distance += route.getDistance();
+
+                    local.altMin = Math.min(local.altMin, route.getAltMin());
+                    local.altMax = Math.max(local.altMax, route.getAltMax());
+
+                    local.denivNeg += route.getDenivNeg();
+                    local.denivPos += route.getDenivPos();
+                }
+            });
+
+            if (local.distance > 0) {
+                var current = $.Track.getLastMarker();
+                while (current && current.hasRouteToHere()) {
+                    current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                    current = current._previousMarker;
+                    if (current.getType() == 'step')
+                        break;
+                }
+            }
+
+            return {
+                size: elevations.length,
+                elevations,
+                total,
+                steps,
+            };
         },
 
         exportGpx: function (filename) {
@@ -425,47 +502,41 @@
         },
 
         _bindEvents: function () {
-            const _this = this;
-
             this.bindPopup('<button class="marker-promote-button"><i class="fa fa-asterisk" aria-hidden="true"></i> Marquer comme étape</button> ' +
                 '<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
 
-            this.on('popupopen', function () {
-
-                $('.marker-delete-button:visible').click(function () {
+            this.on('popupopen', () => {
+                $('.marker-delete-button:visible').click(() => {
                     if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
                         return;
 
                     $.State.setComputing(true);
-                    _this.remove().progress($.State.updateComputing).done(function () {
+                    this.remove().progress($.State.updateComputing).done(function () {
                         $.State.setComputing(false);
                     }).fail(function () {
                         $.State.setComputing(false);
                     });
                 });
 
-                $('.marker-promote-button:visible').click(function () {
-                    $.State.setComputing(true);
-                    _this.closePopup();
-
-                    _this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
-                    _this.promoteToStep();
-
-                    $.State.setComputing(false);
+                $('.marker-promote-button:visible').click(() => {
+                    this.closePopup();
+                    this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
+                    this.promoteToStep();
+                    $.State.setComputing(false);    // Force replot
                 });
             });
 
-            this.on('moveend', function (event) {
+            this.on('moveend', (event) => {
                 // Update routes when moving this marker
                 $.State.setComputing(true);
-                _this.setOpacity(0.5);
+                this.setOpacity(0.5);
 
-                $.Track.moveMarker(_this)
+                $.Track.moveMarker(this)
                     .progress($.State.updateComputing)
-                    .done(function () {
+                    .done(() => {
                         $.State.setComputing(false);
-                        event.target.setOpacity(1);
-                    }).fail(function () {
+                        this.setOpacity(1);
+                    }).fail(() => {
                         $.State.setComputing(false);
                     });
             });

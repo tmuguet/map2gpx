@@ -9,7 +9,6 @@
     const $progress = $('#data-computing-progress');
     const $progressbar = $('#data-computing-progressbar');
     const $status = $('#data-computing-status');
-    const $pending = $('#data-computing-pending');
 
     $.State = {};
 
