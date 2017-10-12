@@ -13,8 +13,10 @@ const sources_js = [
     "src/js/stats.js",
     "src/js/chart.js",
 
-    "src/js/route.js",
     "src/js/track.js",
+
+    "src/js/map.js",
+
 
     "src/js/script.js"
 ];

@@ -1,16 +1,18 @@
 (function ($) {
     var queues = 0;
+    var listeners = [];
 
     $.fn.clearCompute = function () {
         return this.each(function () {
             queues -= $(this).queue().length;
             $(this).clearQueue();
+            $.Queue.stop();
         });
     };
 
     $.fn.startCompute = function (cb) {
         return this.each(function () {
-            $.State.setComputing(true);
+            $.Queue.start();
             queues++;
             $(this).queue(cb);
         });
@@ -20,14 +22,35 @@
         return this.each(function () {
             queues--;
             next();
-
-            if (queues == 0)
-                $.State.setComputing(false);
+            $.Queue.stop();
         });
     };
 
     $.Queue = {
         size: () => queues,
+        bindTo: (o) => listeners.push(o),
+
+        start: function () {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.progress('start');
+                });
+            }
+        },
+
+        stop: function () {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.progress('stop');
+                });
+            }
+        },
+
+        notify: function (progress) {
+            $.each(listeners, function () {
+                this.progress('update', progress);
+            });
+        },
     };
 
 })(jQuery);

@@ -7,12 +7,189 @@
         white: '#FBFBFB', lightgray: '#A3A3A3', gray: '#575757', black: '#303030', };
     const colors = ['blue', 'green', 'orange', 'purple', 'red', 'darkblue', 'darkpurple', 'lightblue', 'lightgreen', 'beige', 'pink', 'lightred'];
 
-    $.Track = {
-        currentColor: 0,
-        markersLength: 0,
+    function findRoute(map, start, end, index, mode = 'auto') {
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
 
-        bindTo: function (map) {
-            this.map = map;
+            if (mode == 'straight') {
+                // Use a deferred instead of returning it so we don't miss notifications
+                _findRouteStraight(map, start, end, index)
+                    .progress(deferred.notify)
+                    .done(deferred.resolve)
+                    .fail(deferred.reject);
+            } else {
+                _findRouteAuto(map, start, end, index)
+                    .progress(deferred.notify)
+                    .done(deferred.resolve)
+                    .fail(function () {
+                        console.log(this.error);
+                        console.log('Trying straight line...');
+
+                        const autoFailDrop = new Drop({
+                            target: $('.awesome-marker').eq(index + 1)[0],
+                            classes: 'drop-theme-arrows',
+                            position: 'right middle',
+                            constrainToWindow: false,
+                            constrainToScrollParent: false,
+                            openOn: null,
+                            content: 'Impossible d\'obtenir le tracé en mode automatique. Le mode ligne droite va être utilisé.',
+                        });
+                        autoFailDrop.open();
+                        $(autoFailDrop.content).on('click', function () {
+                            autoFailDrop.destroy();
+                        });
+
+                        _findRouteStraight(map, start, end, index)
+                            .progress(deferred.notify)
+                            .done(deferred.resolve)
+                            .fail(deferred.reject);
+                    });
+            }
+        });
+    }
+
+    function _addRoute(map, geojson, start, end, index, mode) {
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
+
+            geojson.prepareForMap(map, start, end);
+            geojson.computeStats().progress(deferred.notify).then(function () {
+                geojson.addTo(map);
+                geojson.bindPopup('Calculs en cours...');
+                geojson.on('popupopen', function (event) {
+                    $('.marker-add-button:visible').click(function () {
+                        const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                            riseOnHover: true,
+                            draggable: true,
+                            opacity: 0.5,
+                            color: start.getColorIndex(),
+                            type: 'waypoint',
+                        });
+
+                        marker.insert(geojson)
+                            .done(function () {
+                                marker.setOpacity(1);
+                            });
+                    });
+                });
+
+                geojson.snakeIn();
+                start.setOpacity(1);
+                end.setOpacity(1);
+
+                deferred.resolveWith({ route: geojson });
+            }).fail(function () {
+                deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
+            });
+        });
+    }
+
+    function _findRouteAuto(map, start, end, index) {
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
+
+            const startLatLng = start.getLatLng();
+            const endLatLng = end.getLatLng();
+
+            const options = {
+                distanceUnit: 'm',
+                endPoint: {
+                    x: endLatLng.lng,
+                    y: endLatLng.lat,
+                },
+                exclusions: [],
+                geometryInInstructions: true,
+                graph: 'Pieton',
+                routePreferences: 'fastest',
+                startPoint: {
+                    x: startLatLng.lng,
+                    y: startLatLng.lat,
+                },
+                viaPoints: [],
+                apiKey: keyIgn,
+                onSuccess: function (results) {
+                    if (results) {
+                        const geojson = L.geoJSON([], {
+                            color: start.getColorRgb(),
+                            weight: 5,
+                            opacity: 0.75,
+                            snakingPause: 0,
+                            snakingSpeed: 1000,
+                        });
+
+                        const _geometry = {
+                            type: 'FeatureCollection',
+                            features: [],
+                        };
+                        var counter = 1;
+                        $.each(results.routeInstructions, function (idx, instructions) {
+                            counter++;
+                            _geometry.features.push({
+                                id: counter,
+                                type: 'Feature',
+                                geometry: instructions.geometry,
+                            });
+                        });
+
+                        geojson.addData(_geometry);
+
+                        _addRoute(map, geojson, start, end, index, 'auto')
+                            .progress(deferred.notify)
+                            .done(deferred.resolve)
+                            .fail(deferred.reject);
+
+                        deferred.notify({ step: 'Route calculée' });
+                    } else {
+                        deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
+                    }
+                },
+                onFailure: function (error) {    // seems to never be called
+                    deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
+                },
+            };
+            deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
+            Gp.Services.route(options);
+        });
+    }
+
+    function _findRouteStraight(map, start, end, index) {
+        const c1 = start.getLatLng().roundE8();
+        const c2 = end.getLatLng().roundE8();
+        const d = c1.distanceTo(c2);
+        const azimuth = c1.bearingTo(c2);
+
+        const latlngs = [c1];
+
+        const interval = 10;
+        for (let counter = interval; counter < d; counter += interval) {
+            latlngs.push(c1.getDestinationAlong(azimuth, counter));
+        }
+
+        latlngs.push(c2);
+
+        const geojson = L.polyline(latlngs, {
+            color: start.getColorRgb(),
+            weight: 5,
+            opacity: 0.75,
+            snakingPause: 0,
+            snakingSpeed: 1000,
+        });
+
+        return _addRoute(map, geojson, start, end, index, 'straight');
+    }
+
+    L.Track = L.Evented.extend({
+        options: {
+            map: undefined,
+        },
+
+        initialize: function (options) {
+            L.setOptions(this, options);
+            this.Lmap = this.options.map.map('getMap');
+            this.$map = this.options.map;
+
+            this.currentColor = 0;
+            this.markersLength = 0;
         },
 
         getCurrentColor: function () {
@@ -63,7 +240,7 @@
 
         clear: function () {
             this.eachMarker(function (i, marker) { marker.remove(false); });
-            $.State.triggerMarkersChanged();
+            this.fire('markerschanged');
         },
 
         eachMarker: function (callback) {
@@ -93,6 +270,8 @@
         },
 
         addMarker: function (marker, computeRoute = true) {
+            const _this = this;
+
             var promise;
 
             if (this.firstMarker === undefined)
@@ -100,34 +279,36 @@
 
             if (this.lastMarker !== undefined) {
                 if (computeRoute)
-                    promise = this.lastMarker.computeRouteTo(marker, $.State.getMode());
+                    promise = this.lastMarker.computeRouteTo(marker, this.$map.map('getMode'));
             }
 
             this.lastMarker = marker;
             this.markersLength++;
-            marker.addTo(this.map);
+            marker.track = this;
+            marker.addTo(this.Lmap);
 
             if (promise)
-                return promise;
+                return promise.done(() => this.fire('markerschanged'));
             else
                 return $.Deferred(function () {
+                    _this.fire('markerschanged');
                     this.resolve();
                 });
         },
 
         moveMarker: function (marker) {
+            const _this = this;
+
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
-
-                const mode = $.State.getMode() || marker.getRouteModeFromHere();
 
                 if (marker.hasRouteFromHere()) {
                     // Re-compute route starting at this marker
                     const idx = promises.length;
 
                     promises.push(
-                        marker.recomputeRouteFromHere($.State.getMode()).progress(deferred.notify)
+                        marker.recomputeRouteFromHere(_this.$map.map('getMode'))
                     );
                 }
 
@@ -136,11 +317,14 @@
                     const idx = promises.length;
 
                     promises.push(
-                        marker.recomputeRouteToHere($.State.getMode()).progress(deferred.notify)
+                        marker.recomputeRouteToHere(_this.$map.map('getMode'))
                     );
                 }
 
-                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+                $.when.apply($, promises).done(function () {
+                    _this.fire('markerschanged');
+                    deferred.resolve();
+                }).fail(deferred.fail);
             });
         },
 
@@ -151,19 +335,20 @@
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
 
-                const mode = $.State.getMode() || marker.getRouteModeFromHere();
-
                 promises.push(
-                    route.getStartMarker().computeRouteTo(marker, $.State.getMode()).progress(deferred.notify)
+                    route.getStartMarker().computeRouteTo(marker, _this.$map.map('getMode'))
                 );
                 promises.push(
-                    marker.computeRouteTo(route.getEndMarker(), $.State.getMode()).progress(deferred.notify)
+                    marker.computeRouteTo(route.getEndMarker(), _this.$map.map('getMode'))
                 );
 
                 _this.markersLength++;
-                marker.addTo(_this.map);
+                marker.addTo(_this.Lmap);
 
-                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+                $.when.apply($, promises).done(function () {
+                    _this.fire('markerschanged');
+                    deferred.resolve();
+                }).fail(deferred.fail);
             });
         },
 
@@ -183,7 +368,7 @@
             var total = this._initStats();
             var local = this._initStats();
 
-            $.Track.eachMarker((i, marker) => {
+            this.eachMarker((i, marker) => {
                 if (marker.getType() == 'step') {
                     steps.push(total.distance);
 
@@ -229,7 +414,7 @@
             });
 
             if (local.distance > 0) {
-                var current = $.Track.getLastMarker();
+                var current = this.getLastMarker();
                 while (current && current.hasRouteToHere()) {
                     current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
                     current = current._previousMarker;
@@ -345,6 +530,112 @@
             return true;
         },
 
+        importGpx: function (file) {
+            const _this = this;
+
+            return $.Deferred(function () {
+                const deferred = this;  // jscs:ignore safeContextKeyword
+                const reader = new FileReader();
+
+                reader.onload = (function (theFile) {
+                    return function (e) {
+
+                        const lines = [];
+                        const line = new L.GPX(e.target.result, {
+                            async: true,
+                            onFail: function () {
+                                deferred.rejectWith({ error: 'Impossible de traiter ce fichier' });
+                            },
+                            onSuccess: function (gpx) {
+                                deferred.notify({ step: 'Fichier traité' });
+                                deferred.notify({ start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' });
+
+                                _this.clear();
+
+                                const bounds = gpx.getBounds();
+
+                                _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
+                                gpx.addTo(_this.Lmap);
+
+                                var deleteTrack = function () {
+                                    $('.track-delete-button:visible').click(function () {
+                                        _this.clear();
+                                        _this.Lmap.removeLayer(gpx);
+                                    });
+                                };
+
+                                const promises = [];
+                                var startMarker;
+                                $.each(lines, function (idx, track) {
+                                    // Add new route+markers
+
+                                    if (idx == 0) {
+                                        const start = track.getLatLngs()[0];
+                                        startMarker = L.Marker.routed(start, {
+                                            draggable: false,
+                                            opacity: 0.5,
+                                            color: _this.getCurrentColor(),
+                                            type: 'waypoint',
+                                        });
+                                        _this.addMarker(startMarker, false);
+
+                                        startMarker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
+                                        startMarker.on('popupopen', deleteTrack);
+                                    }
+
+                                    const end = track.getLatLngs()[track.getLatLngs().length - 1];
+                                    const marker = L.Marker.routed(end, {
+                                        draggable: false,
+                                        opacity: 0.5,
+                                        color: _this.nextColor(),
+                                        type: 'step',
+                                    });
+                                    _this.addMarker(marker, false);
+                                    startMarker.attachRouteFrom(marker, track, 'import');
+
+                                    track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
+                                    track.bindPopup('Calculs en cours...');
+                                    track.on('popupopen', function (event) {
+                                        $('.marker-add-button:visible').remove();
+                                    });
+
+                                    marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
+                                    marker.on('popupopen', deleteTrack);
+
+                                    promises.push(track.computeStats().progress(deferred.notify));
+
+                                    startMarker = marker;
+                                });
+
+                                $.each(promises, function () {
+                                    this.done(() => deferred.notify({}));
+                                });
+
+                                $.when.apply($, promises).done(function () {
+                                    _this.eachRoute(function (i, route) {
+                                        route.setStyle({ opacity: 0.75 });
+                                    });
+
+                                    _this.eachMarker(function (i, marker) {
+                                        marker.setOpacity(1);
+                                    });
+
+                                    _this.fire('markerschanged');
+
+                                    deferred.resolve();
+                                }).fail(function () {
+                                    deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                });
+                            },
+                        }).on('addline', function (e) { lines.push(e.line); });
+                    };
+                })(file);
+
+                // Read in the image file as a data URL.
+                reader.readAsText(file);
+            });
+        },
+
         _removeMarker: function (marker) {
             if (this.firstMarker === marker)
                 this.firstMarker = marker._nextMarker;   // Potentially undefined
@@ -353,6 +644,10 @@
 
             this.markersLength--;
         },
+    });
+
+    L.track = function (options) {
+        return new L.Track(options);
     };
 
     L.Marker.Routed = L.Marker.extend({
@@ -406,7 +701,7 @@
         },
 
         promoteToStep: function () {
-            const newColor = $.Track.nextColor();
+            const newColor = this.track.nextColor();
 
             var _this = this;
             while (_this && _this.options.type != 'step') {
@@ -415,7 +710,7 @@
             }
 
             this.setType('step');
-            $.State.triggerMarkersChanged();
+            this.track.fire('markerschanged');
         },
 
         demoteToWaypoint: function () {
@@ -431,7 +726,7 @@
                 }
             }
 
-            $.State.triggerMarkersChanged();
+            this.track.fire('markerschanged');
         },
 
         hasRouteToHere: function () {
@@ -472,8 +767,8 @@
                 $(_this).startCompute(function (next) {
                     mode = mode || _this._mode || 'auto';
 
-                    $.Route.find(_this, to, 0, mode)
-                        .progress(deferred.notify)
+                    findRoute($('#map').map('getMap'), _this, to, 0, mode)  // FIXME
+                        .progress($.Queue.notify)
                         .done(function () {
                             _this.deleteRouteFromHere();
                             _this.attachRouteFrom(to, this.route, mode);
@@ -507,49 +802,34 @@
 
             this.on('popupopen', () => {
                 $('.marker-delete-button:visible').click(() => {
-                    if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
-                        return;
-
-                    $.State.setComputing(true);
-                    this.remove().progress($.State.updateComputing).done(function () {
-                        $.State.setComputing(false);
-                    }).fail(function () {
-                        $.State.setComputing(false);
-                    });
+                    this.remove();
                 });
 
                 $('.marker-promote-button:visible').click(() => {
                     this.closePopup();
                     this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
                     this.promoteToStep();
-                    $.State.setComputing(false);    // Force replot
                 });
             });
 
             this.on('moveend', (event) => {
                 // Update routes when moving this marker
-                $.State.setComputing(true);
                 this.setOpacity(0.5);
 
-                $.Track.moveMarker(this)
-                    .progress($.State.updateComputing)
-                    .done(() => {
-                        $.State.setComputing(false);
-                        this.setOpacity(1);
-                    }).fail(() => {
-                        $.State.setComputing(false);
-                    });
+                this.track.moveMarker(this).done(() => this.setOpacity(1));
             });
         },
 
-        add: function (computeRoute = true) {
+        add: function (o, computeRoute = true) {
+            this.track = o;
             this._bindEvents();
-            return $.Track.addMarker(this, computeRoute);
+            return this.track.addMarker(this, computeRoute);
         },
 
         insert: function (route) {
+            this.track = $('#map').map('getTrack'); // FIXME
             this._bindEvents();
-            return $.Track.insertMarker(this, route);
+            return this.track.insertMarker(this, route);
         },
 
         remove: function (recompute = true) {
@@ -563,7 +843,7 @@
             const previous = this._previousMarker;
             const next = this._nextMarker;
 
-            $.Track._removeMarker(this);
+            this.track._removeMarker(this);
 
             if (this.routeFrom) {
                 this.deleteRouteFromHere();
@@ -576,7 +856,7 @@
 
                 if (next && recompute) {
                     // Re-connect markers
-                    const mode = $.State.getMode() || this._mode || 'auto';
+                    const mode = this.track.$map.map('getMode') || this._mode || 'auto';
 
                     promise = previous.computeRouteTo(next, mode);
 
