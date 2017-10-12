@@ -383,12 +383,12 @@
             });
 
             L.easyBar([importButton, resetButton]).addTo(this.map);
-            this.element.on('mapcomputingchanged', (e) => {
+            this.element.on('mapcomputingchanged mapstatechanged', (e) => {
                 importButton.state(this.computing ? 'computing' : 'loaded');
                 resetButton.state(this.computing ? 'computing' : 'loaded');
 
                 importButton.setEnabled(!this.computing);
-                resetButton.setEnabled(!this.computing);
+                resetButton.setEnabled(!this.computing && this.track.hasMarkers());
             });
         },
 
