@@ -861,6 +861,7 @@
             }
 
             L.Marker.prototype.remove.call(this);
+            this.track.fire('markerschanged');
 
             if (promise)
                 return promise;
