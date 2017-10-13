@@ -241,14 +241,14 @@ L.Layer.include({
         return promises;
     },
 
-    setPopupContentWith: function (color, stats) {
+    setPopupContentWith: function (color, stats, hasInsertMaker = true) {
         this.setPopupContent('<ul class="legend ' + color + '">' +
             '<li>Altitude max: ' + Math.round(stats.altMax) + 'm</li>' +
             '<li>D+: ' + Math.round(stats.denivPos) + 'm</li>' +
             '<li>Altitude min: ' + Math.round(stats.altMin) + 'm</li>' +
             '<li>D-: ' + Math.round(stats.denivNeg) + 'm</li>' +
             '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>' +
-            '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>');
+            (hasInsertMaker ? '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>' : ''));
     },
 });
 

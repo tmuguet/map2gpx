@@ -374,7 +374,7 @@
 
                     var current = marker;
                     while (current && current.hasRouteToHere()) {
-                        current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                        current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local, current._previousMarker.getRouteModeFromHere() != 'import');
                         current = current._previousMarker;
                         if (current.getType() == 'step')
                             break;
@@ -416,7 +416,7 @@
             if (local.distance > 0) {
                 var current = this.getLastMarker();
                 while (current && current.hasRouteToHere()) {
-                    current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                    current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local, current._previousMarker.getRouteModeFromHere() != 'import');
                     current = current._previousMarker;
                     if (current.getType() == 'step')
                         break;
@@ -595,9 +595,6 @@
 
                                     track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
                                     track.bindPopup('Calculs en cours...');
-                                    track.on('popupopen', function (event) {
-                                        $('.marker-add-button:visible').remove();
-                                    });
 
                                     marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
                                     marker.on('popupopen', deleteTrack);
