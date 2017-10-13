@@ -287,17 +287,19 @@ L.Control.EasyButton.include({
 
 (function ($) {
     var queues = 0;
+    var listeners = [];
 
     $.fn.clearCompute = function () {
         return this.each(function () {
             queues -= $(this).queue().length;
             $(this).clearQueue();
+            $.Queue.stop();
         });
     };
 
     $.fn.startCompute = function (cb) {
         return this.each(function () {
-            $.State.setComputing(true);
+            $.Queue.start();
             queues++;
             $(this).queue(cb);
         });
@@ -307,94 +309,138 @@ L.Control.EasyButton.include({
         return this.each(function () {
             queues--;
             next();
-
-            if (queues == 0)
-                $.State.setComputing(false);
+            $.Queue.stop();
         });
     };
 
     $.Queue = {
         size: () => queues,
+        bindTo: (o) => listeners.push(o),
+
+        start: function () {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.progress('start');
+                });
+            }
+        },
+
+        stop: function () {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.progress('stop');
+                });
+            }
+        },
+
+        notify: function (progress) {
+            $.each(listeners, function () {
+                this.progress('update', progress);
+            });
+        },
     };
 
 })(jQuery);
 
 (function ($) {
-    var _mode = null;
-    var _computing = false;
+    $.widget('map2gpx.progress', {
+        options: {
+            progress: 0,
+            total: 0,
+            started: false,
+        },
 
-    var _progress = 0;
-    var _total = 0;
+        _create: function () {
+            this.element.append('<h2><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>' +
+                '<strong><span class="data-computing-progress"></span> <small>- <span class="data-computing-status">Calculs en cours...</span></small></strong>' +
+                '<div class="data-computing-progressbar-container"><div class="data-computing-progressbar"></div></div></h2>');
 
-    const $h2 = $('#data-computing h2');
-    const $progress = $('#data-computing-progress');
-    const $progressbar = $('#data-computing-progressbar');
-    const $status = $('#data-computing-status');
+            this.$h2 = this.element.find('h2');
+            this.$progress = this.element.find('.data-computing-progress');
+            this.$progressbar = this.element.find('.data-computing-progressbar');
+            this.$status = this.element.find('.data-computing-status');
 
-    $.State = {};
+            if (this.options.started)
+                this.start();
+        },
 
-    $.State.setMode = function (mode) {
-        _mode = mode;
-        $('body').trigger($.Event('map2gpx:modechange', { mode: _mode, computing: _computing }));
-    };
+        _buildEventData: function () {
+            return { started: this.options.started };
+        },
 
-    $.State.setComputing = function (computing) {
-        if (computing && !_computing) {
-            _progress = 0;
-            _total = 0;
-        }
+        start: function () {
+            if (!this.options.started) {
+                // Reset
+                this.options.progress = 0;
+                this.options.total = 0;
+            }
 
-        _computing = computing;
-        $('body').trigger($.Event('map2gpx:computingchange', { mode: _mode, computing: _computing }));
-    };
+            this.options.started = true;
+            this.update({ start: true, total: 1, status: 'Calculs en cours...' });
 
-    $.State.updateComputing = function (progress, display = true) {
-        if (Array.isArray(progress)) {
-            $.each(progress, function () {
-                $.State.updateComputing(this, false);
-            });
+            this._trigger('statechanged', null, this._buildEventData());
+            this._trigger('started', null, {});
+        },
 
-            $.State.displayComputing();
+        stop: function () {
+            this.options.started = false;
+            this.update({ end: true, status: 'Finalisation...' });
 
-            return;
-        }
+            this._trigger('statechanged', null, this._buildEventData());
+            this._trigger('stopped', null, {});
+        },
 
-        if (progress.start) {
-            _total += progress.total;
-        } else if (progress.end) {
-            _progress = _total;
-        } else {
-            _progress++;
-        }
+        started: function (started) {
+            if (started === undefined) {
+                return this.options.started;
+            }
 
-        if ('status' in progress && progress.status)
-            $status.text(progress.status);
-        if ('step' in progress && progress.step)
-            $('<div><small>' + progress.step + '</small></div>').insertAfter($h2).fadeOut(400, function () {$(this).remove();});
+            if (started)
+                this.start();
+            else
+                this.stop();
+        },
 
-        if (display)
-            $.State.displayComputing();
-    };
+        update: function (progress) {
+            if (Array.isArray(progress)) {
+                const _this = this;
+                $.each(progress, function () {
+                    _this._update(this);
+                });
+            } else {
+                this._update(progress);
+            }
 
-    $.State.displayComputing = function () {
-        let p = 1;
-        if (_total > 0)
-            p = _progress / _total;
+            this._display();
+        },
 
-        $progress.text(Math.round(p * 100) + '%');
-        $progressbar.css('width', Math.round(p * 100) + '%');
+        _update: function (progress) {
+            if (progress.start) {
+                this.options.total += progress.total;
+            } else if (progress.end) {
+                this.options.progress = this.options.total;
+            } else {
+                this.options.progress++;
+            }
 
-        if (Math.round(p * 100) == 42)
-            $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter($h2).fadeOut(400, function () {$(this).remove();});
-    };
+            if ('status' in progress && progress.status)
+                this.$status.text(progress.status);
+            if ('step' in progress && progress.step)
+                $('<div><small>' + progress.step + '</small></div>').insertAfter(this.$h2).fadeOut(400, function () {$(this).remove();});
+        },
 
-    $.State.triggerMarkersChanged = function () {
-        $('body').trigger($.Event('map2gpx:markerschange', { mode: _mode, computing: _computing }));
-    };
+        _display: function () {
+            let p = 1;
+            if (this.options.total > 0)
+                p = this.options.progress / this.options.total;
 
-    $.State.getMode = function () { return _mode; };
-    $.State.getComputing = function () { return _computing; };
+            this.$progress.text(Math.round(p * 100) + '%');
+            this.$progressbar.css('width', Math.round(p * 100) + '%');
 
+            if (Math.round(p * 100) == 42)
+                $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter(this.$h2).fadeOut(400, function () {$(this).remove();});
+        },
+    });
 })(jQuery);
 
 (function ($) {
@@ -751,14 +797,14 @@ L.Layer.include({
         return promises;
     },
 
-    setPopupContentWith: function (color, stats) {
+    setPopupContentWith: function (color, stats, hasInsertMaker = true) {
         this.setPopupContent('<ul class="legend ' + color + '">' +
             '<li>Altitude max: ' + Math.round(stats.altMax) + 'm</li>' +
             '<li>D+: ' + Math.round(stats.denivPos) + 'm</li>' +
             '<li>Altitude min: ' + Math.round(stats.altMin) + 'm</li>' +
             '<li>D-: ' + Math.round(stats.denivNeg) + 'm</li>' +
             '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>' +
-            '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>');
+            (hasInsertMaker ? '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>' : ''));
     },
 });
 
@@ -1136,215 +1182,6 @@ L.GeoJSON.include({
 
 })(jQuery);
 
-(function ($) {
-    var map;
-
-    $.Route = {
-        bindTo: function (map) {
-            this.map = map;
-        },
-
-        find: function (start, end, index, mode = 'auto') {
-            const _this = this;
-
-            var deferred;
-
-            if (mode == 'straight') {
-                deferred = this._findStraight(start, end, index);
-            } else {
-                deferred = $.Deferred(function () {
-                    const deferred = this;  // jscs:ignore safeContextKeyword
-
-                    _this._findAuto(start, end, index)
-                        .done(deferred.resolve)
-                        .progress(deferred.notify)
-                        .fail(function () {
-                            console.log(this.error);
-                            console.log('Trying straight line...');
-
-                            const autoFailDrop = new Drop({
-                                target: $('.awesome-marker').eq(index + 1)[0],
-                                classes: 'drop-theme-arrows',
-                                position: 'right middle',
-                                constrainToWindow: false,
-                                constrainToScrollParent: false,
-                                openOn: null,
-                                content: 'Impossible d\'obtenir le tracé en mode automatique. Le mode ligne droite va être utilisé.',
-                            });
-                            autoFailDrop.open();
-                            $(autoFailDrop.content).on('click', function () {
-                                autoFailDrop.destroy();
-                            });
-
-                            _this._findStraight(start, end, index)
-                                .done(deferred.resolve)
-                                .fail(deferred.reject);
-                        });
-                });
-            }
-
-            return deferred;
-        },
-
-        _add: function (geojson, start, end, index, mode) {
-            const _this = this;
-
-            return $.Deferred(function () {
-                const deferred = this;  // jscs:ignore safeContextKeyword
-
-                geojson.prepareForMap(_this.map, start, end);
-                geojson.computeStats().progress(deferred.notify).then(function () {
-                    geojson.addTo(_this.map);
-                    geojson.bindPopup('Calculs en cours...');
-                    geojson.on('popupopen', function (event) {
-                        const _this = this;
-
-                        $('.marker-add-button:visible').click(function () {
-                            if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
-                                return;
-
-                            $.State.setComputing(true);
-                            const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
-                                riseOnHover: true,
-                                draggable: true,
-                                opacity: 0.5,
-                                color: start.getColorIndex(),
-                                type: 'waypoint',
-                            });
-
-                            marker.insert(geojson).progress($.State.updateComputing)
-                                .done(function () {
-                                    marker.setOpacity(1);
-                                    $.State.setComputing(false);
-                                }).fail(function () {
-                                    $.State.setComputing(false);
-                                });
-                        });
-                    });
-
-                    geojson.snakeIn();
-                    start.setOpacity(1);
-                    end.setOpacity(1);
-
-                    deferred.resolveWith({ route: geojson });
-                }).fail(function () {
-                    deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
-                });
-            });
-        },
-
-        _findAuto: function (start, end, index) {
-            const _this = this;
-
-            return $.Deferred(function () {
-                const deferred = this;  // jscs:ignore safeContextKeyword
-
-                const startLatLng = start.getLatLng();
-                const endLatLng = end.getLatLng();
-
-                const options = {
-                    distanceUnit: 'm',
-                    endPoint: {
-                        x: endLatLng.lng,
-                        y: endLatLng.lat,
-                    },
-                    exclusions: [],
-                    geometryInInstructions: true,
-                    graph: 'Pieton',
-                    routePreferences: 'fastest',
-                    startPoint: {
-                        x: startLatLng.lng,
-                        y: startLatLng.lat,
-                    },
-                    viaPoints: [],
-                    apiKey: keyIgn,
-                    onSuccess: function (results) {
-                        if (results) {
-                            const geojson = L.geoJSON([], {
-                                color: start.getColorRgb(),
-                                weight: 5,
-                                opacity: 0.75,
-                                snakingPause: 0,
-                                snakingSpeed: 1000,
-                            });
-
-                            const _geometry = {
-                                type: 'FeatureCollection',
-                                features: [],
-                            };
-                            var counter = 1;
-                            $.each(results.routeInstructions, function (idx, instructions) {
-                                counter++;
-                                _geometry.features.push({
-                                    id: counter,
-                                    type: 'Feature',
-                                    geometry: instructions.geometry,
-                                });
-                            });
-
-                            geojson.addData(_geometry);
-
-                            _this._add(geojson, start, end, index, 'auto')
-                                .progress(deferred.notify)
-                                .done(deferred.resolve)
-                                .fail(deferred.reject);
-
-                            deferred.notify({ step: 'Route calculée' });
-                        } else {
-                            deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
-                        }
-                    },
-                    onFailure: function (error) {    // seems to never be called
-                        deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
-                    },
-                };
-                deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-                Gp.Services.route(options);
-            });
-        },
-
-        _findStraight: function (start, end, index) {
-            const _this = this;
-
-            return $.Deferred(function () {
-                const deferred = this;  // jscs:ignore safeContextKeyword
-
-                deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-
-                const c1 = start.getLatLng().roundE8();
-                const c2 = end.getLatLng().roundE8();
-                const d = c1.distanceTo(c2);
-                const azimuth = c1.bearingTo(c2);
-
-                const latlngs = [c1];
-
-                const interval = 10;
-                for (let counter = interval; counter < d; counter += interval) {
-                    latlngs.push(c1.getDestinationAlong(azimuth, counter));
-                }
-
-                latlngs.push(c2);
-
-                const geojson = L.polyline(latlngs, {
-                    color: start.getColorRgb(),
-                    weight: 5,
-                    opacity: 0.75,
-                    snakingPause: 0,
-                    snakingSpeed: 1000,
-                });
-
-                _this._add(geojson, start, end, index, 'straight')
-                    .progress(deferred.notify)
-                    .done(deferred.resolve)
-                    .fail(deferred.reject);
-
-                deferred.notify({ step: 'Route calculée' });
-            });
-        },
-    };
-
-})(jQuery);
-
 
 (function ($) {
 
@@ -1354,12 +1191,189 @@ L.GeoJSON.include({
         white: '#FBFBFB', lightgray: '#A3A3A3', gray: '#575757', black: '#303030', };
     const colors = ['blue', 'green', 'orange', 'purple', 'red', 'darkblue', 'darkpurple', 'lightblue', 'lightgreen', 'beige', 'pink', 'lightred'];
 
-    $.Track = {
-        currentColor: 0,
-        markersLength: 0,
+    function findRoute(map, start, end, index, mode = 'auto') {
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
 
-        bindTo: function (map) {
-            this.map = map;
+            if (mode == 'straight') {
+                // Use a deferred instead of returning it so we don't miss notifications
+                _findRouteStraight(map, start, end, index)
+                    .progress(deferred.notify)
+                    .done(deferred.resolve)
+                    .fail(deferred.reject);
+            } else {
+                _findRouteAuto(map, start, end, index)
+                    .progress(deferred.notify)
+                    .done(deferred.resolve)
+                    .fail(function () {
+                        console.log(this.error);
+                        console.log('Trying straight line...');
+
+                        const autoFailDrop = new Drop({
+                            target: $('.awesome-marker').eq(index + 1)[0],
+                            classes: 'drop-theme-arrows',
+                            position: 'right middle',
+                            constrainToWindow: false,
+                            constrainToScrollParent: false,
+                            openOn: null,
+                            content: 'Impossible d\'obtenir le tracé en mode automatique. Le mode ligne droite va être utilisé.',
+                        });
+                        autoFailDrop.open();
+                        $(autoFailDrop.content).on('click', function () {
+                            autoFailDrop.destroy();
+                        });
+
+                        _findRouteStraight(map, start, end, index)
+                            .progress(deferred.notify)
+                            .done(deferred.resolve)
+                            .fail(deferred.reject);
+                    });
+            }
+        });
+    }
+
+    function _addRoute(map, geojson, start, end, index, mode) {
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
+
+            geojson.prepareForMap(map, start, end);
+            geojson.computeStats().progress(deferred.notify).then(function () {
+                geojson.addTo(map);
+                geojson.bindPopup('Calculs en cours...');
+                geojson.on('popupopen', function (event) {
+                    $('.marker-add-button:visible').click(function () {
+                        const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                            riseOnHover: true,
+                            draggable: true,
+                            opacity: 0.5,
+                            color: start.getColorIndex(),
+                            type: 'waypoint',
+                        });
+
+                        marker.insert(geojson)
+                            .done(function () {
+                                marker.setOpacity(1);
+                            });
+                    });
+                });
+
+                geojson.snakeIn();
+                start.setOpacity(1);
+                end.setOpacity(1);
+
+                deferred.resolveWith({ route: geojson });
+            }).fail(function () {
+                deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
+            });
+        });
+    }
+
+    function _findRouteAuto(map, start, end, index) {
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
+
+            const startLatLng = start.getLatLng();
+            const endLatLng = end.getLatLng();
+
+            const options = {
+                distanceUnit: 'm',
+                endPoint: {
+                    x: endLatLng.lng,
+                    y: endLatLng.lat,
+                },
+                exclusions: [],
+                geometryInInstructions: true,
+                graph: 'Pieton',
+                routePreferences: 'fastest',
+                startPoint: {
+                    x: startLatLng.lng,
+                    y: startLatLng.lat,
+                },
+                viaPoints: [],
+                apiKey: keyIgn,
+                onSuccess: function (results) {
+                    if (results) {
+                        const geojson = L.geoJSON([], {
+                            color: start.getColorRgb(),
+                            weight: 5,
+                            opacity: 0.75,
+                            snakingPause: 0,
+                            snakingSpeed: 1000,
+                        });
+
+                        const _geometry = {
+                            type: 'FeatureCollection',
+                            features: [],
+                        };
+                        var counter = 1;
+                        $.each(results.routeInstructions, function (idx, instructions) {
+                            counter++;
+                            _geometry.features.push({
+                                id: counter,
+                                type: 'Feature',
+                                geometry: instructions.geometry,
+                            });
+                        });
+
+                        geojson.addData(_geometry);
+
+                        _addRoute(map, geojson, start, end, index, 'auto')
+                            .progress(deferred.notify)
+                            .done(deferred.resolve)
+                            .fail(deferred.reject);
+
+                        deferred.notify({ step: 'Route calculée' });
+                    } else {
+                        deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
+                    }
+                },
+                onFailure: function (error) {    // seems to never be called
+                    deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
+                },
+            };
+            deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
+            Gp.Services.route(options);
+        });
+    }
+
+    function _findRouteStraight(map, start, end, index) {
+        const c1 = start.getLatLng().roundE8();
+        const c2 = end.getLatLng().roundE8();
+        const d = c1.distanceTo(c2);
+        const azimuth = c1.bearingTo(c2);
+
+        const latlngs = [c1];
+
+        const interval = 10;
+        for (let counter = interval; counter < d; counter += interval) {
+            latlngs.push(c1.getDestinationAlong(azimuth, counter));
+        }
+
+        latlngs.push(c2);
+
+        const geojson = L.polyline(latlngs, {
+            color: start.getColorRgb(),
+            weight: 5,
+            opacity: 0.75,
+            snakingPause: 0,
+            snakingSpeed: 1000,
+        });
+
+        return _addRoute(map, geojson, start, end, index, 'straight');
+    }
+
+    L.Track = L.Evented.extend({
+        options: {
+            map: undefined,
+        },
+
+        initialize: function (options) {
+            L.setOptions(this, options);
+            this.Lmap = this.options.map.map('getMap');
+            this.$map = this.options.map;
+
+            this.currentColor = 0;
+            this.markersLength = 0;
         },
 
         getCurrentColor: function () {
@@ -1410,7 +1424,7 @@ L.GeoJSON.include({
 
         clear: function () {
             this.eachMarker(function (i, marker) { marker.remove(false); });
-            $.State.triggerMarkersChanged();
+            this.fire('markerschanged');
         },
 
         eachMarker: function (callback) {
@@ -1440,6 +1454,8 @@ L.GeoJSON.include({
         },
 
         addMarker: function (marker, computeRoute = true) {
+            const _this = this;
+
             var promise;
 
             if (this.firstMarker === undefined)
@@ -1447,34 +1463,36 @@ L.GeoJSON.include({
 
             if (this.lastMarker !== undefined) {
                 if (computeRoute)
-                    promise = this.lastMarker.computeRouteTo(marker, $.State.getMode());
+                    promise = this.lastMarker.computeRouteTo(marker, this.$map.map('getMode'));
             }
 
             this.lastMarker = marker;
             this.markersLength++;
-            marker.addTo(this.map);
+            marker.track = this;
+            marker.addTo(this.Lmap);
 
             if (promise)
-                return promise;
+                return promise.done(() => this.fire('markerschanged'));
             else
                 return $.Deferred(function () {
+                    _this.fire('markerschanged');
                     this.resolve();
                 });
         },
 
         moveMarker: function (marker) {
+            const _this = this;
+
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
-
-                const mode = $.State.getMode() || marker.getRouteModeFromHere();
 
                 if (marker.hasRouteFromHere()) {
                     // Re-compute route starting at this marker
                     const idx = promises.length;
 
                     promises.push(
-                        marker.recomputeRouteFromHere($.State.getMode()).progress(deferred.notify)
+                        marker.recomputeRouteFromHere(_this.$map.map('getMode'))
                     );
                 }
 
@@ -1483,11 +1501,14 @@ L.GeoJSON.include({
                     const idx = promises.length;
 
                     promises.push(
-                        marker.recomputeRouteToHere($.State.getMode()).progress(deferred.notify)
+                        marker.recomputeRouteToHere(_this.$map.map('getMode'))
                     );
                 }
 
-                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+                $.when.apply($, promises).done(function () {
+                    _this.fire('markerschanged');
+                    deferred.resolve();
+                }).fail(deferred.fail);
             });
         },
 
@@ -1498,19 +1519,20 @@ L.GeoJSON.include({
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const promises = [];
 
-                const mode = $.State.getMode() || marker.getRouteModeFromHere();
-
                 promises.push(
-                    route.getStartMarker().computeRouteTo(marker, $.State.getMode()).progress(deferred.notify)
+                    route.getStartMarker().computeRouteTo(marker, _this.$map.map('getMode'))
                 );
                 promises.push(
-                    marker.computeRouteTo(route.getEndMarker(), $.State.getMode()).progress(deferred.notify)
+                    marker.computeRouteTo(route.getEndMarker(), _this.$map.map('getMode'))
                 );
 
                 _this.markersLength++;
-                marker.addTo(_this.map);
+                marker.addTo(_this.Lmap);
 
-                $.when.apply($, promises).done(deferred.resolve).fail(deferred.fail);
+                $.when.apply($, promises).done(function () {
+                    _this.fire('markerschanged');
+                    deferred.resolve();
+                }).fail(deferred.fail);
             });
         },
 
@@ -1530,13 +1552,13 @@ L.GeoJSON.include({
             var total = this._initStats();
             var local = this._initStats();
 
-            $.Track.eachMarker((i, marker) => {
+            this.eachMarker((i, marker) => {
                 if (marker.getType() == 'step') {
                     steps.push(total.distance);
 
                     var current = marker;
                     while (current && current.hasRouteToHere()) {
-                        current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                        current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local, current._previousMarker.getRouteModeFromHere() != 'import');
                         current = current._previousMarker;
                         if (current.getType() == 'step')
                             break;
@@ -1576,9 +1598,9 @@ L.GeoJSON.include({
             });
 
             if (local.distance > 0) {
-                var current = $.Track.getLastMarker();
+                var current = this.getLastMarker();
                 while (current && current.hasRouteToHere()) {
-                    current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local);
+                    current.getRouteToHere().setPopupContentWith(current._previousMarker.getColorCode(), local, current._previousMarker.getRouteModeFromHere() != 'import');
                     current = current._previousMarker;
                     if (current.getType() == 'step')
                         break;
@@ -1692,6 +1714,109 @@ L.GeoJSON.include({
             return true;
         },
 
+        importGpx: function (file) {
+            const _this = this;
+
+            return $.Deferred(function () {
+                const deferred = this;  // jscs:ignore safeContextKeyword
+                const reader = new FileReader();
+
+                reader.onload = (function (theFile) {
+                    return function (e) {
+
+                        const lines = [];
+                        const line = new L.GPX(e.target.result, {
+                            async: true,
+                            onFail: function () {
+                                deferred.rejectWith({ error: 'Impossible de traiter ce fichier' });
+                            },
+                            onSuccess: function (gpx) {
+                                deferred.notify({ step: 'Fichier traité' });
+                                deferred.notify({ start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' });
+
+                                _this.clear();
+
+                                const bounds = gpx.getBounds();
+
+                                _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
+                                gpx.addTo(_this.Lmap);
+
+                                var deleteTrack = function () {
+                                    $('.track-delete-button:visible').click(function () {
+                                        _this.clear();
+                                        _this.Lmap.removeLayer(gpx);
+                                    });
+                                };
+
+                                const promises = [];
+                                var startMarker;
+                                $.each(lines, function (idx, track) {
+                                    // Add new route+markers
+
+                                    if (idx == 0) {
+                                        const start = track.getLatLngs()[0];
+                                        startMarker = L.Marker.routed(start, {
+                                            draggable: false,
+                                            opacity: 0.5,
+                                            color: _this.getCurrentColor(),
+                                            type: 'waypoint',
+                                        });
+                                        _this.addMarker(startMarker, false);
+
+                                        startMarker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
+                                        startMarker.on('popupopen', deleteTrack);
+                                    }
+
+                                    const end = track.getLatLngs()[track.getLatLngs().length - 1];
+                                    const marker = L.Marker.routed(end, {
+                                        draggable: false,
+                                        opacity: 0.5,
+                                        color: _this.nextColor(),
+                                        type: 'step',
+                                    });
+                                    _this.addMarker(marker, false);
+                                    startMarker.attachRouteFrom(marker, track, 'import');
+
+                                    track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
+                                    track.bindPopup('Calculs en cours...');
+
+                                    marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
+                                    marker.on('popupopen', deleteTrack);
+
+                                    promises.push(track.computeStats().progress(deferred.notify));
+
+                                    startMarker = marker;
+                                });
+
+                                $.each(promises, function () {
+                                    this.done(() => deferred.notify({}));
+                                });
+
+                                $.when.apply($, promises).done(function () {
+                                    _this.eachRoute(function (i, route) {
+                                        route.setStyle({ opacity: 0.75 });
+                                    });
+
+                                    _this.eachMarker(function (i, marker) {
+                                        marker.setOpacity(1);
+                                    });
+
+                                    _this.fire('markerschanged');
+
+                                    deferred.resolve();
+                                }).fail(function () {
+                                    deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                });
+                            },
+                        }).on('addline', function (e) { lines.push(e.line); });
+                    };
+                })(file);
+
+                // Read in the image file as a data URL.
+                reader.readAsText(file);
+            });
+        },
+
         _removeMarker: function (marker) {
             if (this.firstMarker === marker)
                 this.firstMarker = marker._nextMarker;   // Potentially undefined
@@ -1700,6 +1825,10 @@ L.GeoJSON.include({
 
             this.markersLength--;
         },
+    });
+
+    L.track = function (options) {
+        return new L.Track(options);
     };
 
     L.Marker.Routed = L.Marker.extend({
@@ -1753,7 +1882,7 @@ L.GeoJSON.include({
         },
 
         promoteToStep: function () {
-            const newColor = $.Track.nextColor();
+            const newColor = this.track.nextColor();
 
             var _this = this;
             while (_this && _this.options.type != 'step') {
@@ -1762,7 +1891,7 @@ L.GeoJSON.include({
             }
 
             this.setType('step');
-            $.State.triggerMarkersChanged();
+            this.track.fire('markerschanged');
         },
 
         demoteToWaypoint: function () {
@@ -1778,7 +1907,7 @@ L.GeoJSON.include({
                 }
             }
 
-            $.State.triggerMarkersChanged();
+            this.track.fire('markerschanged');
         },
 
         hasRouteToHere: function () {
@@ -1819,8 +1948,8 @@ L.GeoJSON.include({
                 $(_this).startCompute(function (next) {
                     mode = mode || _this._mode || 'auto';
 
-                    $.Route.find(_this, to, 0, mode)
-                        .progress(deferred.notify)
+                    findRoute($('#map').map('getMap'), _this, to, 0, mode)  // FIXME
+                        .progress($.Queue.notify)
                         .done(function () {
                             _this.deleteRouteFromHere();
                             _this.attachRouteFrom(to, this.route, mode);
@@ -1854,49 +1983,34 @@ L.GeoJSON.include({
 
             this.on('popupopen', () => {
                 $('.marker-delete-button:visible').click(() => {
-                    if ($.State.getComputing()) // FIXME: Dirty hack to enable reset on markers (also, fixes flickering of data pane when importing)
-                        return;
-
-                    $.State.setComputing(true);
-                    this.remove().progress($.State.updateComputing).done(function () {
-                        $.State.setComputing(false);
-                    }).fail(function () {
-                        $.State.setComputing(false);
-                    });
+                    this.remove();
                 });
 
                 $('.marker-promote-button:visible').click(() => {
                     this.closePopup();
                     this.setPopupContent('<button class="marker-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer ce marqueur</button>');
                     this.promoteToStep();
-                    $.State.setComputing(false);    // Force replot
                 });
             });
 
             this.on('moveend', (event) => {
                 // Update routes when moving this marker
-                $.State.setComputing(true);
                 this.setOpacity(0.5);
 
-                $.Track.moveMarker(this)
-                    .progress($.State.updateComputing)
-                    .done(() => {
-                        $.State.setComputing(false);
-                        this.setOpacity(1);
-                    }).fail(() => {
-                        $.State.setComputing(false);
-                    });
+                this.track.moveMarker(this).done(() => this.setOpacity(1));
             });
         },
 
-        add: function (computeRoute = true) {
+        add: function (o, computeRoute = true) {
+            this.track = o;
             this._bindEvents();
-            return $.Track.addMarker(this, computeRoute);
+            return this.track.addMarker(this, computeRoute);
         },
 
         insert: function (route) {
+            this.track = $('#map').map('getTrack'); // FIXME
             this._bindEvents();
-            return $.Track.insertMarker(this, route);
+            return this.track.insertMarker(this, route);
         },
 
         remove: function (recompute = true) {
@@ -1910,7 +2024,7 @@ L.GeoJSON.include({
             const previous = this._previousMarker;
             const next = this._nextMarker;
 
-            $.Track._removeMarker(this);
+            this.track._removeMarker(this);
 
             if (this.routeFrom) {
                 this.deleteRouteFromHere();
@@ -1923,7 +2037,7 @@ L.GeoJSON.include({
 
                 if (next && recompute) {
                     // Re-connect markers
-                    const mode = $.State.getMode() || this._mode || 'auto';
+                    const mode = this.track.$map.map('getMode') || this._mode || 'auto';
 
                     promise = previous.computeRouteTo(next, mode);
 
@@ -1931,6 +2045,7 @@ L.GeoJSON.include({
             }
 
             L.Marker.prototype.remove.call(this);
+            this.track.fire('markerschanged');
 
             if (promise)
                 return promise;
@@ -1947,448 +2062,139 @@ L.GeoJSON.include({
 
 })(jQuery);
 
+(function ($) {
 
-const isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
+    $.widget('map2gpx.map', {
+        options: {
+            leafletOptions: {},
 
-showLoadingMessage('Observation des faucons crécerelle...');
+            controls: {
+                searchEngine: {
+                    show: true,
+                    leafletOptions: {
+                        displayAdvancedSearch: false,
+                    },
+                },
+                minimap: {
+                    show: true,
+                    leafletOptions: {
+                        position: 'bottomleft',
+                        zoomLevelOffset: -4,
+                    },
+                },
+                layerSwitcher: {
+                    show: true,
+                    leafletOptions: {
+                        collapsed: false,
+                    },
+                },
+                scale: {
+                    show: true,
+                    leafletOptions: {
+                        imperial: false,
+                        position: 'bottomright',
+                    },
+                },
+                help: {
+                    show: true,
+                },
+            },
+        },
 
-window.onload = function () {
-    try {
-        showLoadingMessage('Localisation des chamois...');
+        getMap: function () {
+            return this.map;
+        },
 
-        var map = L.map('map', {});
-        map.initView().done(function () {
+        getTrack: function () {
+            return this.track;
+        },
 
-            showLoadingMessage('Suivi des renards roux...');
+        getMode: function () {
+            return this.mode;
+        },
 
-            if (isSmallScreen) {
-                $('#mobile-warning')
-                    .show()
-                    .find('button').click(function () { popup.hide(); });
-            }
+        _buildEventData: function () {
+            return { mode: this.mode };
+        },
 
-            // Central map
-            $.Route.bindTo(map);
-            $.Track.bindTo(map);
-            $('body').on('map2gpx:modechange', function (e) {
-                map.doubleClickZoom.setEnabled((e.mode === null));
+        _setMode: function (mode) {
+            this.mode = mode;
+            this._trigger('modechanged', null, this._buildEventData());
+        },
+
+        _onCreated: function () {
+            this.element.on('mapmodechanged', (e) => {
+                this.map.doubleClickZoom.setEnabled((this.mode === null));
             });
+            this.map.on('dblclick', (e) => this._addMarker.call(this, e));
 
-            // TODO: add support of localStorage for opacity&visiblity (#4)
-            var layerPromises = [];
-            var layerPhotos = L.geoportalLayer.WMTS({
+            this._initializeLayers();
+            if (this.options.controls.searchEngine.show)
+                this._initializeSearchEngine();
+            if (this.options.controls.minimap.show)
+                this._initializeMinimap();
+            if (this.options.controls.layerSwitcher.show)
+                this._initializeLayerSwitcher();
+            if (this.options.controls.scale.show)
+                this._initializeScale();
+
+            this._initializeTraceButtons();
+            this._initializeExportButtons();
+            this._initializeImportButtons();
+            this._initializeHelpButtons();
+
+            this._trigger('created', null, {});
+            this._trigger('statechanged', null, this._buildEventData());
+
+            $.when.apply($, this.layers.promises).done(() => {
+                this._trigger('loaded', null, {});
+            });
+        },
+
+        _initializeLayers: function () {
+            const _this = this;
+
+            this.layers.photos = L.geoportalLayer.WMTS({
                 layer: 'ORTHOIMAGERY.ORTHOPHOTOS',
                 apiKey: keyIgn,
-            }).addTo(map);
-            layerPromises.push($.Deferred(function () {
-                layerPhotos.once('load', this.resolve);
+            }).addTo(this.map);
+            this.layers.promises.push($.Deferred(function () {
+                _this.layers.photos.once('load', this.resolve);
             }));
 
             // Don't monitor load event, because we don't display this layer (thus, never fires)
-            var layerSlopes =  L.geoportalLayer.WMTS({
+            this.layers.slopes =  L.geoportalLayer.WMTS({
                 layer: 'GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN',
                 apiKey: keyIgn,
             }, {
                 opacity: 0.25,
-            }).addTo(map);
+            }).addTo(this.map);
 
-            var layerMaps = L.geoportalLayer.WMTS({
+            this.layers.maps = L.geoportalLayer.WMTS({
                 layer: 'GEOGRAPHICALGRIDSYSTEMS.MAPS',
                 apiKey: keyIgn,
             }, {
                 opacity: 0.25,
-            }).addTo(map);
-            layerPromises.push($.Deferred(function () {
-                layerMaps.once('load', this.resolve);
+            }).addTo(this.map);
+            this.layers.promises.push($.Deferred(function () {
+                _this.layers.maps.once('load', this.resolve);
             }));
 
-            // Add controls
-            L.geoportalControl.SearchEngine({
-                displayAdvancedSearch: false,
-            }).addTo(map);
+            let outOfRangeDrop;
+            this.map.on('zoomend', () => {
+                const currentZoom = this.map.getZoom();
 
-            // Mini-map
-            if (!isSmallScreen) {
-                let miniMapLayer = L.geoportalLayer.WMTS({
-                    layer: 'GEOGRAPHICALGRIDSYSTEMS.MAPS',
-                    apiKey: keyIgn,
-                });
-                layerPromises.push($.Deferred(function () {
-                    miniMapLayer.once('load', this.resolve);
-                }));
-
-                let miniMap = new L.Control.MiniMap(miniMapLayer, {
-                    position: 'bottomleft',
-                    zoomLevelOffset: -4,
-                }).addTo(map);
-            }
-
-            var layerSwitcher = L.geoportalControl.LayerSwitcher({
-                collapsed: isSmallScreen,
-            });
-            map.addControl(layerSwitcher);
-            layerSwitcher.setVisibility(layerSlopes, false);
-            $('.GPlayerRemove').remove();
-
-            if (!isSmallScreen) {
-                map.addControl(L.control.scale({
-                    imperial: false,
-                    position: 'bottomright',
-                }));
-            }
-
-            var automatedBtn = L.easyButton({
-                id: 'btn-autotrace',
-                states: [
-                    {
-                        stateName: 'loaded',
-                        icon: 'fa-map-signs',
-                        title: 'Tracer automatiquement l\'itinéraire',
-                        onClick: function (btn, map) {
-                            $.State.setMode('auto');
-                        },
-                    }, {
-                        stateName: 'active',
-                        icon: 'fa-map-signs',
-                        title: 'Tracer automatiquement l\'itinéraire',
-                        onClick: function (btn, map) {
-                            $.State.setMode(null);
-                        },
-                    },
-                ],
-            });
-            $('body').on('map2gpx:modechange map2gpx:markerschange', function (e) {
-                if (e.mode == 'auto') {
-                    automatedBtn.state('active');
-                    automatedBtn.enable();
-                } else {
-                    automatedBtn.state('loaded');
-                    automatedBtn.setEnabled(!$.Track.isImport());
-                }
-            });
-
-            var lineBtn = L.easyButton({
-                id: 'btn-straighttrace',
-                states: [
-                    {
-                        stateName: 'loaded',
-                        icon: 'fa-location-arrow',
-                        title: 'Tracer l\'itinéraire en ligne droite',
-                        onClick: function (btn, map) {
-                            $.State.setMode('straight');
-                        },
-                    }, {
-                        stateName: 'active',
-                        icon: 'fa-location-arrow',
-                        title: 'Tracer l\'itinéraire en ligne droite',
-                        onClick: function (btn, map) {
-                            $.State.setMode(null);
-                        },
-                    },
-                ],
-            });
-            $('body').on('map2gpx:modechange map2gpx:markerschange', function (e) {
-                if (e.mode == 'straight') {
-                    lineBtn.state('active');
-                    lineBtn.enable();
-                } else {
-                    lineBtn.state('loaded');
-                    lineBtn.setEnabled(!$.Track.isImport());
-                }
-            });
-
-            var closeLoop = L.easyButton({
-                id: 'btn-closeloop',
-                states: [
-                    {
-                        stateName: 'loaded',
-                        icon: 'fa-magic',
-                        title: 'Fermer la boucle',
-                        onClick: function (btn, map) {
-                            if ($.Track.hasMarkers(1)) {
-                                addMarker({ latlng: $.Track.getFirstMarker().getLatLng() });
-                            }
-                        },
-                    },
-                ],
-            });
-            $('body').on('map2gpx:modechange map2gpx:computingchange map2gpx:markerschange', function (e) {
-                closeLoop.setEnabled((e.mode !== null && $.Track.hasRoutes() && !$.Track.isImport() && !$.Track.isLoop()));
-            });
-
-            L.easyBar([automatedBtn, lineBtn, closeLoop]).addTo(map);
-
-            var exportPopup = L.popup().setContent(L.DomUtil.get('form-export'));
-            var exportButton = L.easyButton({
-                id: 'btn-export',
-                states: [
-                    {
-                        stateName: 'loaded',
-                        icon: 'fa-cloud-download',
-                        title: 'Exporter',
-                        onClick: function (btn, map) {
-                            const bounds = $.Track.getBounds();
-
-                            map.flyToBounds(bounds, { padding: [50, 50] });
-                            exportPopup.setLatLng(bounds.getCenter()).openOn(map);
-
-                            $('.export-gpx-button:visible').click(function () {
-                                const $btn = $(this);
-                                $btn.attr('disabled', 'disabled');
-                                $.Track.exportGpx($('.export-filename:visible').val());
-                                $btn.removeAttr('disabled');
-                            });
-
-                            $('.export-kml-button:visible').click(function () {
-                                const $btn = $(this);
-                                $btn.attr('disabled', 'disabled');
-                                $.Track.exportKml($('.export-filename:visible').val());
-                                $btn.removeAttr('disabled');
-                            });
-                        },
-                    }, {
-                        stateName: 'computing',
-                        icon: 'fa-spinner fa-pulse',
-                        title: 'Exporter (calcul en cours...)',
-                    },
-                ],
-            }).addTo(map);
-            $('body').on('map2gpx:computingchange map2gpx:markerschange', function (e) {
-                if (e.computing) {
-                    exportButton.state('computing');
-                    exportButton.disable();
-                } else {
-                    exportButton.state('loaded');
-                    exportButton.setEnabled($.Track.hasRoutes());
-                }
-            });
-
-            var importPopup = L.popup().setContent(L.DomUtil.get('form-import'));
-            var importButton = L.easyButton({
-                id: 'btn-import',
-                states: [
-                    {
-                        stateName: 'loaded',
-                        icon: 'fa-cloud-upload',
-                        title: 'Importer',
-                        onClick: function (btn, map) {
-                            importPopup.setLatLng(map.getCenter()).openOn(map);
-
-                            if ($.Track.hasRoutes()) {
-                                $('.import-gpx-status:visible').html('<strong>Attention:</strong> l\'import va effacer l\'itinéraire existant!');
-                            } else {
-                                $('.import-gpx-status:visible').text('');
-                            }
-
-                            $('.import-gpx-button:visible').click(function () {
-                                const $btn = $(this);
-                                const f = $('.import-gpx-file:visible')[0].files[0];
-
-                                if (f == undefined) {
-                                    $('.import-gpx-status:visible').text('Veuillez sélectionner un fichier');
-                                    return;
-                                }
-
-                                $btn.attr('disabled', 'disabled');
-                                $.State.setComputing(true);
-                                $.State.updateComputing({ start: true, total: 1, status: 'Importation en cours...' });
-
-                                const reader = new FileReader();
-
-                                reader.onload = (function (theFile) {
-                                    return function (e) {
-
-                                        const lines = [];
-                                        const line = new L.GPX(e.target.result, {
-                                            async: true,
-                                            onFail: function () {
-                                                console.log('Failed to retrieve track');
-                                                $('.import-gpx-status:visible').text('Impossible de traiter ce fichier');
-                                                $btn.removeAttr('disabled');
-                                                $.State.setComputing(false);
-                                            },
-                                            onSuccess: function (gpx) {
-                                                $.State.updateComputing([
-                                                    { step: 'Fichier traité' },
-                                                    { start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' },
-                                                ]);
-
-                                                $.Track.clear();
-
-                                                const bounds = gpx.getBounds();
-
-                                                map.fitBounds(bounds, { padding: [50, 50] });
-                                                importPopup.setLatLng(bounds.getCenter());
-                                                gpx.addTo(map);
-
-                                                var deleteTrack = function () {
-                                                    $('.track-delete-button:visible').click(function () {
-                                                        $.State.setComputing(true);
-
-                                                        $.Track.clear();
-                                                        map.removeLayer(gpx);
-
-                                                        $.State.setComputing(false);
-                                                    });
-                                                };
-
-                                                const promises = [];
-                                                var startMarker;
-                                                $.each(lines, function (idx, track) {
-                                                    // Add new route+markers
-
-                                                    if (idx == 0) {
-                                                        const start = track.getLatLngs()[0];
-                                                        startMarker = L.Marker.routed(start, {
-                                                            draggable: false,
-                                                            opacity: 0.5,
-                                                            color: $.Track.getCurrentColor(),
-                                                            type: 'waypoint',
-                                                        });
-                                                        $.Track.addMarker(startMarker, false);
-
-                                                        startMarker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
-                                                        startMarker.on('popupopen', deleteTrack);
-                                                    }
-
-                                                    const end = track.getLatLngs()[track.getLatLngs().length - 1];
-                                                    const marker = L.Marker.routed(end, {
-                                                        draggable: false,
-                                                        opacity: 0.5,
-                                                        color: $.Track.nextColor(),
-                                                        type: 'step',
-                                                    });
-                                                    $.Track.addMarker(marker, false);
-                                                    startMarker.attachRouteFrom(marker, track, 'import');
-
-                                                    track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
-                                                    track.bindPopup('Calculs en cours...');
-                                                    track.on('popupopen', function (event) {
-                                                        $('.marker-add-button:visible').remove();
-                                                    });
-
-                                                    marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
-                                                    marker.on('popupopen', deleteTrack);
-
-                                                    promises.push(track.computeStats().progress($.State.updateComputing));
-
-                                                    startMarker = marker;
-                                                });
-
-                                                $.each(promises, function () {
-                                                    this.done(() => $.State.updateComputing({}));
-                                                });
-
-                                                $.when.apply($, promises).done(function () {
-                                                    $.Track.eachRoute(function (i, route) {
-                                                        route.setStyle({ opacity: 0.75 });
-                                                    });
-
-                                                    $.Track.eachMarker(function (i, marker) {
-                                                        marker.setOpacity(1);
-                                                    });
-
-                                                    $btn.removeAttr('disabled');
-                                                    importPopup.remove();
-
-                                                    $.State.triggerMarkersChanged();
-                                                    $.State.setMode(null);  // Disable any other tracing
-                                                    $.State.setComputing(false);
-                                                }).fail(function () {
-                                                    console.log('Fail');
-                                                    $('.import-gpx-status:visible').text('Impossible de récupérer les données géographiques de ce parcours');
-                                                    $btn.removeAttr('disabled');
-                                                    $.State.setComputing(false);
-                                                });
-                                            },
-                                        }).on('addline', function (e) { lines.push(e.line); });
-                                    };
-                                })(f);
-
-                                // Read in the image file as a data URL.
-                                reader.readAsText(f);
-                            });
-                        },
-                    }, {
-                        stateName: 'computing',
-                        icon: 'fa-spinner fa-pulse',
-                        title: 'Importer (calcul en cours...)',
-                    },
-                ],
-            });
-            var resetButton = L.easyButton({
-                id: 'btn-reset',
-                states: [
-                    {
-                        stateName: 'loaded',
-                        icon: 'fa-trash',
-                        title: 'Effacer l\'itinéraire',
-                        onClick: function (btn, map) {
-                            $.Track.clear();
-                            $.State.triggerMarkersChanged();
-                            $.State.setComputing(false);
-                        },
-                    }, {
-                        stateName: 'computing',
-                        icon: 'fa-spinner fa-pulse',
-                        title: 'Effacer l\'itinéraire (calcul en cours...)',
-                    },
-                ],
-            });
-
-            L.easyBar([importButton, resetButton]).addTo(map);
-            $('body').on('map2gpx:computingchange', function (e) {
-                importButton.state(e.computing ? 'computing' : 'loaded');
-                resetButton.state(e.computing ? 'computing' : 'loaded');
-
-                importButton.setEnabled(!e.computing);
-                resetButton.setEnabled(!e.computing);
-            });
-
-            if (!isSmallScreen) {
-                const infoPopup = L.popup().setContent(L.DomUtil.get('about'));
-
-                const infoBtn = L.easyButton({
-                    position: 'bottomright',
-                    states: [
-                        {
-                            icon: 'fa-info-circle',
-                            onClick: function (btn, map) {
-                                infoPopup.setLatLng(map.getCenter()).openOn(map);
-                            },
-                            title: 'A propos & crédits',
-                        },
-                    ],
-                });
-                const helpBtn = L.easyButton({
-                    position: 'bottomright',
-                    states: [
-                        {
-                            icon: 'fa-question-circle',
-                            onClick: function (btn, map) {
-                                $.Shepherd.get(0).start(true);
-                            },
-                            title: 'Aide',
-                        },
-                    ],
-                });
-
-                L.easyBar([infoBtn, helpBtn], { position: 'bottomright' }).addTo(map);
-            }
-
-            // Map interactions
-            map.on('dblclick', addMarker);
-
-            var outOfRangeDrop;
-            map.on('zoomend', function () {
                 let outOfRange;
                 let $outOfRangeTarget;
-                if ((layerPhotos.options.minZoom > map.getZoom() || layerPhotos.options.maxZoom < map.getZoom()) && map.hasLayer(layerPhotos)) {
-                    outOfRange = 'Photographies aériennes'; $outOfRangeTarget = $('.GPlayerSwitcher_layer:eq(2)');
-                } else if ((layerMaps.options.minZoom > map.getZoom() || layerMaps.options.maxZoom < map.getZoom()) && map.hasLayer(layerMaps)) {
-                    outOfRange = 'Cartes IGN'; $outOfRangeTarget = $('.GPlayerSwitcher_layer:eq(0)');
-                } else if ((layerSlopes.options.minZoom > map.getZoom() || layerSlopes.options.maxZoom < map.getZoom()) && map.hasLayer(layerSlopes)) {
-                    outOfRange = 'Carte des pentes'; $outOfRangeTarget = $('.GPlayerSwitcher_layer:eq(1)');
+                if (this.map.hasLayer(this.layers.photos) && (this.layers.photos.options.minZoom > currentZoom || this.layers.photos.options.maxZoom < currentZoom)) {
+                    outOfRange = 'Photographies aériennes';
+                    $outOfRangeTarget = $('.GPlayerSwitcher_layer:eq(2)');
+                } else if (this.map.hasLayer(this.layers.maps) && (this.layers.maps.options.minZoom > currentZoom || this.layers.maps.options.maxZoom < currentZoom)) {
+                    outOfRange = 'Cartes IGN';
+                    $outOfRangeTarget = $('.GPlayerSwitcher_layer:eq(0)');
+                } else if (this.map.hasLayer(this.layers.slopes) && (this.layers.slopes.options.minZoom > currentZoom || this.layers.slopes.options.maxZoom < currentZoom)) {
+                    outOfRange = 'Carte des pentes';
+                    $outOfRangeTarget = $('.GPlayerSwitcher_layer:eq(1)');
                 }
 
                 if (outOfRange !== undefined && outOfRangeDrop === undefined) {
@@ -2411,125 +2217,441 @@ window.onload = function () {
                     outOfRangeDrop = null;
                 }
             });
+        },
 
-            $('body').on('map2gpx:computingchange', function (e) {
-                if (e.computing) {
-                    $.State.updateComputing({ start: true, total: 1, status: 'Calculs en cours...' });
-                    $('#data-computing').fadeIn();
+        _initializeSearchEngine: function () {
+            L.geoportalControl.SearchEngine(this.options.controls.searchEngine.leafletOptions).addTo(this.map);
+        },
+
+        _initializeMinimap: function () {
+            const _this = this;
+
+            this.layers.minimap = L.geoportalLayer.WMTS({
+                layer: 'GEOGRAPHICALGRIDSYSTEMS.MAPS',
+                apiKey: keyIgn,
+            });
+            this.layers.promises.push($.Deferred(function () {
+                _this.layers.minimap.once('load', this.resolve);
+            }));
+
+            new L.Control.MiniMap(this.layers.minimap, this.options.controls.minimap.leafletOptions).addTo(this.map);
+        },
+
+        _initializeLayerSwitcher: function () {
+            let layerSwitcher = L.geoportalControl.LayerSwitcher(this.options.controls.layerSwitcher.leafletOptions);
+            this.map.addControl(layerSwitcher);
+            layerSwitcher.setVisibility(this.layers.slopes, false);
+            $('.GPlayerRemove').remove();
+        },
+
+        _initializeScale: function () {
+            L.control.scale(this.options.controls.scale.leafletOptions).addTo(this.map);
+        },
+
+        _initializeTraceButtons: function () {
+            let automatedBtn = L.easyButton({
+                id: 'btn-autotrace',
+                states: [
+                    {
+                        stateName: 'loaded',
+                        icon: 'fa-map-signs',
+                        title: 'Tracer automatiquement l\'itinéraire',
+                        onClick: (btn, map) => this._setMode('auto'),
+                    }, {
+                        stateName: 'active',
+                        icon: 'fa-map-signs',
+                        title: 'Tracer automatiquement l\'itinéraire',
+                        onClick: (btn, map) => this._setMode(null),
+                    },
+                ],
+            });
+            this.element.on('mapmodechanged mapstatechanged', (e) => {
+                if (this.mode == 'auto') {
+                    automatedBtn.state('active');
+                    automatedBtn.enable();
                 } else {
-                    $.State.updateComputing({ end: true, status: 'Finalisation...' });
-                    $('#data').data('map2gpx-chart').replot($.Track.computeStats());
-                    $('#data-computing').fadeOut();
+                    automatedBtn.state('loaded');
+                    automatedBtn.setEnabled(!this.track.isImport());
                 }
             });
 
-            function addMarker(e) {
-                if ($.State.getMode() === null) {
-                    return;
+            let lineBtn = L.easyButton({
+                id: 'btn-straighttrace',
+                states: [
+                    {
+                        stateName: 'loaded',
+                        icon: 'fa-location-arrow',
+                        title: 'Tracer l\'itinéraire en ligne droite',
+                        onClick: (btn, map) => this._setMode('straight'),
+                    }, {
+                        stateName: 'active',
+                        icon: 'fa-location-arrow',
+                        title: 'Tracer l\'itinéraire en ligne droite',
+                        onClick: (btn, map) => this._setMode(null),
+                    },
+                ],
+            });
+            this.element.on('mapmodechanged mapstatechanged', (e) => {
+                if (this.mode == 'straight') {
+                    lineBtn.state('active');
+                    lineBtn.enable();
+                } else {
+                    lineBtn.state('loaded');
+                    lineBtn.setEnabled(!this.track.isImport());
                 }
+            });
 
-                const marker = L.Marker.routed(e.latlng.roundE8(), {
-                    riseOnHover: true,
-                    draggable: true,
-                    opacity: 0.5,
-                    color: ($.Track.hasMarkers()) ? $.Track.getLastMarker().getColorIndex() : $.Track.getCurrentColor(),
-                    type: 'waypoint',
-                });
+            let closeLoop = L.easyButton({
+                id: 'btn-closeloop',
+                states: [
+                    {
+                        stateName: 'loaded',
+                        icon: 'fa-magic',
+                        title: 'Fermer la boucle',
+                        onClick: (btn, map) => {
+                            if (this.track.hasMarkers(1)) {
+                                this._addMarker({ latlng: this.track.getFirstMarker().getLatLng() });
+                            }
+                        },
+                    },
+                ],
+            });
+            this.element.on('mapmodechanged mapcomputingchanged mapstatechanged', (e) => {
+                closeLoop.setEnabled((this.mode !== null && this.track.hasRoutes() && !this.track.isImport() && !this.track.isLoop()));
+            });
 
-                // Ignore this marker if same as previous
-                if ($.Track.hasMarkers() && $.Track.getLastMarker().getLatLng().equals(marker.getLatLng()))
-                    return;
+            L.easyBar([automatedBtn, lineBtn, closeLoop]).addTo(this.map);
+        },
 
-                marker.add().progress($.State.updateComputing).done(function () {
-                    marker.setOpacity(1);
-                });
+        _initializeExportButtons: function () {
+            const _this = this;
 
-                if (!isSmallScreen) {
-                    if ($.Track.hasMarkers(2) && !$.Shepherd.has(1)) {
-                        $.Shepherd.tour()
-                            .add('data', {
-                                text: $('#help-data')[0],
-                                attachTo: { element: $('#data')[0], on: 'top' },
-                            })
-                            .add('closeloop', {
-                                text: $('#help-closeloop')[0],
-                                attachTo: { element: $('#btn-closeloop')[0], on: 'right' },
-                            })
-                            .add('export', {
-                                text: $('#help-export')[0],
-                                attachTo: { element: $('#btn-export')[0], on: 'right' },
-                            })
-                            .start();
-                    }
+            let exportPopup = L.popup().setContent(L.DomUtil.get('form-export'));
+            let exportButton = L.easyButton({
+                id: 'btn-export',
+                states: [
+                    {
+                        stateName: 'loaded',
+                        icon: 'fa-cloud-download',
+                        title: 'Exporter',
+                        onClick: (btn, map) => {
+                            const bounds = this.track.getBounds();
 
-                    if ($.Track.hasMarkers(3) && !$.Shepherd.has(2)) {
-                        $.Shepherd.tour()
-                            .add('movemarker', {
-                                text: $('#help-movemarker')[0],
-                                attachTo: { element: $('.awesome-marker').last()[0], on: 'bottom' },
-                            })
-                            .add('movemarker2', {
-                                text: $('#help-movemarker2')[0],
-                                attachTo: { element: $('.awesome-marker').eq(-2)[0], on: 'bottom' },
-                            })
-                            .add('steps', {
-                                text: $('#help-steps')[0],
-                                attachTo: { element: $('.awesome-marker').last()[0], on: 'bottom' },
-                            })
-                            .add('steps2', {
-                                beforeShowPromise: function () {
-                                    return $.Deferred(function () {
-                                        const route = $.Track.getFirstMarker().getRouteFromHere();
-                                        const lngs = route.getLatLngs();
-                                        const item = lngs[Math.floor(lngs.length / 2)];
-                                        route.openPopup(item);
-                                        this.resolve();
-                                    }).promise();
-                                },
-                                text: $('#help-steps2')[0],
-                            })
-                            .start();
-                    }
+                            this.map.flyToBounds(bounds, { padding: [50, 50] });
+                            exportPopup.setLatLng(bounds.getCenter()).openOn(this.map);
+
+                            $('.export-gpx-button:visible').click(function () {
+                                const $btn = $(this);
+                                $btn.attr('disabled', 'disabled');
+                                _this.track.exportGpx($('.export-filename:visible').val());
+                                $btn.removeAttr('disabled');
+                            });
+
+                            $('.export-kml-button:visible').click(function () {
+                                const $btn = $(this);
+                                $btn.attr('disabled', 'disabled');
+                                _this.track.exportKml($('.export-filename:visible').val());
+                                $btn.removeAttr('disabled');
+                            });
+                        },
+                    }, {
+                        stateName: 'computing',
+                        icon: 'fa-spinner fa-pulse',
+                        title: 'Exporter (calcul en cours...)',
+                    },
+                ],
+            }).addTo(this.map);
+            this.element.on('mapcomputingchanged mapstatechanged', (e) => {
+                if (e.computing) {
+                    exportButton.state('computing');
+                    exportButton.disable();
+                } else {
+                    exportButton.state('loaded');
+                    exportButton.setEnabled(this.track.hasRoutes());
                 }
+            });
+        },
+
+        _initializeImportButtons: function () {
+            const _this = this;
+
+            let importPopup = L.popup().setContent(L.DomUtil.get('form-import'));
+            let importButton = L.easyButton({
+                id: 'btn-import',
+                states: [
+                    {
+                        stateName: 'loaded',
+                        icon: 'fa-cloud-upload',
+                        title: 'Importer',
+                        onClick: (btn, map) => {
+                            importPopup.setLatLng(this.map.getCenter()).openOn(this.map);
+
+                            if (this.track.hasRoutes()) {
+                                $('.import-gpx-status:visible').html('<strong>Attention:</strong> l\'import va effacer l\'itinéraire existant!');
+                            } else {
+                                $('.import-gpx-status:visible').text('');
+                            }
+
+                            $('.import-gpx-button:visible').click(function () {
+                                const $btn = $(this);
+                                const f = $('.import-gpx-file:visible')[0].files[0];
+
+                                if (f == undefined) {
+                                    $('.import-gpx-status:visible').text('Veuillez sélectionner un fichier');
+                                    return;
+                                }
+
+                                $btn.attr('disabled', 'disabled');
+
+                                $('body').startCompute(function (next) {
+                                    $.Queue.notify({ start: true, total: 1, status: 'Importation en cours...' });
+                                    _this.track.importGpx(f).done(function () {
+                                        $btn.removeAttr('disabled');
+                                        _this._setMode(null);  // Disable any other tracing
+                                    }).fail(function () {
+                                        $('.import-gpx-status:visible').text(this.error);
+                                        $btn.removeAttr('disabled');
+                                    }).progress(function (progress) {
+                                        $.Queue.notify(progress);
+                                        if (importPopup) {
+                                            importPopup.remove();
+                                            importPopup = undefined;
+                                        }
+                                    }).always(() => $('body').endCompute(next));
+                                });
+                            });
+                        },
+                    }, {
+                        stateName: 'computing',
+                        icon: 'fa-spinner fa-pulse',
+                        title: 'Importer (calcul en cours...)',
+                    },
+                ],
+            });
+            let resetButton = L.easyButton({
+                id: 'btn-reset',
+                states: [
+                    {
+                        stateName: 'loaded',
+                        icon: 'fa-trash',
+                        title: 'Effacer l\'itinéraire',
+                        onClick: (btn, map) => {
+                            this.track.clear();
+                        },
+                    }, {
+                        stateName: 'computing',
+                        icon: 'fa-spinner fa-pulse',
+                        title: 'Effacer l\'itinéraire (calcul en cours...)',
+                    },
+                ],
+            });
+
+            L.easyBar([importButton, resetButton]).addTo(this.map);
+            this.element.on('mapcomputingchanged mapstatechanged', (e) => {
+                importButton.state(this.computing ? 'computing' : 'loaded');
+                resetButton.state(this.computing ? 'computing' : 'loaded');
+
+                importButton.setEnabled(!this.computing);
+                resetButton.setEnabled(!this.computing && this.track.hasMarkers());
+            });
+        },
+
+        _initializeHelpButtons: function () {
+            const infoPopup = L.popup().setContent(L.DomUtil.get('about'));
+
+            const infoBtn = L.easyButton({
+                position: 'bottomright',
+                states: [
+                    {
+                        icon: 'fa-info-circle',
+                        onClick: (btn, map) => {
+                            infoPopup.setLatLng(this.map.getCenter()).openOn(this.map);
+                        },
+                        title: 'A propos & crédits',
+                    },
+                ],
+            });
+            const helpBtn = L.easyButton({
+                position: 'bottomright',
+                states: [
+                    {
+                        icon: 'fa-question-circle',
+                        onClick: (btn, map) => {
+                            $.Shepherd.get(0).start(true);
+                        },
+                        title: 'Aide',
+                    },
+                ],
+            });
+
+            L.easyBar([infoBtn, helpBtn], { position: 'bottomright' }).addTo(this.map);
+        },
+
+        _create: function () {
+            this.element.uniqueId();
+
+            this.layers = {};
+            this.layers.promises = [];
+            this.mode = null;
+
+            this.map = L.map(this.element.attr('id'), this.options.leafletOptions);
+
+            this.track = L.track({ map: this.element });
+            this.track.on('markerschanged', () => this._trigger('statechanged', null, this._buildEventData()));
+
+            this.map.initView().done(() => this._onCreated());
+        },
+
+        _addMarker: function (e) {
+            if (this.mode === null) {
+                return;
             }
 
-            showLoadingMessage('Alignement des satellites...');
+            const marker = L.Marker.routed(e.latlng.roundE8(), {
+                riseOnHover: true,
+                draggable: true,
+                opacity: 0.5,
+                color: (this.track.hasMarkers()) ? this.track.getLastMarker().getColorIndex() : this.track.getCurrentColor(),
+                type: 'waypoint',
+            });
 
-            $('#data').chart({ map, dataEmpty: '#data-empty', isSmallScreen });
+            // Ignore this marker if same as previous
+            if (this.track.hasMarkers() && this.track.getLastMarker().getLatLng().equals(marker.getLatLng()))
+                return;
 
-            $.State.setMode(null);
-            $.State.triggerMarkersChanged();
-            $.State.setComputing(false);
+            marker.add(this.track).done(function () {
+                marker.setOpacity(1);
+            });
+        },
+    });
 
-            if (!isSmallScreen) {
-                $.Shepherd.tour()
-                    .add('welcome', {
-                        text: $('#help-welcome')[0],
-                    })
-                    .add('layers', {
-                        text: $('#help-layers')[0],
-                        attachTo: { element: $('.GPlayerName').closest('.GPwidget')[0], on: 'left' },
-                    })
-                    .add('search', {
-                        text: $('#help-search')[0],
-                        attachTo: { element: $('.GPshowAdvancedToolOpen').closest('.GPwidget')[0], on: 'right' },
-                    })
-                    .add('autotrace', {
-                        text: $('#help-autotrace')[0],
-                        attachTo: { element: $('#btn-autotrace')[0], on: 'right' },
-                    })
-                    .add('straighttrace', {
-                        text: $('#help-straighttrace')[0],
-                        attachTo: { element: $('#btn-straighttrace')[0], on: 'right' },
-                    })
-                    .start();
+})(jQuery);
+
+
+const isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
+
+showLoadingMessage('Observation des faucons crécerelle...');
+
+window.onload = function () {
+    try {
+        showLoadingMessage('Localisation des chamois...');
+
+        $('#data-computing').progress().on('progressstatechanged', (e, data) => {
+            if (data.started) {
+                $('#data-computing').fadeIn();
+            } else {
+                $('#data').data('map2gpx-chart').replot($map.map('getTrack').computeStats());
+                $('#data-computing').fadeOut();
             }
+        });
+        $.Queue.bindTo($('#data-computing'));
 
-            $.when.apply($, layerPromises).done(function () {
+        const $map = $('#map').map({
+            controls: {
+                minimap: {
+                    show: !isSmallScreen,
+                },
+                layerSwitcher: {
+                    leafletOptions: {
+                        collapsed: isSmallScreen,
+                    },
+                },
+                scale: {
+                    show: !isSmallScreen,
+                },
+                help: {
+                    show: !isSmallScreen,
+                },
+            },
+            created: function () {
+                showLoadingMessage('Suivi des renards roux...');
+
+                if (isSmallScreen) {
+                    $('#mobile-warning')
+                        .show()
+                        .find('button').click(function () { popup.hide(); });
+                } else {
+                    $.Shepherd.tour()
+                        .add('welcome', {
+                            text: $('#help-welcome')[0],
+                        })
+                        .add('layers', {
+                            text: $('#help-layers')[0],
+                            attachTo: { element: $('.GPlayerName').closest('.GPwidget')[0], on: 'left' },
+                        })
+                        .add('search', {
+                            text: $('#help-search')[0],
+                            attachTo: { element: $('.GPshowAdvancedToolOpen').closest('.GPwidget')[0], on: 'right' },
+                        })
+                        .add('autotrace', {
+                            text: $('#help-autotrace')[0],
+                            attachTo: { element: $('#btn-autotrace')[0], on: 'right' },
+                        })
+                        .add('straighttrace', {
+                            text: $('#help-straighttrace')[0],
+                            attachTo: { element: $('#btn-straighttrace')[0], on: 'right' },
+                        })
+                        .start();
+                }
+            },
+            loaded: () => {
+                showLoadingMessage('Alignement des satellites...');
                 clearInterval(interval);
                 $('#loading').fadeOut();
-            });
+            },
+        }).on('mapmarkerschanged', function (e) {
+            if (!isSmallScreen) {
+                if ($map.map('getTrack').hasMarkers(2) && !$.Shepherd.has(1)) {
+                    $.Shepherd.tour()
+                        .add('data', {
+                            text: $('#help-data')[0],
+                            attachTo: { element: $('#data')[0], on: 'top' },
+                        })
+                        .add('closeloop', {
+                            text: $('#help-closeloop')[0],
+                            attachTo: { element: $('#btn-closeloop')[0], on: 'right' },
+                        })
+                        .add('export', {
+                            text: $('#help-export')[0],
+                            attachTo: { element: $('#btn-export')[0], on: 'right' },
+                        })
+                        .start();
+                }
+
+                if ($map.map('getTrack').hasMarkers(3) && !$.Shepherd.has(2)) {
+                    $.Shepherd.tour()
+                        .add('movemarker', {
+                            text: $('#help-movemarker')[0],
+                            attachTo: { element: $('.awesome-marker').last()[0], on: 'bottom' },
+                        })
+                        .add('movemarker2', {
+                            text: $('#help-movemarker2')[0],
+                            attachTo: { element: $('.awesome-marker').eq(-2)[0], on: 'bottom' },
+                        })
+                        .add('steps', {
+                            text: $('#help-steps')[0],
+                            attachTo: { element: $('.awesome-marker').last()[0], on: 'bottom' },
+                        })
+                        .add('steps2', {
+                            beforeShowPromise: function () {
+                                return $.Deferred(function () {
+                                    const route = $map.map('getTrack').getFirstMarker().getRouteFromHere();
+                                    const lngs = route.getLatLngs();
+                                    const item = lngs[Math.floor(lngs.length / 2)];
+                                    route.openPopup(item);
+                                    this.resolve();
+                                }).promise();
+                            },
+                            text: $('#help-steps2')[0],
+                        })
+                        .start();
+                }
+            }
+        }).on('mapstatechanged', function (e) {
+            $('#data').data('map2gpx-chart').replot($map.map('getTrack').computeStats());
         });
+
+        $('#data').chart({ map: $map.map('getMap'), dataEmpty: '#data-empty', isSmallScreen });
 
     } catch (ex) {
         gotError = true;

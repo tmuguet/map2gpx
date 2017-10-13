@@ -58,10 +58,10 @@ ul.legend.black {border-left-color: #303030;}
 #data.data, #data-empty.data {
     display: block;
 }
-#data-computing-progressbar-container {
+.data-computing-progressbar-container {
     width: 400px; height: 3px; background-color: grey; margin:0px auto;
 }
-#data-computing-progressbar {
+.data-computing-progressbar {
     height: 100%; width: 0%; background-color: #24b835;
 }
 #mobile-warning {

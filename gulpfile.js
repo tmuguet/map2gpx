@@ -6,15 +6,17 @@ const sources_js = [
     "src/js/maths.js",
     "src/js/utils.js",
     "src/js/queue.js",
-    "src/js/state.js",
+    "src/js/progress.js",
     "src/js/cache.js",
 
     "src/js/view.js",
     "src/js/stats.js",
     "src/js/chart.js",
 
-    "src/js/route.js",
     "src/js/track.js",
+
+    "src/js/map.js",
+
 
     "src/js/script.js"
 ];
