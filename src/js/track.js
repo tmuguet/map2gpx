@@ -235,7 +235,7 @@
         },
 
         isLoop: function () {
-            return this.firstMarker && this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
+            return !!this.firstMarker && !!this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
         },
 
         clear: function () {
@@ -851,12 +851,21 @@
 
                 previous.deleteRouteFromHere();
 
-                if (next && recompute) {
-                    // Re-connect markers
-                    const mode = this.track.$map.map('getMode') || this._mode || 'auto';
+                if (next) {
+                    if (previous.getLatLng().equals(next.getLatLng())) {
+                        // In case previous & next markers are the same, remove one of them because there's no route
+                        // This can happen if we have a loop with 3 markers and we delete the middle one
+                        previous.attachRouteFrom(next, null, undefined);    // We need to temporarily "fix" the chain to remove the marker properly
+                        if (previous.options.type == 'step')
+                            promise = next.remove(recompute);
+                        else
+                            promise = previous.remove(recompute);
+                    } else if (recompute) {
+                        // Re-connect markers
+                        const mode = this.track.$map.map('getMode') || this._mode || 'auto';
 
-                    promise = previous.computeRouteTo(next, mode);
-
+                        promise = previous.computeRouteTo(next, mode);
+                    }
                 }
             }
 
