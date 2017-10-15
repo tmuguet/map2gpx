@@ -107,7 +107,7 @@ window.onload = function () {
                             beforeShowPromise: function () {
                                 return $.Deferred(function () {
                                     const route = $map.map('getTrack').getFirstMarker().getRouteFromHere();
-                                    const lngs = route.getLatLngs();
+                                    const lngs = route.getLatLngsFlatten();
                                     const item = lngs[Math.floor(lngs.length / 2)];
                                     route.openPopup(item);
                                     this.resolve();

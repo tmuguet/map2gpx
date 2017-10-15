@@ -458,7 +458,7 @@
                         xml += '        <trkseg>\n';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngs(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
                         xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
                         if ($.Cache.hasAltitude(coords))
                             xml += '<ele>' + $.Cache.getAltitude(coords) + '</ele>';
@@ -513,7 +513,7 @@
                         xml += '                    ';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngs(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
                         xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
                 }
@@ -569,8 +569,10 @@
                                 $.each(lines, function (idx, track) {
                                     // Add new route+markers
 
+                                    const latlngs = track.getLatLngsFlatten();
+
                                     if (idx == 0) {
-                                        const start = track.getLatLngs()[0];
+                                        const start = latlngs[0];
                                         startMarker = L.Marker.routed(start, {
                                             draggable: false,
                                             opacity: 0.5,
@@ -583,7 +585,7 @@
                                         startMarker.on('popupopen', deleteTrack);
                                     }
 
-                                    const end = track.getLatLngs()[track.getLatLngs().length - 1];
+                                    const end = latlngs[latlngs.length - 1];
                                     const marker = L.Marker.routed(end, {
                                         draggable: false,
                                         opacity: 0.5,
