@@ -3,6 +3,12 @@ const isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
 
 showLoadingMessage('Observation des faucons crécerelle...');
 
+if (isSmallScreen) {
+    $('#mobile-warning')
+        .show()
+        .find('button').click(function () { $('#mobile-warning').hide(); });
+}
+
 window.onload = function () {
     try {
         showLoadingMessage('Localisation des chamois...');
@@ -37,11 +43,7 @@ window.onload = function () {
             created: function () {
                 showLoadingMessage('Suivi des renards roux...');
 
-                if (isSmallScreen) {
-                    $('#mobile-warning')
-                        .show()
-                        .find('button').click(function () { popup.hide(); });
-                } else {
+                if (!isSmallScreen) {
                     $.Shepherd.tour()
                         .add('welcome', {
                             text: $('#help-welcome')[0],
