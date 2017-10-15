@@ -125,10 +125,25 @@ L.Layer.include({
         });
     },
 
+    getLatLngsFlatten: function () {
+        const latlngs = this.getLatLngs();
+
+        if (latlngs.length > 0 && Array.isArray(latlngs[0])) {
+            var result = [];
+            $.each(latlngs, function (j, array) {
+                result = result.concat(array);
+            });
+
+            return result;
+        } else {
+            return latlngs;
+        }
+    },
+
     _computeStats: function () {
         const elevations = [];
 
-        $.each(this.getLatLngs(), function (j, coords) {
+        $.each(this.getLatLngsFlatten(), function (j, coords) {
             const values = $.extend({}, { lat: coords.lat, lng: coords.lng }, $.Cache.getInfos(coords));
             elevations.push(values);
         });
@@ -182,7 +197,7 @@ L.Layer.include({
         var geometry = []; // Batch
         const promises = [];
 
-        $.each(this.getLatLngs(), function (j, coords) {
+        $.each(this.getLatLngsFlatten(), function (j, coords) {
             if (!$.Cache.hasAltitude(coords)) { // Skip already cached values
                 geometry.push({
                     lon: coords.lng,
@@ -209,7 +224,7 @@ L.Layer.include({
         const promises = [];
         const map = (this._map || this._mapToAdd);
 
-        $.each(this.getLatLngs(), function (j, coords) {
+        $.each(this.getLatLngsFlatten(), function (j, coords) {
             if (!$.Cache.hasSlope(coords)) { // Skip already cached values
                 const { tile, tilePixel } = coords.toTilePixel(map.options.crs, 16, 256, map.getPixelOrigin());
 

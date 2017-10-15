@@ -235,7 +235,7 @@
         },
 
         isLoop: function () {
-            return this.firstMarker && this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
+            return !!this.firstMarker && !!this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
         },
 
         clear: function () {
@@ -458,7 +458,7 @@
                         xml += '        <trkseg>\n';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngs(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
                         xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
                         if ($.Cache.hasAltitude(coords))
                             xml += '<ele>' + $.Cache.getAltitude(coords) + '</ele>';
@@ -513,7 +513,7 @@
                         xml += '                    ';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngs(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
                         xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
                 }
@@ -569,8 +569,10 @@
                                 $.each(lines, function (idx, track) {
                                     // Add new route+markers
 
+                                    const latlngs = track.getLatLngsFlatten();
+
                                     if (idx == 0) {
-                                        const start = track.getLatLngs()[0];
+                                        const start = latlngs[0];
                                         startMarker = L.Marker.routed(start, {
                                             draggable: false,
                                             opacity: 0.5,
@@ -583,7 +585,7 @@
                                         startMarker.on('popupopen', deleteTrack);
                                     }
 
-                                    const end = track.getLatLngs()[track.getLatLngs().length - 1];
+                                    const end = latlngs[latlngs.length - 1];
                                     const marker = L.Marker.routed(end, {
                                         draggable: false,
                                         opacity: 0.5,
@@ -851,12 +853,21 @@
 
                 previous.deleteRouteFromHere();
 
-                if (next && recompute) {
-                    // Re-connect markers
-                    const mode = this.track.$map.map('getMode') || this._mode || 'auto';
+                if (next) {
+                    if (previous.getLatLng().equals(next.getLatLng())) {
+                        // In case previous & next markers are the same, remove one of them because there's no route
+                        // This can happen if we have a loop with 3 markers and we delete the middle one
+                        previous.attachRouteFrom(next, null, undefined);    // We need to temporarily "fix" the chain to remove the marker properly
+                        if (previous.options.type == 'step')
+                            promise = next.remove(recompute);
+                        else
+                            promise = previous.remove(recompute);
+                    } else if (recompute) {
+                        // Re-connect markers
+                        const mode = this.track.$map.map('getMode') || this._mode || 'auto';
 
-                    promise = previous.computeRouteTo(next, mode);
-
+                        promise = previous.computeRouteTo(next, mode);
+                    }
                 }
             }
 

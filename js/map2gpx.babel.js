@@ -667,10 +667,25 @@ L.Layer.include({
         });
     },
 
+    getLatLngsFlatten: function getLatLngsFlatten() {
+        var latlngs = this.getLatLngs();
+
+        if (latlngs.length > 0 && Array.isArray(latlngs[0])) {
+            var result = [];
+            $.each(latlngs, function (j, array) {
+                result = result.concat(array);
+            });
+
+            return result;
+        } else {
+            return latlngs;
+        }
+    },
+
     _computeStats: function _computeStats() {
         var elevations = [];
 
-        $.each(this.getLatLngs(), function (j, coords) {
+        $.each(this.getLatLngsFlatten(), function (j, coords) {
             var values = $.extend({}, { lat: coords.lat, lng: coords.lng }, $.Cache.getInfos(coords));
             elevations.push(values);
         });
@@ -717,7 +732,7 @@ L.Layer.include({
         var geometry = []; // Batch
         var promises = [];
 
-        $.each(this.getLatLngs(), function (j, coords) {
+        $.each(this.getLatLngsFlatten(), function (j, coords) {
             if (!$.Cache.hasAltitude(coords)) {
                 // Skip already cached values
                 geometry.push({
@@ -745,7 +760,7 @@ L.Layer.include({
         var promises = [];
         var map = this._map || this._mapToAdd;
 
-        $.each(this.getLatLngs(), function (j, coords) {
+        $.each(this.getLatLngsFlatten(), function (j, coords) {
             if (!$.Cache.hasSlope(coords)) {
                 // Skip already cached values
                 var _coords$toTilePixel = coords.toTilePixel(map.options.crs, 16, 256, map.getPixelOrigin()),
@@ -1359,7 +1374,7 @@ L.GeoJSON.include({
         },
 
         isLoop: function isLoop() {
-            return this.firstMarker && this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
+            return !!this.firstMarker && !!this.lastMarker && this.firstMarker.getLatLng().distanceTo(this.lastMarker.getLatLng()) < 10;
         },
 
         clear: function clear() {
@@ -1578,7 +1593,7 @@ L.GeoJSON.include({
                         xml += '        <trkseg>\n';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngs(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
                         xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
                         if ($.Cache.hasAltitude(coords)) xml += '<ele>' + $.Cache.getAltitude(coords) + '</ele>';
                         xml += '</trkpt>\n';
@@ -1633,7 +1648,7 @@ L.GeoJSON.include({
                         xml += '                    ';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngs(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
                         xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
                 }
@@ -1689,8 +1704,10 @@ L.GeoJSON.include({
                                 $.each(lines, function (idx, track) {
                                     // Add new route+markers
 
+                                    var latlngs = track.getLatLngsFlatten();
+
                                     if (idx == 0) {
-                                        var start = track.getLatLngs()[0];
+                                        var start = latlngs[0];
                                         startMarker = L.Marker.routed(start, {
                                             draggable: false,
                                             opacity: 0.5,
@@ -1703,7 +1720,7 @@ L.GeoJSON.include({
                                         startMarker.on('popupopen', deleteTrack);
                                     }
 
-                                    var end = track.getLatLngs()[track.getLatLngs().length - 1];
+                                    var end = latlngs[latlngs.length - 1];
                                     var marker = L.Marker.routed(end, {
                                         draggable: false,
                                         opacity: 0.5,
@@ -1976,11 +1993,18 @@ L.GeoJSON.include({
 
                 previous.deleteRouteFromHere();
 
-                if (next && recompute) {
-                    // Re-connect markers
-                    var mode = this.track.$map.map('getMode') || this._mode || 'auto';
+                if (next) {
+                    if (previous.getLatLng().equals(next.getLatLng())) {
+                        // In case previous & next markers are the same, remove one of them because there's no route
+                        // This can happen if we have a loop with 3 markers and we delete the middle one
+                        previous.attachRouteFrom(next, null, undefined); // We need to temporarily "fix" the chain to remove the marker properly
+                        if (previous.options.type == 'step') promise = next.remove(recompute);else promise = previous.remove(recompute);
+                    } else if (recompute) {
+                        // Re-connect markers
+                        var mode = this.track.$map.map('getMode') || this._mode || 'auto';
 
-                    promise = previous.computeRouteTo(next, mode);
+                        promise = previous.computeRouteTo(next, mode);
+                    }
                 }
             }
 
@@ -2475,6 +2499,12 @@ var isSmallScreen = window.innerWidth <= 800 && window.innerHeight <= 600;
 
 showLoadingMessage('Observation des faucons crécerelle...');
 
+if (isSmallScreen) {
+    $('#mobile-warning').show().find('button').click(function () {
+        $('#mobile-warning').hide();
+    });
+}
+
 window.onload = function () {
     try {
         showLoadingMessage('Localisation des chamois...');
@@ -2509,11 +2539,7 @@ window.onload = function () {
             created: function created() {
                 showLoadingMessage('Suivi des renards roux...');
 
-                if (isSmallScreen) {
-                    $('#mobile-warning').show().find('button').click(function () {
-                        popup.hide();
-                    });
-                } else {
+                if (!isSmallScreen) {
                     $.Shepherd.tour().add('welcome', {
                         text: $('#help-welcome')[0]
                     }).add('layers', {
@@ -2565,7 +2591,7 @@ window.onload = function () {
                         beforeShowPromise: function beforeShowPromise() {
                             return $.Deferred(function () {
                                 var route = $map.map('getTrack').getFirstMarker().getRouteFromHere();
-                                var lngs = route.getLatLngs();
+                                var lngs = route.getLatLngsFlatten();
                                 var item = lngs[Math.floor(lngs.length / 2)];
                                 route.openPopup(item);
                                 this.resolve();

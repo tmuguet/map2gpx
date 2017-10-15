@@ -3,6 +3,12 @@ const isSmallScreen = (window.innerWidth <= 800 && window.innerHeight <= 600);
 
 showLoadingMessage('Observation des faucons crécerelle...');
 
+if (isSmallScreen) {
+    $('#mobile-warning')
+        .show()
+        .find('button').click(function () { $('#mobile-warning').hide(); });
+}
+
 window.onload = function () {
     try {
         showLoadingMessage('Localisation des chamois...');
@@ -37,11 +43,7 @@ window.onload = function () {
             created: function () {
                 showLoadingMessage('Suivi des renards roux...');
 
-                if (isSmallScreen) {
-                    $('#mobile-warning')
-                        .show()
-                        .find('button').click(function () { popup.hide(); });
-                } else {
+                if (!isSmallScreen) {
                     $.Shepherd.tour()
                         .add('welcome', {
                             text: $('#help-welcome')[0],
@@ -107,7 +109,7 @@ window.onload = function () {
                             beforeShowPromise: function () {
                                 return $.Deferred(function () {
                                     const route = $map.map('getTrack').getFirstMarker().getRouteFromHere();
-                                    const lngs = route.getLatLngs();
+                                    const lngs = route.getLatLngsFlatten();
                                     const item = lngs[Math.floor(lngs.length / 2)];
                                     route.openPopup(item);
                                     this.resolve();
