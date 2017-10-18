@@ -109,29 +109,20 @@
                 apiKey: keyIgn,
                 onSuccess: function (results) {
                     if (results) {
-                        const geojson = L.geoJSON([], {
+                        const latlngs = [];
+                        $.each(results.routeInstructions, function (idx, instructions) {
+                            $.each(instructions.geometry.coordinates, function (j, coords) {
+                                latlngs.push(L.latLng(coords[1], coords[0]));
+                            });
+                        });
+
+                        const geojson = L.polyline(latlngs, {
                             color: start.getColorRgb(),
                             weight: 5,
                             opacity: 0.75,
                             snakingPause: 0,
                             snakingSpeed: 1000,
                         });
-
-                        const _geometry = {
-                            type: 'FeatureCollection',
-                            features: [],
-                        };
-                        var counter = 1;
-                        $.each(results.routeInstructions, function (idx, instructions) {
-                            counter++;
-                            _geometry.features.push({
-                                id: counter,
-                                type: 'Feature',
-                                geometry: instructions.geometry,
-                            });
-                        });
-
-                        geojson.addData(_geometry);
 
                         _addRoute(map, geojson, start, end, index, 'auto')
                             .progress(deferred.notify)
