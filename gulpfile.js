@@ -6,6 +6,8 @@ const sources_js = [
     "src/js/maths.js",
     "src/js/utils.js",
     "src/js/L.Polyline.find.js",
+    "src/js/L.Polyline.Hausdorff.js",
+    "src/js/L.Polyline.interpolate.js",
     "src/js/queue.js",
     "src/js/progress.js",
     "src/js/cache.js",

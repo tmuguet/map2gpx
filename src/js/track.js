@@ -90,7 +90,7 @@
 
             deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
             L.polyline_findAuto(start.getLatLng(), end.getLatLng())
-                .done(function() {
+                .done(function () {
                     deferred.notify({ step: 'Route calculée' });
 
                     this.geojson.setStyle({
@@ -493,82 +493,87 @@
                             },
                             onSuccess: function (gpx) {
                                 deferred.notify({ step: 'Fichier traité' });
-                                deferred.notify({ start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' });
+                                deferred.notify({ start: true, total: lines.length, status: 'Interpolation en cours...' });
 
                                 _this.clear();
 
                                 const bounds = gpx.getBounds();
 
                                 _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
-                                gpx.addTo(_this.Lmap);
-
-                                var deleteTrack = function () {
-                                    $('.track-delete-button:visible').click(function () {
-                                        _this.clear();
-                                        _this.Lmap.removeLayer(gpx);
-                                    });
-                                };
 
                                 const promises = [];
-                                var startMarker;
+                                const promises2 = [];
                                 $.each(lines, function (idx, track) {
-                                    // Add new route+markers
-
                                     const latlngs = track.getLatLngsFlatten();
+                                    deferred.notify({ start: true, total: latlngs.length });
 
-                                    if (idx == 0) {
-                                        const start = latlngs[0];
-                                        startMarker = L.Marker.routed(start, {
-                                            draggable: false,
-                                            opacity: 0.5,
-                                            color: _this.getCurrentColor(),
-                                            type: 'waypoint',
-                                        });
-                                        _this.addMarker(startMarker, false);
-
-                                        startMarker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
-                                        startMarker.on('popupopen', deleteTrack);
-                                    }
-
-                                    const end = latlngs[latlngs.length - 1];
-                                    const marker = L.Marker.routed(end, {
-                                        draggable: false,
-                                        opacity: 0.5,
-                                        color: _this.nextColor(),
-                                        type: 'step',
-                                    });
-                                    _this.addMarker(marker, false);
-                                    startMarker.attachRouteFrom(marker, track, 'import');
-
-                                    track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
-                                    track.bindPopup('Calculs en cours...');
-
-                                    marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
-                                    marker.on('popupopen', deleteTrack);
-
-                                    promises.push(track.computeStats().progress(deferred.notify));
-
-                                    startMarker = marker;
-                                });
-
-                                $.each(promises, function () {
-                                    this.done(() => deferred.notify({}));
+                                    promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
+                                        deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
+                                        p.line.prepareForMap(_this.Lmap, null, null);
+                                        p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                        p.line.addTo(_this.Lmap);
+                                        promises2.push(p.line.computeStats().progress(deferred.notify));
+                                    }));
                                 });
 
                                 $.when.apply($, promises).done(function () {
-                                    _this.eachRoute(function (i, route) {
-                                        route.setStyle({ opacity: 0.75 });
+                                    var startMarker;
+
+                                    for (let i = 0; i < arguments.length; i++) {
+                                        const newlines = arguments[i];
+                                        const linesLength = newlines.length;
+
+                                        $.each(newlines, function (idx, track) {  // jshint ignore:line
+                                            const latlngs = track.line.getLatLngsFlatten();
+
+                                            if (startMarker === undefined) {
+                                                const start = latlngs[0];
+                                                startMarker = L.Marker.routed(start, {
+                                                    riseOnHover: true,
+                                                    draggable: true,
+                                                    opacity: 0.5,
+                                                    color: _this.getCurrentColor(),
+                                                    type: 'waypoint',
+                                                });
+                                                startMarker.add(_this, false);
+                                            }
+
+                                            const end = latlngs[latlngs.length - 1];
+                                            const marker = L.Marker.routed(end, {
+                                                riseOnHover: true,
+                                                draggable: true,
+                                                opacity: 0.5,
+                                                color: (idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor()),
+                                                type: (idx == linesLength - 1 ? 'step' : 'waypoint'),
+                                            });
+                                            marker.add(_this, false);
+
+                                            track.line.prepareForMap(_this.Lmap, startMarker, marker);
+                                            track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
+                                            track.line.bindPopup('Calculs en cours...');
+                                            startMarker.attachRouteFrom(marker, track.line, track.mode);
+                                            startMarker = marker;
+                                        });
+                                    }
+
+                                    $.when.apply($, promises2).done(function () {
+                                        _this.eachRoute(function (i, route) {
+                                            route.setStyle({ opacity: 0.75 });
+                                        });
+
+                                        _this.eachMarker(function (i, marker) {
+                                            marker.setOpacity(1);
+                                        });
+
+                                        _this.fire('markerschanged');
+
+                                        deferred.resolve();
+                                    }).fail(function () {
+                                        deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
                                     });
 
-                                    _this.eachMarker(function (i, marker) {
-                                        marker.setOpacity(1);
-                                    });
-
-                                    _this.fire('markerschanged');
-
-                                    deferred.resolve();
                                 }).fail(function () {
-                                    deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                    deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
                                 });
                             },
                         }).on('addline', function (e) { lines.push(e.line); });

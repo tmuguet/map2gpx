@@ -152,7 +152,7 @@ L.Layer.include({
         let j = 0;
         for (let i = 1; i < elevations.length; i++) {
             const localDistance = L.latLng(elevations[i]).distanceTo(L.latLng(this._elevations[j])); // m
-            if (localDistance > 10) {
+            if (localDistance > 0) {
 
                 this._distance += localDistance / 1000;   // km
 
