@@ -88,77 +88,31 @@
         return $.Deferred(function () {
             const deferred = this;  // jscs:ignore safeContextKeyword
 
-            const startLatLng = start.getLatLng();
-            const endLatLng = end.getLatLng();
-
-            const options = {
-                distanceUnit: 'm',
-                endPoint: {
-                    x: endLatLng.lng,
-                    y: endLatLng.lat,
-                },
-                exclusions: [],
-                geometryInInstructions: true,
-                graph: 'Pieton',
-                routePreferences: 'fastest',
-                startPoint: {
-                    x: startLatLng.lng,
-                    y: startLatLng.lat,
-                },
-                viaPoints: [],
-                apiKey: keyIgn,
-                onSuccess: function (results) {
-                    if (results) {
-                        const latlngs = [];
-                        $.each(results.routeInstructions, function (idx, instructions) {
-                            $.each(instructions.geometry.coordinates, function (j, coords) {
-                                latlngs.push(L.latLng(coords[1], coords[0]));
-                            });
-                        });
-
-                        const geojson = L.polyline(latlngs, {
-                            color: start.getColorRgb(),
-                            weight: 5,
-                            opacity: 0.75,
-                            snakingPause: 0,
-                            snakingSpeed: 1000,
-                        });
-
-                        _addRoute(map, geojson, start, end, index, 'auto')
-                            .progress(deferred.notify)
-                            .done(deferred.resolve)
-                            .fail(deferred.reject);
-
-                        deferred.notify({ step: 'Route calculée' });
-                    } else {
-                        deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
-                    }
-                },
-                onFailure: function (error) {    // seems to never be called
-                    deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
-                },
-            };
             deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-            Gp.Services.route(options);
+            L.polyline_findAuto(start.getLatLng(), end.getLatLng())
+                .done(function() {
+                    deferred.notify({ step: 'Route calculée' });
+
+                    this.geojson.setStyle({
+                        color: start.getColorRgb(),
+                        weight: 5,
+                        opacity: 0.75,
+                        snakingPause: 0,
+                        snakingSpeed: 1000,
+                    });
+
+                    _addRoute(map, this.geojson, start, end, index, 'auto')
+                        .progress(deferred.notify)
+                        .done(deferred.resolve)
+                        .fail(deferred.reject);
+                })
+                .fail(deferred.reject);
         });
     }
 
     function _findRouteStraight(map, start, end, index) {
-        const c1 = start.getLatLng().roundE8();
-        const c2 = end.getLatLng().roundE8();
-        const d = c1.distanceTo(c2);
-        const azimuth = c1.bearingTo(c2);
-
-        const latlngs = [c1];
-
-        const interval = 10;
-        for (let counter = interval; counter < d; counter += interval) {
-            latlngs.push(c1.getDestinationAlong(azimuth, counter));
-        }
-
-        latlngs.push(c2);
-
-        const geojson = L.polyline(latlngs, {
+        const geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
+        geojson.setStyle({
             color: start.getColorRgb(),
             weight: 5,
             opacity: 0.75,

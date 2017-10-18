@@ -125,21 +125,6 @@ L.Layer.include({
         });
     },
 
-    getLatLngsFlatten: function () {
-        const latlngs = this.getLatLngs();
-
-        if (latlngs.length > 0 && Array.isArray(latlngs[0])) {
-            var result = [];
-            $.each(latlngs, function (j, array) {
-                result = result.concat(array);
-            });
-
-            return result;
-        } else {
-            return latlngs;
-        }
-    },
-
     _computeStats: function () {
         const elevations = [];
 
@@ -264,19 +249,5 @@ L.Layer.include({
             '<li>D-: ' + Math.round(stats.denivNeg) + 'm</li>' +
             '<li>Distance: ' + Math.round(stats.distance * 100) / 100 + 'km</li></ul>' +
             (hasInsertMaker ? '<button class="marker-add-button"><i class="fa fa-plus" aria-hidden="true"></i> Ajouter un marqueur ici</button>' : ''));
-    },
-});
-
-L.GeoJSON.include({
-    getLatLngs: function () {
-        const c = [];
-
-        this.eachLayer(function (layer) {
-            $.each(layer.feature.geometry.coordinates, function (j, coords) {
-                c.push(L.latLng(coords[1], coords[0]));
-            });
-        });
-
-        return c;
     },
 });
