@@ -88,86 +88,31 @@
         return $.Deferred(function () {
             const deferred = this;  // jscs:ignore safeContextKeyword
 
-            const startLatLng = start.getLatLng();
-            const endLatLng = end.getLatLng();
-
-            const options = {
-                distanceUnit: 'm',
-                endPoint: {
-                    x: endLatLng.lng,
-                    y: endLatLng.lat,
-                },
-                exclusions: [],
-                geometryInInstructions: true,
-                graph: 'Pieton',
-                routePreferences: 'fastest',
-                startPoint: {
-                    x: startLatLng.lng,
-                    y: startLatLng.lat,
-                },
-                viaPoints: [],
-                apiKey: keyIgn,
-                onSuccess: function (results) {
-                    if (results) {
-                        const geojson = L.geoJSON([], {
-                            color: start.getColorRgb(),
-                            weight: 5,
-                            opacity: 0.75,
-                            snakingPause: 0,
-                            snakingSpeed: 1000,
-                        });
-
-                        const _geometry = {
-                            type: 'FeatureCollection',
-                            features: [],
-                        };
-                        var counter = 1;
-                        $.each(results.routeInstructions, function (idx, instructions) {
-                            counter++;
-                            _geometry.features.push({
-                                id: counter,
-                                type: 'Feature',
-                                geometry: instructions.geometry,
-                            });
-                        });
-
-                        geojson.addData(_geometry);
-
-                        _addRoute(map, geojson, start, end, index, 'auto')
-                            .progress(deferred.notify)
-                            .done(deferred.resolve)
-                            .fail(deferred.reject);
-
-                        deferred.notify({ step: 'Route calculée' });
-                    } else {
-                        deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
-                    }
-                },
-                onFailure: function (error) {    // seems to never be called
-                    deferred.rejectWith({ error: 'Impossible d\'obtenir la route: ' + error.message });
-                },
-            };
             deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-            Gp.Services.route(options);
+            L.polyline_findAuto(start.getLatLng(), end.getLatLng())
+                .done(function () {
+                    deferred.notify({ step: 'Route calculée' });
+
+                    this.geojson.setStyle({
+                        color: start.getColorRgb(),
+                        weight: 5,
+                        opacity: 0.75,
+                        snakingPause: 0,
+                        snakingSpeed: 1000,
+                    });
+
+                    _addRoute(map, this.geojson, start, end, index, 'auto')
+                        .progress(deferred.notify)
+                        .done(deferred.resolve)
+                        .fail(deferred.reject);
+                })
+                .fail(deferred.reject);
         });
     }
 
     function _findRouteStraight(map, start, end, index) {
-        const c1 = start.getLatLng().roundE8();
-        const c2 = end.getLatLng().roundE8();
-        const d = c1.distanceTo(c2);
-        const azimuth = c1.bearingTo(c2);
-
-        const latlngs = [c1];
-
-        const interval = 10;
-        for (let counter = interval; counter < d; counter += interval) {
-            latlngs.push(c1.getDestinationAlong(azimuth, counter));
-        }
-
-        latlngs.push(c2);
-
-        const geojson = L.polyline(latlngs, {
+        const geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
+        geojson.setStyle({
             color: start.getColorRgb(),
             weight: 5,
             opacity: 0.75,
@@ -530,7 +475,7 @@
             return true;
         },
 
-        importGpx: function (file) {
+        importGpx: function (file, interpolate) {
             const _this = this;
 
             return $.Deferred(function () {
@@ -548,82 +493,101 @@
                             },
                             onSuccess: function (gpx) {
                                 deferred.notify({ step: 'Fichier traité' });
-                                deferred.notify({ start: true, total: lines.length, status: 'Récupération des données géographiques en cours...' });
+                                deferred.notify({ start: true, total: lines.length, status: (interpolate ? 'Interpolation en cours...' : 'Traitement en cours...') });
 
                                 _this.clear();
 
                                 const bounds = gpx.getBounds();
 
                                 _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
-                                gpx.addTo(_this.Lmap);
-
-                                var deleteTrack = function () {
-                                    $('.track-delete-button:visible').click(function () {
-                                        _this.clear();
-                                        _this.Lmap.removeLayer(gpx);
-                                    });
-                                };
 
                                 const promises = [];
-                                var startMarker;
+                                const promises2 = [];
                                 $.each(lines, function (idx, track) {
-                                    // Add new route+markers
+                                    if (interpolate) {
+                                        const latlngs = track.getLatLngsFlatten();
+                                        deferred.notify({ start: true, total: latlngs.length });
 
-                                    const latlngs = track.getLatLngsFlatten();
-
-                                    if (idx == 0) {
-                                        const start = latlngs[0];
-                                        startMarker = L.Marker.routed(start, {
-                                            draggable: false,
-                                            opacity: 0.5,
-                                            color: _this.getCurrentColor(),
-                                            type: 'waypoint',
-                                        });
-                                        _this.addMarker(startMarker, false);
-
-                                        startMarker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
-                                        startMarker.on('popupopen', deleteTrack);
+                                        promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
+                                            deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
+                                            p.line.prepareForMap(_this.Lmap, null, null);
+                                            p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                            p.line.addTo(_this.Lmap);
+                                            promises2.push(p.line.computeStats().progress(deferred.notify));
+                                        }));
+                                    } else {
+                                        track.prepareForMap(_this.Lmap, null, null);
+                                        track.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                        track.addTo(_this.Lmap);
+                                        promises.push($.Deferred(function () {this.resolve([{ line: track, mode: 'import' }]);}));
+                                        promises2.push(track.computeStats().progress(deferred.notify));
                                     }
-
-                                    const end = latlngs[latlngs.length - 1];
-                                    const marker = L.Marker.routed(end, {
-                                        draggable: false,
-                                        opacity: 0.5,
-                                        color: _this.nextColor(),
-                                        type: 'step',
-                                    });
-                                    _this.addMarker(marker, false);
-                                    startMarker.attachRouteFrom(marker, track, 'import');
-
-                                    track.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
-                                    track.bindPopup('Calculs en cours...');
-
-                                    marker.bindPopup('<button class="track-delete-button"><i class="fa fa-trash" aria-hidden="true"></i> Supprimer l\'import</button>');
-                                    marker.on('popupopen', deleteTrack);
-
-                                    promises.push(track.computeStats().progress(deferred.notify));
-
-                                    startMarker = marker;
-                                });
-
-                                $.each(promises, function () {
-                                    this.done(() => deferred.notify({}));
                                 });
 
                                 $.when.apply($, promises).done(function () {
-                                    _this.eachRoute(function (i, route) {
-                                        route.setStyle({ opacity: 0.75 });
+                                    var startMarker;
+
+                                    for (let i = 0; i < arguments.length; i++) {
+                                        const newlines = arguments[i];
+                                        const linesLength = newlines.length;
+
+                                        $.each(newlines, function (idx, track) {  // jshint ignore:line
+                                            const latlngs = track.line.getLatLngsFlatten();
+
+                                            if (startMarker === undefined) {
+                                                const start = latlngs[0];
+                                                startMarker = L.Marker.routed(start, {
+                                                    riseOnHover: true,
+                                                    draggable: interpolate,
+                                                    opacity: 0.5,
+                                                    color: _this.getCurrentColor(),
+                                                    type: 'waypoint',
+                                                });
+                                                if (interpolate)
+                                                    startMarker.add(_this, false);
+                                                else
+                                                    _this.addMarker(startMarker, false);
+                                            }
+
+                                            const end = latlngs[latlngs.length - 1];
+                                            const marker = L.Marker.routed(end, {
+                                                riseOnHover: true,
+                                                draggable: interpolate,
+                                                opacity: 0.5,
+                                                color: (idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor()),
+                                                type: (idx == linesLength - 1 ? 'step' : 'waypoint'),
+                                            });
+                                            if (interpolate)
+                                                marker.add(_this, false);
+                                            else
+                                                _this.addMarker(marker, false);
+
+                                            track.line.prepareForMap(_this.Lmap, startMarker, marker);
+                                            track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
+                                            track.line.bindPopup('Calculs en cours...');
+                                            startMarker.attachRouteFrom(marker, track.line, track.mode);
+                                            startMarker = marker;
+                                        });
+                                    }
+
+                                    $.when.apply($, promises2).done(function () {
+                                        _this.eachRoute(function (i, route) {
+                                            route.setStyle({ opacity: 0.75 });
+                                        });
+
+                                        _this.eachMarker(function (i, marker) {
+                                            marker.setOpacity(1);
+                                        });
+
+                                        _this.fire('markerschanged');
+
+                                        deferred.resolve();
+                                    }).fail(function () {
+                                        deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
                                     });
 
-                                    _this.eachMarker(function (i, marker) {
-                                        marker.setOpacity(1);
-                                    });
-
-                                    _this.fire('markerschanged');
-
-                                    deferred.resolve();
                                 }).fail(function () {
-                                    deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                    deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
                                 });
                             },
                         }).on('addline', function (e) { lines.push(e.line); });

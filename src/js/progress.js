@@ -75,6 +75,8 @@
                 this.options.total += progress.total;
             } else if (progress.end) {
                 this.options.progress = this.options.total;
+            } else if (progress.count) {
+                this.options.progress += progress.count;
             } else {
                 this.options.progress++;
             }
