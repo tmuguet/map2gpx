@@ -191,7 +191,8 @@
         </div>
         <div id="form-import">
             <form enctype="multipart/form-data">
-                <input class="import-gpx-file" type="file" name="files[]"/>
+                <input class="import-gpx-file" type="file" name="files[]"/><br>
+                <input type="checkbox" name="interpolate" id="import-gpx-interpolate"/> <label for="import-gpx-interpolate">Rendre le tracé éditable</label>
             </form><br>
             <button class="import-gpx-button"><span class="ico gpx"></span></button><br>
             <span class="import-gpx-status"></span>

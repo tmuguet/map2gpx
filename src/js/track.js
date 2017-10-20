@@ -475,7 +475,7 @@
             return true;
         },
 
-        importGpx: function (file) {
+        importGpx: function (file, interpolate) {
             const _this = this;
 
             return $.Deferred(function () {
@@ -493,7 +493,7 @@
                             },
                             onSuccess: function (gpx) {
                                 deferred.notify({ step: 'Fichier traité' });
-                                deferred.notify({ start: true, total: lines.length, status: 'Interpolation en cours...' });
+                                deferred.notify({ start: true, total: lines.length, status: (interpolate ? 'Interpolation en cours...' : 'Traitement en cours...') });
 
                                 _this.clear();
 
@@ -504,16 +504,24 @@
                                 const promises = [];
                                 const promises2 = [];
                                 $.each(lines, function (idx, track) {
-                                    const latlngs = track.getLatLngsFlatten();
-                                    deferred.notify({ start: true, total: latlngs.length });
+                                    if (interpolate) {
+                                        const latlngs = track.getLatLngsFlatten();
+                                        deferred.notify({ start: true, total: latlngs.length });
 
-                                    promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
-                                        deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
-                                        p.line.prepareForMap(_this.Lmap, null, null);
-                                        p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
-                                        p.line.addTo(_this.Lmap);
-                                        promises2.push(p.line.computeStats().progress(deferred.notify));
-                                    }));
+                                        promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
+                                            deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
+                                            p.line.prepareForMap(_this.Lmap, null, null);
+                                            p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                            p.line.addTo(_this.Lmap);
+                                            promises2.push(p.line.computeStats().progress(deferred.notify));
+                                        }));
+                                    } else {
+                                        track.prepareForMap(_this.Lmap, null, null);
+                                        track.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                        track.addTo(_this.Lmap);
+                                        promises.push($.Deferred(function () {this.resolve([{ line: track, mode: 'import' }]);}));
+                                        promises2.push(track.computeStats().progress(deferred.notify));
+                                    }
                                 });
 
                                 $.when.apply($, promises).done(function () {
@@ -530,23 +538,29 @@
                                                 const start = latlngs[0];
                                                 startMarker = L.Marker.routed(start, {
                                                     riseOnHover: true,
-                                                    draggable: true,
+                                                    draggable: interpolate,
                                                     opacity: 0.5,
                                                     color: _this.getCurrentColor(),
                                                     type: 'waypoint',
                                                 });
-                                                startMarker.add(_this, false);
+                                                if (interpolate)
+                                                    startMarker.add(_this, false);
+                                                else
+                                                    _this.addMarker(startMarker, false);
                                             }
 
                                             const end = latlngs[latlngs.length - 1];
                                             const marker = L.Marker.routed(end, {
                                                 riseOnHover: true,
-                                                draggable: true,
+                                                draggable: interpolate,
                                                 opacity: 0.5,
                                                 color: (idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor()),
                                                 type: (idx == linesLength - 1 ? 'step' : 'waypoint'),
                                             });
-                                            marker.add(_this, false);
+                                            if (interpolate)
+                                                marker.add(_this, false);
+                                            else
+                                                _this.addMarker(marker, false);
 
                                             track.line.prepareForMap(_this.Lmap, startMarker, marker);
                                             track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker

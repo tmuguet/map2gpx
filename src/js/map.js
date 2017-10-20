@@ -331,6 +331,7 @@
                             $('.import-gpx-button:visible').click(function () {
                                 const $btn = $(this);
                                 const f = $('.import-gpx-file:visible')[0].files[0];
+                                const interpolate = $('#import-gpx-interpolate').is(':checked');
 
                                 if (f == undefined) {
                                     $('.import-gpx-status:visible').text('Veuillez sélectionner un fichier');
@@ -341,7 +342,7 @@
 
                                 $('body').startCompute(function (next) {
                                     $.Queue.notify({ start: true, total: 1, status: 'Importation en cours...' });
-                                    _this.track.importGpx(f).done(function () {
+                                    _this.track.importGpx(f, interpolate).done(function () {
                                         $btn.removeAttr('disabled');
                                         _this._setMode(null);  // Disable any other tracing
                                     }).fail(function () {
