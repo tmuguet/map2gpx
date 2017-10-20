@@ -191,16 +191,16 @@
         </div>
         <div id="form-import">
             <form enctype="multipart/form-data">
-                <input class="import-gpx-file" type="file" name="files[]"/><br>
+                <input id="import-gpx-file" type="file" name="files[]"/><br>
                 <input type="checkbox" name="interpolate" id="import-gpx-interpolate"/> <label for="import-gpx-interpolate">Rendre le tracé éditable</label>
             </form><br>
-            <button class="import-gpx-button"><span class="ico gpx"></span></button><br>
-            <span class="import-gpx-status"></span>
+            <button id="import-gpx-button"><span class="ico gpx"></span></button><br>
+            <span id="import-gpx-status"></span>
         </div>
         <div id="form-export">
-            <input type="text" value="nom" class="export-filename"/><br>
-            <button class="export-gpx-button"><span class="ico gpx"></span></button>
-            <button class="export-kml-button"><span class="ico kml"></span></button>
+            <input type="text" value="nom" id="export-filename"/><br>
+            <button id="export-gpx-button"><span class="ico gpx"></span></button>
+            <button id="export-kml-button"><span class="ico kml"></span></button>
         </div>
     </div>
     <div id="map"></div>

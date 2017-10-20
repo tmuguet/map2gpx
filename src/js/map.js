@@ -275,20 +275,6 @@
 
                             this.map.flyToBounds(bounds, { padding: [50, 50] });
                             exportPopup.setLatLng(bounds.getCenter()).openOn(this.map);
-
-                            $('.export-gpx-button:visible').click(function () {
-                                const $btn = $(this);
-                                $btn.attr('disabled', 'disabled');
-                                _this.track.exportGpx($('.export-filename:visible').val());
-                                $btn.removeAttr('disabled');
-                            });
-
-                            $('.export-kml-button:visible').click(function () {
-                                const $btn = $(this);
-                                $btn.attr('disabled', 'disabled');
-                                _this.track.exportKml($('.export-filename:visible').val());
-                                $btn.removeAttr('disabled');
-                            });
                         },
                     }, {
                         stateName: 'computing',
@@ -297,6 +283,21 @@
                     },
                 ],
             }).addTo(this.map);
+
+            $('#export-gpx-button').click(function () {
+                const $btn = $(this);
+                $btn.attr('disabled', 'disabled');
+                _this.track.exportGpx($('#export-filename').val());
+                $btn.removeAttr('disabled');
+            });
+
+            $('#export-kml-button').click(function () {
+                const $btn = $(this);
+                $btn.attr('disabled', 'disabled');
+                _this.track.exportKml($('#export-filename').val());
+                $btn.removeAttr('disabled');
+            });
+
             this.element.on('mapcomputingchanged mapstatechanged', (e) => {
                 if (e.computing) {
                     exportButton.state('computing');
@@ -323,40 +324,10 @@
                             importPopup.setLatLng(this.map.getCenter()).openOn(this.map);
 
                             if (this.track.hasRoutes()) {
-                                $('.import-gpx-status:visible').html('<strong>Attention:</strong> l\'import va effacer l\'itinéraire existant!');
+                                $('#import-gpx-status').html('<strong>Attention:</strong> l\'import va effacer l\'itinéraire existant!');
                             } else {
-                                $('.import-gpx-status:visible').text('');
+                                $('#import-gpx-status').text('');
                             }
-
-                            $('.import-gpx-button:visible').click(function () {
-                                const $btn = $(this);
-                                const f = $('.import-gpx-file:visible')[0].files[0];
-                                const interpolate = $('#import-gpx-interpolate').is(':checked');
-
-                                if (f == undefined) {
-                                    $('.import-gpx-status:visible').text('Veuillez sélectionner un fichier');
-                                    return;
-                                }
-
-                                $btn.attr('disabled', 'disabled');
-
-                                $('body').startCompute(function (next) {
-                                    $.Queue.notify({ start: true, total: 1, status: 'Importation en cours...' });
-                                    _this.track.importGpx(f, interpolate).done(function () {
-                                        $btn.removeAttr('disabled');
-                                        _this._setMode(null);  // Disable any other tracing
-                                    }).fail(function () {
-                                        $('.import-gpx-status:visible').text(this.error);
-                                        $btn.removeAttr('disabled');
-                                    }).progress(function (progress) {
-                                        $.Queue.notify(progress);
-                                        if (importPopup) {
-                                            importPopup.remove();
-                                            importPopup = undefined;
-                                        }
-                                    }).always(() => $('body').endCompute(next));
-                                });
-                            });
                         },
                     }, {
                         stateName: 'computing',
@@ -365,6 +336,36 @@
                     },
                 ],
             });
+
+            $('#import-gpx-button').click(function () {
+                const $btn = $(this);
+                const f = $('#import-gpx-file')[0].files[0];
+                const interpolate = $('#import-gpx-interpolate').is(':checked');
+
+                if (f == undefined) {
+                    $('#import-gpx-status').text('Veuillez sélectionner un fichier');
+                    return;
+                }
+
+                $btn.attr('disabled', 'disabled');
+
+                $('body').startCompute(function (next) {
+                    $.Queue.notify({ start: true, total: 1, status: 'Importation en cours...' });
+                    _this.track.importGpx(f, interpolate).done(function () {
+                        $btn.removeAttr('disabled');
+                        _this._setMode(null);  // Disable any other tracing
+                    }).fail(function () {
+                        $('#import-gpx-status').text(this.error);
+                        $btn.removeAttr('disabled');
+                    }).progress(function (progress) {
+                        $.Queue.notify(progress);
+                        if (importPopup.isOpen()) {
+                            _this.map.closePopup();
+                        }
+                    }).always(() => $('body').endCompute(next));
+                });
+            });
+
             let resetButton = L.easyButton({
                 id: 'btn-reset',
                 states: [
