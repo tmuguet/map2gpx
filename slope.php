@@ -7,7 +7,7 @@ function buildContext() {
                     "Accept: */*\r\n" .
                     "Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3\r\n" .
                     "DNT: 1\r\n" .
-                    "Referer: http://map2gpx.fr/\r\n"
+                    "Referer: " . $_SERVER['HTTP_REFERER'] ."\r\n"
       )
     );
 
