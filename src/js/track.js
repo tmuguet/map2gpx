@@ -53,6 +53,13 @@
             const deferred = this;  // jscs:ignore safeContextKeyword
 
             geojson.prepareForMap(map, start, end);
+            geojson.setStyle({
+                color: start.getColorRgb(),
+                weight: 5,
+                opacity: 0.75,
+                snakingPause: 0,
+                snakingSpeed: 1000,
+            });
             geojson.computeStats().progress(deferred.notify).then(function () {
                 geojson.addTo(map);
                 geojson.bindPopup('Calculs en cours...');
@@ -73,7 +80,7 @@
                     });
                 });
 
-                geojson.snakeIn();
+                geojson.snakeIn();  // Must call snakeIn() only after computeStats() is done because computeStats requires whole track
                 start.setOpacity(1);
                 end.setOpacity(1);
 
@@ -93,14 +100,6 @@
                 .done(function () {
                     deferred.notify({ step: 'Route calculée' });
 
-                    this.geojson.setStyle({
-                        color: start.getColorRgb(),
-                        weight: 5,
-                        opacity: 0.75,
-                        snakingPause: 0,
-                        snakingSpeed: 1000,
-                    });
-
                     _addRoute(map, this.geojson, start, end, index, 'auto')
                         .progress(deferred.notify)
                         .done(deferred.resolve)
@@ -112,14 +111,6 @@
 
     function _findRouteStraight(map, start, end, index) {
         const geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
-        geojson.setStyle({
-            color: start.getColorRgb(),
-            weight: 5,
-            opacity: 0.75,
-            snakingPause: 0,
-            snakingSpeed: 1000,
-        });
-
         return _addRoute(map, geojson, start, end, index, 'straight');
     }
 
@@ -232,13 +223,12 @@
             marker.track = this;
             marker.addTo(this.Lmap);
 
-            if (promise)
-                return promise.done(() => this.fire('markerschanged'));
-            else
-                return $.Deferred(function () {
-                    _this.fire('markerschanged');
+            if (!promise)
+                promise = $.Deferred(function () {
                     this.resolve();
                 });
+
+            return promise.done(() => this.fire('markerschanged'));
         },
 
         moveMarker: function (marker) {
@@ -835,15 +825,15 @@
                 }
             }
 
+            if (!promise)
+                promise = $.Deferred(function () {
+                    this.resolve();
+                });
+
             L.Marker.prototype.remove.call(this);
             this.track.fire('markerschanged');
 
-            if (promise)
-                return promise;
-            else
-                return $.Deferred(function () {
-                    this.resolve();
-                });
+            return promise;
         },
     });
 
