@@ -9,6 +9,7 @@ const sources_js = [
     "src/js/L.Polyline.Hausdorff.js",
     "src/js/L.Polyline.interpolate.js",
     "src/js/queue.js",
+    "src/js/blockingqueue.js",
     "src/js/progress.js",
     "src/js/cache.js",
 

@@ -29,7 +29,7 @@ L.polyline_findAuto = function (startLatLng, endLatLng) {
 
                     const geojson = L.polyline(latlngs);
 
-                    deferred.resolveWith({ geojson });
+                    deferred.resolve(geojson);
                 } else {
                     deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
                 }

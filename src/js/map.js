@@ -457,9 +457,7 @@
             if (this.track.hasMarkers() && this.track.getLastMarker().getLatLng().equals(marker.getLatLng()))
                 return;
 
-            marker.add(this.track).done(function () {
-                marker.setOpacity(1);
-            });
+            marker.add(this.track);
         },
     });
 

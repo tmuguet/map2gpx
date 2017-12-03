@@ -48,70 +48,16 @@
         });
     }
 
-    function _addRoute(map, geojson, start, end, index, mode) {
-        return $.Deferred(function () {
-            const deferred = this;  // jscs:ignore safeContextKeyword
-
-            geojson.prepareForMap(map, start, end);
-            geojson.setStyle({
-                color: start.getColorRgb(),
-                weight: 5,
-                opacity: 0.75,
-                snakingPause: 0,
-                snakingSpeed: 1000,
-            });
-            geojson.computeStats().progress(deferred.notify).then(function () {
-                geojson.addTo(map);
-                geojson.bindPopup('Calculs en cours...');
-                geojson.on('popupopen', function (event) {
-                    $('.marker-add-button:visible').click(function () {
-                        const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
-                            riseOnHover: true,
-                            draggable: true,
-                            opacity: 0.5,
-                            color: start.getColorIndex(),
-                            type: 'waypoint',
-                        });
-
-                        marker.insert(geojson)
-                            .done(function () {
-                                marker.setOpacity(1);
-                            });
-                    });
-                });
-
-                geojson.snakeIn();  // Must call snakeIn() only after computeStats() is done because computeStats requires whole track
-                start.setOpacity(1);
-                end.setOpacity(1);
-
-                deferred.resolveWith({ route: geojson });
-            }).fail(function () {
-                deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
-            });
-        });
-    }
-
     function _findRouteAuto(map, start, end, index) {
-        return $.Deferred(function () {
-            const deferred = this;  // jscs:ignore safeContextKeyword
-
-            deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-            L.polyline_findAuto(start.getLatLng(), end.getLatLng())
-                .done(function () {
-                    deferred.notify({ step: 'Route calculée' });
-
-                    _addRoute(map, this.geojson, start, end, index, 'auto')
-                        .progress(deferred.notify)
-                        .done(deferred.resolve)
-                        .fail(deferred.reject);
-                })
-                .fail(deferred.reject);
-        });
+        return L.polyline_findAuto(start.getLatLng(), end.getLatLng());
     }
 
     function _findRouteStraight(map, start, end, index) {
         const geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
-        return _addRoute(map, geojson, start, end, index, 'straight');
+        return $.Deferred(function () {
+            const deferred = this;  // jscs:ignore safeContextKeyword
+            deferred.resolve(geojson);
+        });
     }
 
     L.Track = L.Evented.extend({
@@ -712,23 +658,62 @@
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
 
-                if (_this.routeFrom) {
-                    _this.routeFrom.setStyle({ opacity: 0.5 });
-                }
-
-                $(_this).clearCompute();
-                $(_this).startCompute(function (next) {
+                $(_this).startBlockingCompute(function (next) {
                     mode = mode || _this._mode || 'auto';
 
-                    findRoute($('#map').map('getMap'), _this, to, 0, mode)  // FIXME
-                        .progress($.Queue.notify)
-                        .done(function () {
+                    const map = $('#map').map('getMap');    // FIXME
+
+                    _this.setOpacity(0.5);
+                    to.setOpacity(0.5);
+                    if (_this.routeFrom) {
+                        _this.routeFrom.setStyle({ opacity: 0.5 });
+                    }
+
+                    findRoute(map, _this, to, 0, mode)
+                        .done(function (geojson) {
+                            geojson.prepareForMap(map, _this, to);
+                            geojson.setStyle({
+                                color: _this.getColorRgb(),
+                                weight: 5,
+                                opacity: 0.75,
+                                snakingPause: 0,
+                                snakingSpeed: 1000,
+                            });
+
                             _this.deleteRouteFromHere();
-                            _this.attachRouteFrom(to, this.route, mode);
-                            deferred.resolve();
+                            _this.attachRouteFrom(to, geojson, mode);
+
+                            $(_this).startCompute(function (next) {
+                                geojson.computeStats().progress($.Queue.notify).then(deferred.resolve).fail(function () {
+                                    deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
+                                }).always(() => $(_this).endCompute(next));
+
+                                geojson.addTo(map);
+                                geojson.bindPopup('Calculs en cours...');
+                                geojson.on('popupopen', function (event) {
+                                    $('.marker-add-button:visible').click(function () {
+                                        const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                            riseOnHover: true,
+                                            draggable: true,
+                                            opacity: 0.5,
+                                            color: _this.getColorIndex(),
+                                            type: 'waypoint',
+                                        });
+
+                                        marker.insert(geojson)
+                                            .done(function () {
+                                                marker.setOpacity(1);
+                                            });
+                                    });
+                                });
+
+                                geojson.snakeIn();
+                                _this.setOpacity(1);
+                                to.setOpacity(1);
+                            });
                         })
                         .fail(deferred.reject)
-                        .always(() => $(_this).endCompute(next));
+                        .always(() => $(_this).endBlockingCompute(next));
                 });
             });
         },
@@ -767,16 +752,16 @@
 
             this.on('moveend', (event) => {
                 // Update routes when moving this marker
-                this.setOpacity(0.5);
-
-                this.track.moveMarker(this).done(() => this.setOpacity(1));
+                this.track.moveMarker(this);
             });
         },
 
         add: function (o, computeRoute = true) {
             this.track = o;
             this._bindEvents();
-            return this.track.addMarker(this, computeRoute);
+            return this.track.addMarker(this, computeRoute).done(() => {
+                this.setOpacity(1);
+            });
         },
 
         insert: function (route) {
