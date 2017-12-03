@@ -501,6 +501,24 @@
                                             track.line.prepareForMap(_this.Lmap, startMarker, marker);
                                             track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
                                             track.line.bindPopup('Calculs en cours...');
+
+                                            if (interpolate) {
+                                                const _startMarker = startMarker;
+                                                track.line.on('popupopen', (event) => {
+                                                    $('.marker-add-button:visible').click(function () {
+                                                        const m = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                                            riseOnHover: true,
+                                                            draggable: true,
+                                                            opacity: 0.5,
+                                                            color: _startMarker.getColorIndex(),
+                                                            type: 'waypoint',
+                                                        });
+
+                                                        m.insert(track.line);
+                                                    });
+                                                });
+                                            }
+
                                             startMarker.attachRouteFrom(marker, track.line, track.mode);
                                             startMarker = marker;
                                         });
