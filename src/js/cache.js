@@ -5,11 +5,15 @@
     $.Cache = {};
 
     const getKey = function (coords) {
-        return coords.lng + '/' + coords.lat;
+        return getKeyLatLng(coords.lat, coords.lng);
+    };
+
+    const getKeyLatLng = function (lat, lng) {
+        return Math.roundE8(lng) + '/' + Math.roundE8(lat);
     };
 
     $.Cache.addAltitude = function (lat, lng, z) {
-        _altitudes[lng + '/' + lat] = z;
+        _altitudes[getKeyLatLng(lat, lng)] = z;
     };
 
     $.Cache.getAltitude = function (coords) {
@@ -22,7 +26,7 @@
     };
 
     $.Cache.addSlope = function (lat, lng, slope) {
-        _slopes[lng + '/' + lat] = slope;
+        _slopes[getKeyLatLng(lat, lng)] = slope;
     };
 
     $.Cache.getSlope = function (coords) {
