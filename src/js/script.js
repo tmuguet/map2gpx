@@ -22,6 +22,10 @@ window.onload = function () {
             }
         });
         $.Queue.bindTo($('#data-computing'));
+        $.BlockingQueue.bindTo({
+            start: () => $('#pending').fadeIn(),
+            stop: () => $('#pending').fadeOut(),
+        });
 
         const $map = $('#map').map({
             controls: {

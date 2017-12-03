@@ -333,7 +333,7 @@ L.polyline_findAuto = function (startLatLng, endLatLng) {
 
                     const geojson = L.polyline(latlngs);
 
-                    deferred.resolveWith({ geojson });
+                    deferred.resolve(geojson);
                 } else {
                     deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
                 }
@@ -433,11 +433,11 @@ const _interpolateTrackData = function (deferred, coords, coordsLeft, depth) {
         const _this = this;
 
         L.polyline_findAuto(coords[0], coords[coords.length - 1])
-            .done(function () {
-                const d = l.distanceTo(this.geojson);
+            .done(function (geojson) {
+                const d = l.distanceTo(geojson);
                 if (d < 10) {
-                    deferred.notify({ line: this.geojson, count: coords.length - 1 });
-                    _this.resolve({ line: this.geojson, mode: 'auto', coordsLeft });
+                    deferred.notify({ line: geojson, count: coords.length - 1 });
+                    _this.resolve({ line: geojson, mode: 'auto', coordsLeft });
                 } else {
                     const coords1 = coords.slice(0, Math.floor(coords.length / 2) + 1);
                     const coords2 = coords.slice(Math.floor(coords.length / 2));
@@ -534,6 +534,57 @@ L.polyline_interpolate = function (coords) {
             $.each(listeners, function () {
                 this.progress('update', progress);
             });
+        },
+    };
+
+})(jQuery);
+
+(function ($) {
+    var queues = 0;
+    var listeners = [];
+
+    $.fn.clearBlockingCompute = function () {
+        return this.each(function () {
+            queues -= $(this).queue().length;
+            $(this).clearQueue();
+            $.BlockingQueue.stop();
+        });
+    };
+
+    $.fn.startBlockingCompute = function (cb) {
+        return this.each(function () {
+            $.BlockingQueue.start();
+            queues++;
+            $(this).queue(cb);
+        });
+    };
+
+    $.fn.endBlockingCompute = function (next) {
+        return this.each(function () {
+            queues--;
+            next();
+            $.BlockingQueue.stop();
+        });
+    };
+
+    $.BlockingQueue = {
+        size: () => queues,
+        bindTo: (o) => listeners.push(o),
+
+        start: function () {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.start();
+                });
+            }
+        },
+
+        stop: function () {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.stop();
+                });
+            }
         },
     };
 
@@ -1420,79 +1471,15 @@ L.Layer.include({
         });
     }
 
-    function _addRoute(map, geojson, start, end, index, mode) {
-        return $.Deferred(function () {
-            const deferred = this;  // jscs:ignore safeContextKeyword
-
-            geojson.prepareForMap(map, start, end);
-            geojson.computeStats().progress(deferred.notify).then(function () {
-                geojson.addTo(map);
-                geojson.bindPopup('Calculs en cours...');
-                geojson.on('popupopen', function (event) {
-                    $('.marker-add-button:visible').click(function () {
-                        const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
-                            riseOnHover: true,
-                            draggable: true,
-                            opacity: 0.5,
-                            color: start.getColorIndex(),
-                            type: 'waypoint',
-                        });
-
-                        marker.insert(geojson)
-                            .done(function () {
-                                marker.setOpacity(1);
-                            });
-                    });
-                });
-
-                geojson.snakeIn();
-                start.setOpacity(1);
-                end.setOpacity(1);
-
-                deferred.resolveWith({ route: geojson });
-            }).fail(function () {
-                deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
-            });
-        });
-    }
-
     function _findRouteAuto(map, start, end, index) {
-        return $.Deferred(function () {
-            const deferred = this;  // jscs:ignore safeContextKeyword
-
-            deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-            L.polyline_findAuto(start.getLatLng(), end.getLatLng())
-                .done(function () {
-                    deferred.notify({ step: 'Route calculée' });
-
-                    this.geojson.setStyle({
-                        color: start.getColorRgb(),
-                        weight: 5,
-                        opacity: 0.75,
-                        snakingPause: 0,
-                        snakingSpeed: 1000,
-                    });
-
-                    _addRoute(map, this.geojson, start, end, index, 'auto')
-                        .progress(deferred.notify)
-                        .done(deferred.resolve)
-                        .fail(deferred.reject);
-                })
-                .fail(deferred.reject);
-        });
+        return L.polyline_findAuto(start.getLatLng(), end.getLatLng());
     }
 
     function _findRouteStraight(map, start, end, index) {
         const geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
-        geojson.setStyle({
-            color: start.getColorRgb(),
-            weight: 5,
-            opacity: 0.75,
-            snakingPause: 0,
-            snakingSpeed: 1000,
+        return $.Deferred(function () {
+            this.resolve(geojson);
         });
-
-        return _addRoute(map, geojson, start, end, index, 'straight');
     }
 
     L.Track = L.Evented.extend({
@@ -1604,13 +1591,13 @@ L.Layer.include({
             marker.track = this;
             marker.addTo(this.Lmap);
 
-            if (promise)
-                return promise.done(() => this.fire('markerschanged'));
-            else
-                return $.Deferred(function () {
-                    _this.fire('markerschanged');
+            if (!promise) {
+                promise = $.Deferred(function () {
                     this.resolve();
                 });
+            }
+
+            return promise.done(() => this.fire('markerschanged'));
         },
 
         moveMarker: function (marker) {
@@ -1638,7 +1625,7 @@ L.Layer.include({
                     );
                 }
 
-                $.when.apply($, promises).done(function () {
+                $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
                 }).fail(deferred.fail);
@@ -1662,7 +1649,7 @@ L.Layer.include({
                 _this.markersLength++;
                 marker.addTo(_this.Lmap);
 
-                $.when.apply($, promises).done(function () {
+                $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
                 }).fail(deferred.fail);
@@ -1765,7 +1752,7 @@ L.Layer.include({
             xml += '        <name>' + filename + '</name>\n';
             xml += '        <trkseg>\n';
 
-            this.eachMarker(function (i, marker) {
+            this.eachMarker((i, marker) => {
                 if (marker.hasRouteFromHere()) {
                     if (marker.getType() == 'step') {
                         xml += '        </trkseg>\n';
@@ -1775,7 +1762,7 @@ L.Layer.include({
                         xml += '        <trkseg>\n';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), (j, coords) => {
                         xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
                         if ($.Cache.hasAltitude(coords))
                             xml += '<ele>' + $.Cache.getAltitude(coords) + '</ele>';
@@ -1816,7 +1803,7 @@ L.Layer.include({
             xml += '                <coordinates>\n';
             xml += '                    ';
 
-            this.eachMarker(function (i, marker) {
+            this.eachMarker((i, marker) => {
                 if (marker.hasRouteFromHere()) {
                     if (marker.getType() == 'step') {
                         xml += '\n                </coordinates>\n';
@@ -1830,7 +1817,7 @@ L.Layer.include({
                         xml += '                    ';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), (j, coords) => {
                         xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
                 }
@@ -1854,120 +1841,140 @@ L.Layer.include({
                 const deferred = this;  // jscs:ignore safeContextKeyword
                 const reader = new FileReader();
 
-                reader.onload = (function (theFile) {
-                    return function (e) {
+                $(_this).startBlockingCompute((next) => {
+                    reader.onload = (function (theFile) {
+                        return function (e) {
 
-                        const lines = [];
-                        const line = new L.GPX(e.target.result, {
-                            async: true,
-                            onFail: function () {
-                                deferred.rejectWith({ error: 'Impossible de traiter ce fichier' });
-                            },
-                            onSuccess: function (gpx) {
-                                deferred.notify({ step: 'Fichier traité' });
-                                deferred.notify({ start: true, total: lines.length, status: (interpolate ? 'Interpolation en cours...' : 'Traitement en cours...') });
+                            const lines = [];
+                            const line = new L.GPX(e.target.result, {
+                                async: true,
+                                onFail: function () {
+                                    $(_this).endBlockingCompute(next);
+                                    deferred.rejectWith({ error: 'Impossible de traiter ce fichier' });
+                                },
+                                onSuccess: function (gpx) {
+                                    deferred.notify({ step: 'Fichier traité' });
+                                    deferred.notify({ start: true, total: lines.length, status: (interpolate ? 'Interpolation en cours...' : 'Traitement en cours...') });
 
-                                _this.clear();
+                                    _this.clear();
 
-                                const bounds = gpx.getBounds();
+                                    const bounds = gpx.getBounds();
 
-                                _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
+                                    _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
 
-                                const promises = [];
-                                const promises2 = [];
-                                $.each(lines, function (idx, track) {
-                                    if (interpolate) {
-                                        const latlngs = track.getLatLngsFlatten();
-                                        deferred.notify({ start: true, total: latlngs.length });
+                                    const promises = [];
+                                    const promises2 = [];
+                                    $.each(lines, function (idx, track) {
+                                        if (interpolate) {
+                                            const latlngs = track.getLatLngsFlatten();
+                                            deferred.notify({ start: true, total: latlngs.length });
 
-                                        promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
-                                            deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
-                                            p.line.prepareForMap(_this.Lmap, null, null);
-                                            p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
-                                            p.line.addTo(_this.Lmap);
-                                            promises2.push(p.line.computeStats().progress(deferred.notify));
-                                        }));
-                                    } else {
-                                        track.prepareForMap(_this.Lmap, null, null);
-                                        track.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
-                                        track.addTo(_this.Lmap);
-                                        promises.push($.Deferred(function () {this.resolve([{ line: track, mode: 'import' }]);}));
-                                        promises2.push(track.computeStats().progress(deferred.notify));
-                                    }
-                                });
+                                            // Temporarily show track to indicate we got it right
+                                            track.prepareForMap(_this.Lmap, null, null);
+                                            track.setStyle({ weight: 5, color: '#81197f', opacity: 0.2, snakingPause: 0, snakingSpeed: 1000, });
+                                            track.addTo(_this.Lmap);
 
-                                $.when.apply($, promises).done(function () {
-                                    var startMarker;
-
-                                    for (let i = 0; i < arguments.length; i++) {
-                                        const newlines = arguments[i];
-                                        const linesLength = newlines.length;
-
-                                        $.each(newlines, function (idx, track) {  // jshint ignore:line
-                                            const latlngs = track.line.getLatLngsFlatten();
-
-                                            if (startMarker === undefined) {
-                                                const start = latlngs[0];
-                                                startMarker = L.Marker.routed(start, {
-                                                    riseOnHover: true,
-                                                    draggable: interpolate,
-                                                    opacity: 0.5,
-                                                    color: _this.getCurrentColor(),
-                                                    type: 'waypoint',
-                                                });
-                                                if (interpolate)
-                                                    startMarker.add(_this, false);
-                                                else
-                                                    _this.addMarker(startMarker, false);
-                                            }
-
-                                            const end = latlngs[latlngs.length - 1];
-                                            const marker = L.Marker.routed(end, {
-                                                riseOnHover: true,
-                                                draggable: interpolate,
-                                                opacity: 0.5,
-                                                color: (idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor()),
-                                                type: (idx == linesLength - 1 ? 'step' : 'waypoint'),
-                                            });
-                                            if (interpolate)
-                                                marker.add(_this, false);
-                                            else
-                                                _this.addMarker(marker, false);
-
-                                            track.line.prepareForMap(_this.Lmap, startMarker, marker);
-                                            track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 });    // Use color of starting marker
-                                            track.line.bindPopup('Calculs en cours...');
-                                            startMarker.attachRouteFrom(marker, track.line, track.mode);
-                                            startMarker = marker;
-                                        });
-                                    }
-
-                                    $.when.apply($, promises2).done(function () {
-                                        _this.eachRoute(function (i, route) {
-                                            route.setStyle({ opacity: 0.75 });
-                                        });
-
-                                        _this.eachMarker(function (i, marker) {
-                                            marker.setOpacity(1);
-                                        });
-
-                                        _this.fire('markerschanged');
-
-                                        deferred.resolve();
-                                    }).fail(function () {
-                                        deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                            promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
+                                                deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
+                                                p.line.prepareForMap(_this.Lmap, null, null);
+                                                p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                                p.line.addTo(_this.Lmap);
+                                                promises2.push(p.line.computeStats().progress(deferred.notify));
+                                            }).done(() => track.remove()));
+                                        } else {
+                                            track.prepareForMap(_this.Lmap, null, null);
+                                            track.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000, });    // Use temporary color
+                                            track.addTo(_this.Lmap);
+                                            promises.push($.Deferred(function () {this.resolve([{ line: track, mode: 'import' }]);}));
+                                            promises2.push(track.computeStats().progress(deferred.notify));
+                                        }
                                     });
 
-                                }).fail(function () {
-                                    deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
-                                });
-                            },
-                        }).on('addline', function (e) { lines.push(e.line); });
-                    };
-                })(file);
+                                    $.when.apply($, promises).done(function () {
+                                        var startMarker;
 
-                // Read in the image file as a data URL.
-                reader.readAsText(file);
+                                        for (let i = 0; i < arguments.length; i++) {
+                                            const newlines = arguments[i];
+                                            const linesLength = newlines.length;
+
+                                            $.each(newlines, function (idx, track) {  // jshint ignore:line
+                                                const latlngs = track.line.getLatLngsFlatten();
+
+                                                if (startMarker === undefined) {
+                                                    const start = latlngs[0];
+                                                    startMarker = L.Marker.routed(start, {
+                                                        riseOnHover: true,
+                                                        draggable: interpolate,
+                                                        opacity: 1,
+                                                        color: _this.getCurrentColor(),
+                                                        type: 'waypoint',
+                                                    });
+                                                    if (interpolate)
+                                                        startMarker.add(_this, false);
+                                                    else
+                                                        _this.addMarker(startMarker, false);
+                                                }
+
+                                                const end = latlngs[latlngs.length - 1];
+                                                const marker = L.Marker.routed(end, {
+                                                    riseOnHover: true,
+                                                    draggable: interpolate,
+                                                    opacity: 1,
+                                                    color: (idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor()),
+                                                    type: (idx == linesLength - 1 ? 'step' : 'waypoint'),
+                                                });
+                                                if (interpolate)
+                                                    marker.add(_this, false);
+                                                else
+                                                    _this.addMarker(marker, false);
+
+                                                track.line.prepareForMap(_this.Lmap, startMarker, marker);
+                                                track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.75 });    // Use color of starting marker
+                                                track.line.bindPopup('Calculs en cours...');
+
+                                                if (interpolate) {
+                                                    const _startMarker = startMarker;
+                                                    track.line.on('popupopen', (event) => {
+                                                        $('.marker-add-button:visible').click(function () {
+                                                            const m = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                                                riseOnHover: true,
+                                                                draggable: true,
+                                                                opacity: 0.5,
+                                                                color: _startMarker.getColorIndex(),
+                                                                type: 'waypoint',
+                                                            });
+
+                                                            m.insert(track.line);
+                                                        });
+                                                    });
+                                                }
+
+                                                startMarker.attachRouteFrom(marker, track.line, track.mode);
+                                                startMarker = marker;
+                                            });
+                                        }
+
+                                        $(_this).endBlockingCompute(next);
+
+                                        $.when.apply($, promises2).done(() => {
+                                            _this.fire('markerschanged');
+                                            deferred.resolve();
+                                        }).fail(() => {
+                                            deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                        });
+
+                                    }).fail(() => {
+                                        $(_this).endBlockingCompute(next);
+                                        deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
+                                    });
+                                },
+                            }).on('addline', (e) => lines.push(e.line));
+                        };
+                    })(file);
+
+                    // Read in the image file as a data URL.
+                    reader.readAsText(file);
+                });
             });
         },
 
@@ -2094,23 +2101,59 @@ L.Layer.include({
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
 
-                if (_this.routeFrom) {
-                    _this.routeFrom.setStyle({ opacity: 0.5 });
-                }
-
-                $(_this).clearCompute();
-                $(_this).startCompute(function (next) {
+                $(_this).startBlockingCompute((next) => {
                     mode = mode || _this._mode || 'auto';
 
-                    findRoute($('#map').map('getMap'), _this, to, 0, mode)  // FIXME
-                        .progress($.Queue.notify)
-                        .done(function () {
+                    const map = $('#map').map('getMap');    // FIXME
+
+                    _this.setOpacity(0.5);
+                    to.setOpacity(0.5);
+                    if (_this.routeFrom) {
+                        _this.routeFrom.setStyle({ opacity: 0.5 });
+                    }
+
+                    findRoute(map, _this, to, 0, mode)
+                        .done(function (geojson) {
+                            geojson.prepareForMap(map, _this, to);
+                            geojson.setStyle({
+                                color: _this.getColorRgb(),
+                                weight: 5,
+                                opacity: 0.75,
+                                snakingPause: 0,
+                                snakingSpeed: 1000,
+                            });
+
                             _this.deleteRouteFromHere();
-                            _this.attachRouteFrom(to, this.route, mode);
-                            deferred.resolve();
+                            _this.attachRouteFrom(to, geojson, mode);
+
+                            $(_this).startCompute((next) => {
+                                geojson.computeStats().progress($.Queue.notify).then(deferred.resolve).fail(function () {
+                                    deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
+                                }).always(() => $(_this).endCompute(next));
+
+                                geojson.addTo(map);
+                                geojson.bindPopup('Calculs en cours...');
+                                geojson.on('popupopen', (event) => {
+                                    $('.marker-add-button:visible').click(function () {
+                                        const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                            riseOnHover: true,
+                                            draggable: true,
+                                            opacity: 0.5,
+                                            color: _this.getColorIndex(),
+                                            type: 'waypoint',
+                                        });
+
+                                        marker.insert(geojson);
+                                    });
+                                });
+
+                                geojson.snakeIn();
+                                _this.setOpacity(1);
+                                to.setOpacity(1);
+                            });
                         })
                         .fail(deferred.reject)
-                        .always(() => $(_this).endCompute(next));
+                        .always(() => $(_this).endBlockingCompute(next));
                 });
             });
         },
@@ -2149,9 +2192,7 @@ L.Layer.include({
 
             this.on('moveend', (event) => {
                 // Update routes when moving this marker
-                this.setOpacity(0.5);
-
-                this.track.moveMarker(this).done(() => this.setOpacity(1));
+                this.track.moveMarker(this);
             });
         },
 
@@ -2207,15 +2248,16 @@ L.Layer.include({
                 }
             }
 
+            if (!promise) {
+                promise = $.Deferred(function () {
+                    this.resolve();
+                });
+            }
+
             L.Marker.prototype.remove.call(this);
             this.track.fire('markerschanged');
 
-            if (promise)
-                return promise;
-            else
-                return $.Deferred(function () {
-                    this.resolve();
-                });
+            return promise;
         },
     });
 
@@ -2684,9 +2726,7 @@ L.Layer.include({
             if (this.track.hasMarkers() && this.track.getLastMarker().getLatLng().equals(marker.getLatLng()))
                 return;
 
-            marker.add(this.track).done(function () {
-                marker.setOpacity(1);
-            });
+            marker.add(this.track);
         },
     });
 
@@ -2716,6 +2756,10 @@ window.onload = function () {
             }
         });
         $.Queue.bindTo($('#data-computing'));
+        $.BlockingQueue.bindTo({
+            start: () => $('#pending').fadeIn(),
+            stop: () => $('#pending').fadeOut(),
+        });
 
         const $map = $('#map').map({
             controls: {

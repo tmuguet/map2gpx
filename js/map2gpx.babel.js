@@ -313,7 +313,7 @@ L.polyline_findAuto = function (startLatLng, endLatLng) {
 
                     var geojson = L.polyline(latlngs);
 
-                    deferred.resolveWith({ geojson: geojson });
+                    deferred.resolve(geojson);
                 } else {
                     deferred.rejectWith({ error: 'Impossible d\'obtenir la route: pas de résultats fournis' });
                 }
@@ -409,11 +409,11 @@ var _interpolateTrackData = function _interpolateTrackData(deferred, coords, coo
     return $.Deferred(function () {
         var _this = this;
 
-        L.polyline_findAuto(coords[0], coords[coords.length - 1]).done(function () {
-            var d = l.distanceTo(this.geojson);
+        L.polyline_findAuto(coords[0], coords[coords.length - 1]).done(function (geojson) {
+            var d = l.distanceTo(geojson);
             if (d < 10) {
-                deferred.notify({ line: this.geojson, count: coords.length - 1 });
-                _this.resolve({ line: this.geojson, mode: 'auto', coordsLeft: coordsLeft });
+                deferred.notify({ line: geojson, count: coords.length - 1 });
+                _this.resolve({ line: geojson, mode: 'auto', coordsLeft: coordsLeft });
             } else {
                 var coords1 = coords.slice(0, Math.floor(coords.length / 2) + 1);
                 var coords2 = coords.slice(Math.floor(coords.length / 2));
@@ -505,6 +505,60 @@ L.polyline_interpolate = function (coords) {
             $.each(listeners, function () {
                 this.progress('update', progress);
             });
+        }
+    };
+})(jQuery);
+
+(function ($) {
+    var queues = 0;
+    var listeners = [];
+
+    $.fn.clearBlockingCompute = function () {
+        return this.each(function () {
+            queues -= $(this).queue().length;
+            $(this).clearQueue();
+            $.BlockingQueue.stop();
+        });
+    };
+
+    $.fn.startBlockingCompute = function (cb) {
+        return this.each(function () {
+            $.BlockingQueue.start();
+            queues++;
+            $(this).queue(cb);
+        });
+    };
+
+    $.fn.endBlockingCompute = function (next) {
+        return this.each(function () {
+            queues--;
+            next();
+            $.BlockingQueue.stop();
+        });
+    };
+
+    $.BlockingQueue = {
+        size: function size() {
+            return queues;
+        },
+        bindTo: function bindTo(o) {
+            return listeners.push(o);
+        },
+
+        start: function start() {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.start();
+                });
+            }
+        },
+
+        stop: function stop() {
+            if (queues == 0) {
+                $.each(listeners, function () {
+                    this.stop();
+                });
+            }
         }
     };
 })(jQuery);
@@ -1345,73 +1399,15 @@ L.Layer.include({
         });
     }
 
-    function _addRoute(map, geojson, start, end, index, mode) {
-        return $.Deferred(function () {
-            var deferred = this; // jscs:ignore safeContextKeyword
-
-            geojson.prepareForMap(map, start, end);
-            geojson.computeStats().progress(deferred.notify).then(function () {
-                geojson.addTo(map);
-                geojson.bindPopup('Calculs en cours...');
-                geojson.on('popupopen', function (event) {
-                    $('.marker-add-button:visible').click(function () {
-                        var marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
-                            riseOnHover: true,
-                            draggable: true,
-                            opacity: 0.5,
-                            color: start.getColorIndex(),
-                            type: 'waypoint'
-                        });
-
-                        marker.insert(geojson).done(function () {
-                            marker.setOpacity(1);
-                        });
-                    });
-                });
-
-                geojson.snakeIn();
-                start.setOpacity(1);
-                end.setOpacity(1);
-
-                deferred.resolveWith({ route: geojson });
-            }).fail(function () {
-                deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
-            });
-        });
-    }
-
     function _findRouteAuto(map, start, end, index) {
-        return $.Deferred(function () {
-            var deferred = this; // jscs:ignore safeContextKeyword
-
-            deferred.notify({ start: true, total: 1, status: 'Calcul de la route...' });
-            L.polyline_findAuto(start.getLatLng(), end.getLatLng()).done(function () {
-                deferred.notify({ step: 'Route calculée' });
-
-                this.geojson.setStyle({
-                    color: start.getColorRgb(),
-                    weight: 5,
-                    opacity: 0.75,
-                    snakingPause: 0,
-                    snakingSpeed: 1000
-                });
-
-                _addRoute(map, this.geojson, start, end, index, 'auto').progress(deferred.notify).done(deferred.resolve).fail(deferred.reject);
-            }).fail(deferred.reject);
-        });
+        return L.polyline_findAuto(start.getLatLng(), end.getLatLng());
     }
 
     function _findRouteStraight(map, start, end, index) {
         var geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
-        geojson.setStyle({
-            color: start.getColorRgb(),
-            weight: 5,
-            opacity: 0.75,
-            snakingPause: 0,
-            snakingSpeed: 1000
+        return $.Deferred(function () {
+            this.resolve(geojson);
         });
-
-        return _addRoute(map, geojson, start, end, index, 'straight');
     }
 
     L.Track = L.Evented.extend({
@@ -1531,11 +1527,14 @@ L.Layer.include({
             marker.track = this;
             marker.addTo(this.Lmap);
 
-            if (promise) return promise.done(function () {
+            if (!promise) {
+                promise = $.Deferred(function () {
+                    this.resolve();
+                });
+            }
+
+            return promise.done(function () {
                 return _this6.fire('markerschanged');
-            });else return $.Deferred(function () {
-                _this.fire('markerschanged');
-                this.resolve();
             });
         },
 
@@ -1773,124 +1772,146 @@ L.Layer.include({
                 var deferred = this; // jscs:ignore safeContextKeyword
                 var reader = new FileReader();
 
-                reader.onload = function (theFile) {
-                    return function (e) {
+                $(_this).startBlockingCompute(function (next) {
+                    reader.onload = function (theFile) {
+                        return function (e) {
 
-                        var lines = [];
-                        var line = new L.GPX(e.target.result, {
-                            async: true,
-                            onFail: function onFail() {
-                                deferred.rejectWith({ error: 'Impossible de traiter ce fichier' });
-                            },
-                            onSuccess: function onSuccess(gpx) {
-                                deferred.notify({ step: 'Fichier traité' });
-                                deferred.notify({ start: true, total: lines.length, status: interpolate ? 'Interpolation en cours...' : 'Traitement en cours...' });
+                            var lines = [];
+                            var line = new L.GPX(e.target.result, {
+                                async: true,
+                                onFail: function onFail() {
+                                    $(_this).endBlockingCompute(next);
+                                    deferred.rejectWith({ error: 'Impossible de traiter ce fichier' });
+                                },
+                                onSuccess: function onSuccess(gpx) {
+                                    deferred.notify({ step: 'Fichier traité' });
+                                    deferred.notify({ start: true, total: lines.length, status: interpolate ? 'Interpolation en cours...' : 'Traitement en cours...' });
 
-                                _this.clear();
+                                    _this.clear();
 
-                                var bounds = gpx.getBounds();
+                                    var bounds = gpx.getBounds();
 
-                                _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
+                                    _this.Lmap.fitBounds(bounds, { padding: [50, 50] });
 
-                                var promises = [];
-                                var promises2 = [];
-                                $.each(lines, function (idx, track) {
-                                    if (interpolate) {
-                                        var latlngs = track.getLatLngsFlatten();
-                                        deferred.notify({ start: true, total: latlngs.length });
+                                    var promises = [];
+                                    var promises2 = [];
+                                    $.each(lines, function (idx, track) {
+                                        if (interpolate) {
+                                            var latlngs = track.getLatLngsFlatten();
+                                            deferred.notify({ start: true, total: latlngs.length });
 
-                                        promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
-                                            deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
-                                            p.line.prepareForMap(_this.Lmap, null, null);
-                                            p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000 }); // Use temporary color
-                                            p.line.addTo(_this.Lmap);
-                                            promises2.push(p.line.computeStats().progress(deferred.notify));
-                                        }));
-                                    } else {
-                                        track.prepareForMap(_this.Lmap, null, null);
-                                        track.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000 }); // Use temporary color
-                                        track.addTo(_this.Lmap);
-                                        promises.push($.Deferred(function () {
-                                            this.resolve([{ line: track, mode: 'import' }]);
-                                        }));
-                                        promises2.push(track.computeStats().progress(deferred.notify));
-                                    }
-                                });
+                                            // Temporarily show track to indicate we got it right
+                                            track.prepareForMap(_this.Lmap, null, null);
+                                            track.setStyle({ weight: 5, color: '#81197f', opacity: 0.2, snakingPause: 0, snakingSpeed: 1000 });
+                                            track.addTo(_this.Lmap);
 
-                                $.when.apply($, promises).done(function () {
-                                    var _arguments = arguments;
+                                            promises.push(L.polyline_interpolate(latlngs).progress(function (p) {
+                                                deferred.notify({ count: p.count, step: p.count + ' points trouvés' });
+                                                p.line.prepareForMap(_this.Lmap, null, null);
+                                                p.line.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000 }); // Use temporary color
+                                                p.line.addTo(_this.Lmap);
+                                                promises2.push(p.line.computeStats().progress(deferred.notify));
+                                            }).done(function () {
+                                                return track.remove();
+                                            }));
+                                        } else {
+                                            track.prepareForMap(_this.Lmap, null, null);
+                                            track.setStyle({ weight: 5, color: '#81197f', opacity: 0.5, snakingPause: 0, snakingSpeed: 1000 }); // Use temporary color
+                                            track.addTo(_this.Lmap);
+                                            promises.push($.Deferred(function () {
+                                                this.resolve([{ line: track, mode: 'import' }]);
+                                            }));
+                                            promises2.push(track.computeStats().progress(deferred.notify));
+                                        }
+                                    });
 
-                                    var startMarker;
+                                    $.when.apply($, promises).done(function () {
+                                        var _arguments = arguments;
 
-                                    var _loop = function _loop(i) {
-                                        var newlines = _arguments[i];
-                                        var linesLength = newlines.length;
+                                        var startMarker;
 
-                                        $.each(newlines, function (idx, track) {
-                                            // jshint ignore:line
-                                            var latlngs = track.line.getLatLngsFlatten();
+                                        var _loop = function _loop(i) {
+                                            var newlines = _arguments[i];
+                                            var linesLength = newlines.length;
 
-                                            if (startMarker === undefined) {
-                                                var start = latlngs[0];
-                                                startMarker = L.Marker.routed(start, {
+                                            $.each(newlines, function (idx, track) {
+                                                // jshint ignore:line
+                                                var latlngs = track.line.getLatLngsFlatten();
+
+                                                if (startMarker === undefined) {
+                                                    var start = latlngs[0];
+                                                    startMarker = L.Marker.routed(start, {
+                                                        riseOnHover: true,
+                                                        draggable: interpolate,
+                                                        opacity: 1,
+                                                        color: _this.getCurrentColor(),
+                                                        type: 'waypoint'
+                                                    });
+                                                    if (interpolate) startMarker.add(_this, false);else _this.addMarker(startMarker, false);
+                                                }
+
+                                                var end = latlngs[latlngs.length - 1];
+                                                var marker = L.Marker.routed(end, {
                                                     riseOnHover: true,
                                                     draggable: interpolate,
-                                                    opacity: 0.5,
-                                                    color: _this.getCurrentColor(),
-                                                    type: 'waypoint'
+                                                    opacity: 1,
+                                                    color: idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor(),
+                                                    type: idx == linesLength - 1 ? 'step' : 'waypoint'
                                                 });
-                                                if (interpolate) startMarker.add(_this, false);else _this.addMarker(startMarker, false);
-                                            }
+                                                if (interpolate) marker.add(_this, false);else _this.addMarker(marker, false);
 
-                                            var end = latlngs[latlngs.length - 1];
-                                            var marker = L.Marker.routed(end, {
-                                                riseOnHover: true,
-                                                draggable: interpolate,
-                                                opacity: 0.5,
-                                                color: idx == linesLength - 1 ? _this.nextColor() : _this.getCurrentColor(),
-                                                type: idx == linesLength - 1 ? 'step' : 'waypoint'
+                                                track.line.prepareForMap(_this.Lmap, startMarker, marker);
+                                                track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.75 }); // Use color of starting marker
+                                                track.line.bindPopup('Calculs en cours...');
+
+                                                if (interpolate) {
+                                                    var _startMarker = startMarker;
+                                                    track.line.on('popupopen', function (event) {
+                                                        $('.marker-add-button:visible').click(function () {
+                                                            var m = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                                                riseOnHover: true,
+                                                                draggable: true,
+                                                                opacity: 0.5,
+                                                                color: _startMarker.getColorIndex(),
+                                                                type: 'waypoint'
+                                                            });
+
+                                                            m.insert(track.line);
+                                                        });
+                                                    });
+                                                }
+
+                                                startMarker.attachRouteFrom(marker, track.line, track.mode);
+                                                startMarker = marker;
                                             });
-                                            if (interpolate) marker.add(_this, false);else _this.addMarker(marker, false);
+                                        };
 
-                                            track.line.prepareForMap(_this.Lmap, startMarker, marker);
-                                            track.line.setStyle({ weight: 5, color: startMarker.getColorRgb(), opacity: 0.5 }); // Use color of starting marker
-                                            track.line.bindPopup('Calculs en cours...');
-                                            startMarker.attachRouteFrom(marker, track.line, track.mode);
-                                            startMarker = marker;
+                                        for (var i = 0; i < arguments.length; i++) {
+                                            _loop(i);
+                                        }
+
+                                        $(_this).endBlockingCompute(next);
+
+                                        $.when.apply($, promises2).done(function () {
+                                            _this.fire('markerschanged');
+                                            deferred.resolve();
+                                        }).fail(function () {
+                                            deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
                                         });
-                                    };
-
-                                    for (var i = 0; i < arguments.length; i++) {
-                                        _loop(i);
-                                    }
-
-                                    $.when.apply($, promises2).done(function () {
-                                        _this.eachRoute(function (i, route) {
-                                            route.setStyle({ opacity: 0.75 });
-                                        });
-
-                                        _this.eachMarker(function (i, marker) {
-                                            marker.setOpacity(1);
-                                        });
-
-                                        _this.fire('markerschanged');
-
-                                        deferred.resolve();
                                     }).fail(function () {
-                                        deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
+                                        $(_this).endBlockingCompute(next);
+                                        deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
                                     });
-                                }).fail(function () {
-                                    deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
-                                });
-                            }
-                        }).on('addline', function (e) {
-                            lines.push(e.line);
-                        });
-                    };
-                }(file);
+                                }
+                            }).on('addline', function (e) {
+                                return lines.push(e.line);
+                            });
+                        };
+                    }(file);
 
-                // Read in the image file as a data URL.
-                reader.readAsText(file);
+                    // Read in the image file as a data URL.
+                    reader.readAsText(file);
+                });
             });
         },
 
@@ -2013,21 +2034,59 @@ L.Layer.include({
             return $.Deferred(function () {
                 var deferred = this; // jscs:ignore safeContextKeyword
 
-                if (_this.routeFrom) {
-                    _this.routeFrom.setStyle({ opacity: 0.5 });
-                }
-
-                $(_this).clearCompute();
-                $(_this).startCompute(function (next) {
+                $(_this).startBlockingCompute(function (next) {
                     mode = mode || _this._mode || 'auto';
 
-                    findRoute($('#map').map('getMap'), _this, to, 0, mode) // FIXME
-                    .progress($.Queue.notify).done(function () {
+                    var map = $('#map').map('getMap'); // FIXME
+
+                    _this.setOpacity(0.5);
+                    to.setOpacity(0.5);
+                    if (_this.routeFrom) {
+                        _this.routeFrom.setStyle({ opacity: 0.5 });
+                    }
+
+                    findRoute(map, _this, to, 0, mode).done(function (geojson) {
+                        geojson.prepareForMap(map, _this, to);
+                        geojson.setStyle({
+                            color: _this.getColorRgb(),
+                            weight: 5,
+                            opacity: 0.75,
+                            snakingPause: 0,
+                            snakingSpeed: 1000
+                        });
+
                         _this.deleteRouteFromHere();
-                        _this.attachRouteFrom(to, this.route, mode);
-                        deferred.resolve();
+                        _this.attachRouteFrom(to, geojson, mode);
+
+                        $(_this).startCompute(function (next) {
+                            geojson.computeStats().progress($.Queue.notify).then(deferred.resolve).fail(function () {
+                                deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
+                            }).always(function () {
+                                return $(_this).endCompute(next);
+                            });
+
+                            geojson.addTo(map);
+                            geojson.bindPopup('Calculs en cours...');
+                            geojson.on('popupopen', function (event) {
+                                $('.marker-add-button:visible').click(function () {
+                                    var marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
+                                        riseOnHover: true,
+                                        draggable: true,
+                                        opacity: 0.5,
+                                        color: _this.getColorIndex(),
+                                        type: 'waypoint'
+                                    });
+
+                                    marker.insert(geojson);
+                                });
+                            });
+
+                            geojson.snakeIn();
+                            _this.setOpacity(1);
+                            to.setOpacity(1);
+                        });
                     }).fail(deferred.reject).always(function () {
-                        return $(_this).endCompute(next);
+                        return $(_this).endBlockingCompute(next);
                     });
                 });
             });
@@ -2067,11 +2126,7 @@ L.Layer.include({
 
             this.on('moveend', function (event) {
                 // Update routes when moving this marker
-                _this8.setOpacity(0.5);
-
-                _this8.track.moveMarker(_this8).done(function () {
-                    return _this8.setOpacity(1);
-                });
+                _this8.track.moveMarker(_this8);
             });
         },
 
@@ -2128,12 +2183,16 @@ L.Layer.include({
                 }
             }
 
+            if (!promise) {
+                promise = $.Deferred(function () {
+                    this.resolve();
+                });
+            }
+
             L.Marker.prototype.remove.call(this);
             this.track.fire('markerschanged');
 
-            if (promise) return promise;else return $.Deferred(function () {
-                this.resolve();
-            });
+            return promise;
         }
     });
 
@@ -2610,9 +2669,7 @@ L.Layer.include({
             // Ignore this marker if same as previous
             if (this.track.hasMarkers() && this.track.getLastMarker().getLatLng().equals(marker.getLatLng())) return;
 
-            marker.add(this.track).done(function () {
-                marker.setOpacity(1);
-            });
+            marker.add(this.track);
         }
     });
 })(jQuery);
@@ -2640,6 +2697,14 @@ window.onload = function () {
             }
         });
         $.Queue.bindTo($('#data-computing'));
+        $.BlockingQueue.bindTo({
+            start: function start() {
+                return $('#pending').fadeIn();
+            },
+            stop: function stop() {
+                return $('#pending').fadeOut();
+            }
+        });
 
         var $map = $('#map').map({
             controls: {

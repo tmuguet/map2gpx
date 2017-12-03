@@ -28,11 +28,11 @@ const _interpolateTrackData = function (deferred, coords, coordsLeft, depth) {
         const _this = this;
 
         L.polyline_findAuto(coords[0], coords[coords.length - 1])
-            .done(function () {
-                const d = l.distanceTo(this.geojson);
+            .done(function (geojson) {
+                const d = l.distanceTo(geojson);
                 if (d < 10) {
-                    deferred.notify({ line: this.geojson, count: coords.length - 1 });
-                    _this.resolve({ line: this.geojson, mode: 'auto', coordsLeft });
+                    deferred.notify({ line: geojson, count: coords.length - 1 });
+                    _this.resolve({ line: geojson, mode: 'auto', coordsLeft });
                 } else {
                     const coords1 = coords.slice(0, Math.floor(coords.length / 2) + 1);
                     const coords2 = coords.slice(Math.floor(coords.length / 2));
