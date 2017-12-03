@@ -55,8 +55,7 @@
     function _findRouteStraight(map, start, end, index) {
         const geojson = L.polyline_findStraight(start.getLatLng(), end.getLatLng());
         return $.Deferred(function () {
-            const deferred = this;  // jscs:ignore safeContextKeyword
-            deferred.resolve(geojson);
+            this.resolve(geojson);
         });
     }
 
@@ -169,10 +168,11 @@
             marker.track = this;
             marker.addTo(this.Lmap);
 
-            if (!promise)
+            if (!promise) {
                 promise = $.Deferred(function () {
                     this.resolve();
                 });
+            }
 
             return promise.done(() => this.fire('markerschanged'));
         },
@@ -202,7 +202,7 @@
                     );
                 }
 
-                $.when.apply($, promises).done(function () {
+                $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
                 }).fail(deferred.fail);
@@ -226,7 +226,7 @@
                 _this.markersLength++;
                 marker.addTo(_this.Lmap);
 
-                $.when.apply($, promises).done(function () {
+                $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
                 }).fail(deferred.fail);
@@ -329,7 +329,7 @@
             xml += '        <name>' + filename + '</name>\n';
             xml += '        <trkseg>\n';
 
-            this.eachMarker(function (i, marker) {
+            this.eachMarker((i, marker) => {
                 if (marker.hasRouteFromHere()) {
                     if (marker.getType() == 'step') {
                         xml += '        </trkseg>\n';
@@ -339,7 +339,7 @@
                         xml += '        <trkseg>\n';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), (j, coords) => {
                         xml += '            <trkpt lat="' + coords.lat + '" lon="' + coords.lng + '">';
                         if ($.Cache.hasAltitude(coords))
                             xml += '<ele>' + $.Cache.getAltitude(coords) + '</ele>';
@@ -380,7 +380,7 @@
             xml += '                <coordinates>\n';
             xml += '                    ';
 
-            this.eachMarker(function (i, marker) {
+            this.eachMarker((i, marker) => {
                 if (marker.hasRouteFromHere()) {
                     if (marker.getType() == 'step') {
                         xml += '\n                </coordinates>\n';
@@ -394,7 +394,7 @@
                         xml += '                    ';
                     }
 
-                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), function (j, coords) {
+                    $.each(marker.getRouteFromHere().getLatLngsFlatten(), (j, coords) => {
                         xml += coords.lng + ',' + coords.lat + ',0 ';
                     });
                 }
@@ -506,27 +506,27 @@
                                         });
                                     }
 
-                                    $.when.apply($, promises2).done(function () {
-                                        _this.eachRoute(function (i, route) {
+                                    $.when.apply($, promises2).done(() => {
+                                        _this.eachRoute((i, route) => {
                                             route.setStyle({ opacity: 0.75 });
                                         });
 
-                                        _this.eachMarker(function (i, marker) {
+                                        _this.eachMarker((i, marker) => {
                                             marker.setOpacity(1);
                                         });
 
                                         _this.fire('markerschanged');
 
                                         deferred.resolve();
-                                    }).fail(function () {
+                                    }).fail(() => {
                                         deferred.rejectWith({ error: 'Impossible de récupérer les données géographiques de ce parcours' });
                                     });
 
-                                }).fail(function () {
+                                }).fail(() => {
                                     deferred.rejectWith({ error: 'Impossible d\'interpoler ce parcours' });
                                 });
                             },
-                        }).on('addline', function (e) { lines.push(e.line); });
+                        }).on('addline', (e) => lines.push(e.line));
                     };
                 })(file);
 
@@ -658,7 +658,7 @@
             return $.Deferred(function () {
                 const deferred = this;  // jscs:ignore safeContextKeyword
 
-                $(_this).startBlockingCompute(function (next) {
+                $(_this).startBlockingCompute((next) => {
                     mode = mode || _this._mode || 'auto';
 
                     const map = $('#map').map('getMap');    // FIXME
@@ -683,14 +683,14 @@
                             _this.deleteRouteFromHere();
                             _this.attachRouteFrom(to, geojson, mode);
 
-                            $(_this).startCompute(function (next) {
+                            $(_this).startCompute((next) => {
                                 geojson.computeStats().progress($.Queue.notify).then(deferred.resolve).fail(function () {
                                     deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
                                 }).always(() => $(_this).endCompute(next));
 
                                 geojson.addTo(map);
                                 geojson.bindPopup('Calculs en cours...');
-                                geojson.on('popupopen', function (event) {
+                                geojson.on('popupopen', (event) => {
                                     $('.marker-add-button:visible').click(function () {
                                         const marker = L.Marker.routed(event.popup.getLatLng().roundE8(), {
                                             riseOnHover: true,
@@ -700,10 +700,7 @@
                                             type: 'waypoint',
                                         });
 
-                                        marker.insert(geojson)
-                                            .done(function () {
-                                                marker.setOpacity(1);
-                                            });
+                                        marker.insert(geojson);
                                     });
                                 });
 
@@ -759,9 +756,7 @@
         add: function (o, computeRoute = true) {
             this.track = o;
             this._bindEvents();
-            return this.track.addMarker(this, computeRoute).done(() => {
-                this.setOpacity(1);
-            });
+            return this.track.addMarker(this, computeRoute);
         },
 
         insert: function (route) {
@@ -810,10 +805,11 @@
                 }
             }
 
-            if (!promise)
+            if (!promise) {
                 promise = $.Deferred(function () {
                     this.resolve();
                 });
+            }
 
             L.Marker.prototype.remove.call(this);
             this.track.fire('markerschanged');
