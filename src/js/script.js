@@ -33,6 +33,7 @@ window.onload = function () {
                     show: !isSmallScreen,
                 },
                 layerSwitcher: {
+                    showAll: !isSmallScreen,
                     leafletOptions: {
                         collapsed: isSmallScreen,
                     },

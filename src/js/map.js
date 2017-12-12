@@ -20,6 +20,7 @@
                 },
                 layerSwitcher: {
                     show: true,
+                    showAll: true,
                     leafletOptions: {
                         collapsed: false,
                     },
@@ -77,7 +78,8 @@
             this._initializeTraceButtons();
             this._initializeExportButtons();
             this._initializeImportButtons();
-            this._initializeHelpButtons();
+            if (this.options.controls.help.show)
+                this._initializeHelpButtons();
 
             this._trigger('created', null, {});
             this._trigger('statechanged', null, this._buildEventData());
@@ -94,9 +96,11 @@
                 layer: 'ORTHOIMAGERY.ORTHOPHOTOS',
                 apiKey: keyIgn,
             }).addTo(this.map);
-            this.layers.promises.push($.Deferred(function () {
-                _this.layers.photos.once('load', this.resolve);
-            }));
+            if (this.options.controls.layerSwitcher.showAll) {
+                this.layers.promises.push($.Deferred(function () {
+                    _this.layers.photos.once('load', this.resolve);
+                }));
+            }
 
             // Don't monitor load event, because we don't display this layer (thus, never fires)
             this.layers.slopes =  L.geoportalLayer.WMTS({
@@ -110,7 +114,7 @@
                 layer: 'GEOGRAPHICALGRIDSYSTEMS.MAPS',
                 apiKey: keyIgn,
             }, {
-                opacity: 0.25,
+                opacity: this.options.controls.layerSwitcher.showAll ? 0.25 : 1,
             }).addTo(this.map);
             this.layers.promises.push($.Deferred(function () {
                 _this.layers.maps.once('load', this.resolve);
@@ -176,7 +180,12 @@
         _initializeLayerSwitcher: function () {
             let layerSwitcher = L.geoportalControl.LayerSwitcher(this.options.controls.layerSwitcher.leafletOptions);
             this.map.addControl(layerSwitcher);
+
             layerSwitcher.setVisibility(this.layers.slopes, false);
+            if (!this.options.controls.layerSwitcher.showAll) {
+                layerSwitcher.setVisibility(this.layers.photos, false);
+            }
+
             $('.GPlayerRemove').remove();
         },
 
