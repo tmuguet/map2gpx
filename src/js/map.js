@@ -77,7 +77,8 @@
             this._initializeTraceButtons();
             this._initializeExportButtons();
             this._initializeImportButtons();
-            this._initializeHelpButtons();
+            if (this.options.controls.help.show)
+                this._initializeHelpButtons();
 
             this._trigger('created', null, {});
             this._trigger('statechanged', null, this._buildEventData());
