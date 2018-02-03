@@ -1,4 +1,8 @@
 
+const sources_js_loader = [
+    "src/js/loader.js"
+]
+
 const sources_js = [
     "src/js/jquery.localstorage.js",
     "src/js/jquery.querystring.js",
@@ -39,7 +43,7 @@ gulp.task("jshint", function () {
 
     const jshint = require("gulp-jshint");
 
-    return gulp.src(sources_js)
+    return gulp.src(sources_js_loader.concat(sources_js))
         .pipe($.plumber())
         .pipe(jshint(".jshintrc"))
         .pipe(jshint.reporter("default", { verbose : true }))
@@ -50,11 +54,29 @@ gulp.task("jscs", function () {
 
     const jscs = require("gulp-jscs");
 
-    return gulp.src(sources_js)
+    return gulp.src(sources_js_loader.concat(sources_js))
         .pipe($.plumber())
         .pipe(jscs())
         .pipe(jscs.reporter())
         .pipe(jscs.reporter("fail"));
+});
+
+gulp.task("bundle-js-loader", function() {
+
+    const babel = require('gulp-babel');
+    const concat = require('gulp-concat');
+    const rename = require('gulp-rename');
+    const uglify = require('gulp-uglify');
+
+    return gulp.src(sources_js_loader)
+        .pipe(concat('map2gpx-loader.src.js'))
+        .pipe(gulp.dest(dest_js))
+        .pipe(babel({ presets: ['env'] }))
+        .pipe(rename("map2gpx-loader.babel.js"))
+        .pipe(gulp.dest(dest_js))
+        .pipe(uglify())
+        .pipe(rename("map2gpx-loader.min.js"))
+        .pipe(gulp.dest(dest_js));
 });
 
 gulp.task("bundle-js", function() {
@@ -90,7 +112,7 @@ gulp.task("bundle-css", function() {
 });
 
 gulp.task("check", ['jshint', 'jscs']);
-gulp.task("bundle", ['bundle-js', 'bundle-css']);
+gulp.task("bundle", ['bundle-js-loader', 'bundle-js', 'bundle-css']);
 
 gulp.task("default", function(cb) {
     runSequence("check", "bundle", cb);
@@ -98,4 +120,5 @@ gulp.task("default", function(cb) {
 
 gulp.task('watch', function () {
   gulp.watch(sources_js, ['bundle-js']);
+  gulp.watch(sources_js_loader, ['bundle-js-loader']);
 });

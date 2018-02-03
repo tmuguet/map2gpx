@@ -29,12 +29,16 @@ var interval = window.setInterval(function () {
                 $('#loading').animate({ backgroundColor: '#C0C0C0' });
             } else if (endOfMessage == 5) {
                 $('#loading h2 i.fa').removeClass('fa-pulse').addClass('fa-spin');
-                $('<div>Une erreur s\'est peut-être produite. N\'hésitez pas à ouvrir un ticket sur <a href="https://github.com/tmuguet/map2gpx" target="_blank" rel="noopener noreferrer">Github</a> ou à m\'envoyer un mail à <a href="mailto:hi@tmuguet.me">hi@tmuguet.me</a>.</div>').hide().appendTo($('#loading h3')).slideDown();
+                $('<div>Une erreur s\'est peut-être produite. ' +
+                    'N\'hésitez pas à ouvrir un ticket sur <a href="https://github.com/tmuguet/map2gpx" target="_blank" rel="noopener noreferrer">Github</a> ' +
+                    'ou à m\'envoyer un mail à <a href="mailto:hi@tmuguet.me">hi@tmuguet.me</a>.</div>')
+                    .hide().appendTo($('#loading h3')).slideDown();
                 $('#loading').animate({ backgroundColor: '#999999', color: '#FFFFFF' });
             } else if (endOfMessage > 5 && endOfMessage < 15) {
                 var color = 14 - endOfMessage;
                 $('#loading').animate({ backgroundColor: '#' + color.toString().repeat(6) });
             }
+
             endOfMessage++;
         }
     }
