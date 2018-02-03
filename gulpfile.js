@@ -121,4 +121,5 @@ gulp.task("default", function(cb) {
 gulp.task('watch', function () {
   gulp.watch(sources_js, ['bundle-js']);
   gulp.watch(sources_js_loader, ['bundle-js-loader']);
+  gulp.watch(sources_css, ['bundle-css']);
 });
