@@ -673,8 +673,8 @@ L.polyline_interpolate = function (coords) {
             var p = 1;
             if (this.options.total > 0) p = this.options.progress / this.options.total;
 
-            this.$progress.text(Math.round(p * 100) + '%');
-            this.$progressbar.css('width', Math.round(p * 100) + '%');
+            this.$progress.text(Math.floor(p * 100) + '%');
+            this.$progressbar.css('width', Math.floor(p * 100) + '%');
 
             if (Math.round(p * 100) == 42) $('<div><small>La grande question sur la vie, l\'univers et le reste répondue</small></div>').insertAfter(this.$h2).fadeOut(400, function () {
                 $(this).remove();
@@ -2641,7 +2641,8 @@ L.Layer.include({
         _initializeHelpButtons: function _initializeHelpButtons() {
             var _this14 = this;
 
-            var infoPopup = L.popup().setContent(L.DomUtil.get('about'));
+            var infoPopupMaxSize = window.innerWidth - $('.leaflet-control-minimap').width() - $('.leaflet-top.leaflet-right .GPpanel').width();
+            var infoPopup = L.popup({ maxWidth: infoPopupMaxSize }).setContent(L.DomUtil.get('about'));
 
             var infoBtn = L.easyButton({
                 position: 'bottomright',

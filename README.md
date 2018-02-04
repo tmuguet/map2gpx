@@ -32,4 +32,4 @@ Pre-requisites:
 Rebuild:
 * `gulp` to launch checks and re-bundle the javascript and css resources
 * `gulp bundle` just to re-bundle
-* `gulp watch` to watch for modifications of the javascript files and re-bundle the javascript resources on the fly
+* `gulp watch` to watch for modifications of the javascript and css files and re-bundle resources on the fly

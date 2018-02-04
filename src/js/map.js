@@ -404,7 +404,8 @@
         },
 
         _initializeHelpButtons: function () {
-            const infoPopup = L.popup().setContent(L.DomUtil.get('about'));
+            const infoPopupMaxSize = window.innerWidth - $('.leaflet-control-minimap').width() - $('.leaflet-top.leaflet-right .GPpanel').width();
+            const infoPopup = L.popup({ maxWidth: infoPopupMaxSize }).setContent(L.DomUtil.get('about'));
 
             const infoBtn = L.easyButton({
                 position: 'bottomright',
