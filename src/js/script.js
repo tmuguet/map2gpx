@@ -15,13 +15,18 @@ window.onload = function () {
 
         $('#data-computing').progress().on('progressstatechanged', (e, data) => {
             if (data.started) {
+                $('#data-invalid').fadeOut();
                 $('#data-computing').fadeIn();
             } else {
                 $('#data').data('map2gpx-chart').replot($map.map('getTrack').computeStats());
                 $('#data-computing').fadeOut();
             }
+        }).on('progressfailed', (e, data) => {
+            $('#data-invalid-status').text(data.error);
+            $('#data-invalid').fadeIn();
         });
         $.Queue.bindTo($('#data-computing'));
+
         $.BlockingQueue.bindTo({
             start: () => $('#pending').fadeIn(),
             stop: () => $('#pending').fadeOut(),

@@ -51,6 +51,12 @@
                 this.progress('update', progress);
             });
         },
+
+        failed: function (error) {
+            $.each(listeners, function () {
+                this.progress('failed', error);
+            });
+        },
     };
 
 })(jQuery);
