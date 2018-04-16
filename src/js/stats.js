@@ -127,6 +127,7 @@ L.Layer.include({
                             console.log('Could not find altitude for coordinates', coords);
                             deferred.rejectWith({ error: 'Impossible d\'obtenir les données d\'altitude' });
                         }
+
                         if (!$.Cache.hasSlope(coords)) {
                             console.log('Could not find slope for coordinates', coords);
                             deferred.rejectWith({ error: 'Impossible d\'obtenir les données de pente' });

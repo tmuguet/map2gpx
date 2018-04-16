@@ -725,7 +725,13 @@
                                     });
                                 });
 
-                                geojson.snakeIn();
+                                try {
+                                    geojson.snakeIn();
+                                } catch (e) {
+                                    // With some weird tracks, snakeIn can fail (don't know why)
+                                    geojson._snakeEnd();
+                                }
+
                                 _this.setOpacity(1);
                                 to.setOpacity(1);
                             });
