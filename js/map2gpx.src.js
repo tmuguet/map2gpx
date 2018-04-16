@@ -558,6 +558,12 @@ L.polyline_interpolate = function (coords) {
                 this.progress('update', progress);
             });
         },
+
+        failed: function (error) {
+            $.each(listeners, function () {
+                this.progress('failed', error);
+            });
+        },
     };
 
 })(jQuery);
@@ -670,6 +676,12 @@ L.polyline_interpolate = function (coords) {
                 this.start();
             else
                 this.stop();
+        },
+
+        failed: function (error) {
+            this.$status.text('Une erreur est survenue');
+            $('<div><small>' + error + '</small></div>').insertAfter(this.$h2).fadeOut(10000, function () {$(this).remove();});
+            this._trigger('failed', null, { error });
         },
 
         update: function (progress) {
@@ -939,9 +951,11 @@ L.Layer.include({
 
     computeStats: function () {
         const _this = this;
+        const latlngs = _this.getLatLngsFlatten();
+
         return $.Deferred(function () {
             const deferred = this;  // jscs:ignore safeContextKeyword
-            const promises = _this._fetchAltitude().concat(_this._fetchSlope());
+            const promises = _this._fetchAltitude(latlngs).concat(_this._fetchSlope(latlngs));
             const total = promises.length;
 
             deferred.notify({ start: true, total: total, status: 'Récupération des données géographiques...' });
@@ -954,17 +968,30 @@ L.Layer.include({
 
             $.when.apply($, promises)
                 .fail(deferred.reject)
-                .then(function () {
-                    _this._computeStats();
+                .done(function () {
+                    // Sanity checks
+                    $.each(latlngs, function (j, coords) {
+                        if (!$.Cache.hasAltitude(coords)) {
+                            console.log('Could not find altitude for coordinates', coords);
+                            deferred.rejectWith({ error: 'Impossible d\'obtenir les données d\'altitude' });
+                        }
+
+                        if (!$.Cache.hasSlope(coords)) {
+                            console.log('Could not find slope for coordinates', coords);
+                            deferred.rejectWith({ error: 'Impossible d\'obtenir les données de pente' });
+                        }
+                    });
+
+                    _this._computeStats(latlngs);
                     deferred.resolve();
                 });
         });
     },
 
-    _computeStats: function () {
+    _computeStats: function (latlngs) {
         const elevations = [];
 
-        $.each(this.getLatLngsFlatten(), function (j, coords) {
+        $.each(latlngs, function (j, coords) {
             const values = $.extend({}, { lat: coords.lat, lng: coords.lng }, $.Cache.getInfos(coords));
             elevations.push(values);
         });
@@ -1014,11 +1041,11 @@ L.Layer.include({
         return true;
     },
 
-    _fetchAltitude: function () {
+    _fetchAltitude: function (latlngs) {
         var geometry = []; // Batch
         const promises = [];
 
-        $.each(this.getLatLngsFlatten(), function (j, coords) {
+        $.each(latlngs, function (j, coords) {
             if (!$.Cache.hasAltitude(coords)) { // Skip already cached values
                 geometry.push({
                     lon: coords.lng,
@@ -1040,12 +1067,12 @@ L.Layer.include({
         return promises;
     },
 
-    _fetchSlope: function () {
+    _fetchSlope: function (latlngs) {
         const tiles = {};
         const promises = [];
         const map = (this._map || this._mapToAdd);
 
-        $.each(this.getLatLngsFlatten(), function (j, coords) {
+        $.each(latlngs, function (j, coords) {
             if (!$.Cache.hasSlope(coords)) { // Skip already cached values
                 const { tile, tilePixel } = coords.toTilePixel(map.options.crs, 16, 256, map.getPixelOrigin());
 
@@ -1655,7 +1682,7 @@ L.Layer.include({
                 $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
-                }).fail(deferred.fail);
+                }).fail(deferred.reject);
             });
         },
 
@@ -1679,7 +1706,7 @@ L.Layer.include({
                 $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
-                }).fail(deferred.fail);
+                }).fail(deferred.reject);
             });
         },
 
@@ -2154,7 +2181,8 @@ L.Layer.include({
                             _this.attachRouteFrom(to, geojson, mode);
 
                             $(_this).startCompute((next) => {
-                                geojson.computeStats().progress($.Queue.notify).then(deferred.resolve).fail(function () {
+                                geojson.computeStats().progress($.Queue.notify).done(deferred.resolve).fail(function () {
+                                    $.Queue.failed('Impossible d\'obtenir les données de la route');
                                     deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
                                 }).always(() => $(_this).endCompute(next));
 
@@ -2174,7 +2202,13 @@ L.Layer.include({
                                     });
                                 });
 
-                                geojson.snakeIn();
+                                try {
+                                    geojson.snakeIn();
+                                } catch (e) {
+                                    // With some weird tracks, snakeIn can fail (don't know why)
+                                    geojson._snakeEnd();
+                                }
+
                                 _this.setOpacity(1);
                                 to.setOpacity(1);
                             });
@@ -2786,13 +2820,18 @@ window.onload = function () {
 
         $('#data-computing').progress().on('progressstatechanged', (e, data) => {
             if (data.started) {
+                $('#data-invalid').fadeOut();
                 $('#data-computing').fadeIn();
             } else {
                 $('#data').data('map2gpx-chart').replot($map.map('getTrack').computeStats());
                 $('#data-computing').fadeOut();
             }
+        }).on('progressfailed', (e, data) => {
+            $('#data-invalid-status').text(data.error);
+            $('#data-invalid').fadeIn();
         });
         $.Queue.bindTo($('#data-computing'));
+
         $.BlockingQueue.bindTo({
             start: () => $('#pending').fadeIn(),
             stop: () => $('#pending').fadeOut(),

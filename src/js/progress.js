@@ -57,6 +57,12 @@
                 this.stop();
         },
 
+        failed: function (error) {
+            this.$status.text('Une erreur est survenue');
+            $('<div><small>' + error + '</small></div>').insertAfter(this.$h2).fadeOut(10000, function () {$(this).remove();});
+            this._trigger('failed', null, { error });
+        },
+
         update: function (progress) {
             if (Array.isArray(progress)) {
                 const _this = this;

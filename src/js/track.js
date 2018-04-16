@@ -205,7 +205,7 @@
                 $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
-                }).fail(deferred.fail);
+                }).fail(deferred.reject);
             });
         },
 
@@ -229,7 +229,7 @@
                 $.when.apply($, promises).done(() => {
                     _this.fire('markerschanged');
                     deferred.resolve();
-                }).fail(deferred.fail);
+                }).fail(deferred.reject);
             });
         },
 
@@ -704,7 +704,8 @@
                             _this.attachRouteFrom(to, geojson, mode);
 
                             $(_this).startCompute((next) => {
-                                geojson.computeStats().progress($.Queue.notify).then(deferred.resolve).fail(function () {
+                                geojson.computeStats().progress($.Queue.notify).done(deferred.resolve).fail(function () {
+                                    $.Queue.failed('Impossible d\'obtenir les données de la route');
                                     deferred.rejectWith({ error: 'Impossible d\'obtenir les données de la route' });
                                 }).always(() => $(_this).endCompute(next));
 
@@ -724,7 +725,13 @@
                                     });
                                 });
 
-                                geojson.snakeIn();
+                                try {
+                                    geojson.snakeIn();
+                                } catch (e) {
+                                    // With some weird tracks, snakeIn can fail (don't know why)
+                                    geojson._snakeEnd();
+                                }
+
                                 _this.setOpacity(1);
                                 to.setOpacity(1);
                             });
