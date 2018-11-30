@@ -1,67 +1,56 @@
 L.Map.include({
-    _bindViewEvents: function () {
-        this.on('zoomend', function () {
-            console.log('Zoomed to ', this.getZoom());
-            $.localStorage.set('view', [this.getCenter().lat, this.getCenter().lng, this.getZoom()]);
-        });
+  _bindViewEvents() {
+    this.on('zoomend', () => {
+      console.log('Zoomed to ', this.getZoom());
+      $.localStorage.set('view', [this.getCenter().lat, this.getCenter().lng, this.getZoom()]);
+    });
 
-        this.on('moveend', function () {
-            console.log('Moved to ', this.getCenter());
-            $.localStorage.setAsJSON('view', [this.getCenter().lat, this.getCenter().lng, this.getZoom()]);
-        });
-    },
+    this.on('moveend', () => {
+      console.log('Moved to ', this.getCenter());
+      $.localStorage.setAsJSON('view', [this.getCenter().lat, this.getCenter().lng, this.getZoom()]);
+    });
+  },
 
-    _setView: function (view) {
-        this.setView([view[0], view[1]], view[2]);
-    },
+  _geocode(provider, query) {
+    return new Promise((resolve, reject) => {
+      provider.geocode(query, (results) => {
+        resolve(results);
+      });
+    });
+  },
 
-    initView: function () {
-        const _this = this;
-        return $.Deferred(function () {
-            const deferred = this;    // jscs:ignore safeContextKeyword
+  async initView(track, provider) {
+    const view = $.localStorage.getAsJSON('view') || [44.96777356135154, 6.06822967529297, 13]; // Center in les Ecrins because I love this place
+    let hasSetView = false;
 
-            let view = $.localStorage.getAsJSON('view') ||
-                [44.96777356135154, 6.06822967529297, 13];   // Center in les Ecrins because I love this place
+    if (view[2] > 17) view[2] = 17;
 
-            if (view[2] > 17)
-                view[2] = 17;
+    if ('lat' in $.QueryString && 'lng' in $.QueryString) {
+      this.setView([$.QueryString.lat, $.QueryString.lng], 15);
+      hasSetView = true;
+    } else if ('loc' in $.QueryString) {
+      try {
+        const results = await this._geocode(provider, $.QueryString.loc);
+        if (results && results.length > 0) {
+          this.setView(results[0].center, 15);
+          hasSetView = true;
+        }
+      } catch (e) {
+        console.log(e.message);
+      }
+    } else if ('url' in $.QueryString) {
+      try {
+        this._imported = true; // FIXME Dirty hack to avoid tour to show up
+        await track.loadUrl($.QueryString.url, true);
+        this.fitBounds(track.getBounds());
+        hasSetView = true;
+      } catch (e) {
+        console.log(e.message);
+      }
+    }
 
-            if ('lat' in $.QueryString && 'lng' in $.QueryString) {
-                view = [$.QueryString.lat, $.QueryString.lng, 15];
-            }
+    if (!hasSetView) this.setView([view[0], view[1]], view[2]);
 
-            if ('loc' in $.QueryString) {
-                // Try to find location
-                const options = {
-                    text: $.QueryString.loc,
-                    filterOptions: { type: ['StreetAddress', 'PositionOfInterest'] },
-                    apiKey: keyIgn,
-                    onSuccess: function (results) {
-                        if (results && 'suggestedLocations' in results && results.suggestedLocations.length > 0) {
-                            _this._setView([
-                                results.suggestedLocations[0].position.y,
-                                results.suggestedLocations[0].position.x,
-                                15,
-                            ]);
-                            deferred.resolveWith(_this);
-                        } else {
-                            console.log('No results?');
-                            _this._setView(view); // Use default view
-                            deferred.resolveWith(_this);
-                        }
-                    },
-                    onFailure: function (error) {
-                        // Error, or no match
-                        console.log(error);
-                        _this._setView(view); // Use default view
-                        deferred.resolveWith(_this);
-                    },
-                };
-                Gp.Services.autoComplete(options);
-            } else {
-                _this._setView(view);
-                deferred.resolveWith(_this);
-            }
-        }).done(this._bindViewEvents);  // Bind events when we're done, so we don't store parameters from query string
-    },
+    this._bindViewEvents(); // Bind events when we're done, so we don't store parameters from query string
+  },
 });

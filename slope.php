@@ -15,6 +15,13 @@ function buildContext() {
     return $context;
 }
 
+function error_400($msg) {  // Quick & dirty
+    header("HTTP/1.0 400 Bad Request");
+    http_response_code(400);
+    echo json_encode(array("error" => $msg));
+    exit();
+}
+
 function error_500($msg) {  // Quick & dirty
     header("HTTP/1.0 500 Internal Server Error");
     http_response_code(500);
@@ -22,17 +29,23 @@ function error_500($msg) {  // Quick & dirty
     exit();
 }
 
+$apikey = filter_input(INPUT_GET, 'apikey', FILTER_VALIDATE_REGEXP, array(
+    "options" => array("regexp" => "/[a-zA-Z0-9]+/")
+));
+if ($apikey === FALSE)
+    error_400("Parameter apikey invalid");
+
 $tilematrix = filter_input(INPUT_GET, 'tilematrix', FILTER_VALIDATE_INT);
 if ($tilematrix === FALSE)
-    error_500("Parameter tilematrix invalid");
+    error_400("Parameter tilematrix invalid");
 
 $tilerow = filter_input(INPUT_GET, 'tilerow', FILTER_VALIDATE_INT);
 if ($tilerow === FALSE)
-    error_500("Parameter tilerow invalid");
+    error_400("Parameter tilerow invalid");
 
 $tilecol = filter_input(INPUT_GET, 'tilecol', FILTER_VALIDATE_INT);
 if ($tilecol === FALSE)
-    error_500("Parameter tilemcol invalid");
+    error_400("Parameter tilemcol invalid");
 
 $lon_dirty = explode('|', $_GET['lon']);
 $lat_dirty = explode('|', $_GET['lat']);
@@ -41,7 +54,7 @@ $x_dirty = explode('|', $_GET['x']);
 $y_dirty = explode('|', $_GET['y']);
 
 if (count($x_dirty) != count($y_dirty) || count($x_dirty) != count($lon_dirty) || count($x_dirty) != count($lat_dirty)) {
-    error_500("Parameters x, y, lon, lat invalid");
+    error_400("Parameters x, y, lon, lat invalid");
 }
 
 $d = [];
@@ -49,16 +62,16 @@ $d = [];
 for ($i = 0; $i < count($x_dirty); $i++) {
     $_lon = filter_var($lon_dirty[$i], FILTER_VALIDATE_FLOAT);
     if ($_lon === FALSE)
-        error_500("Parameter lon invalid");
+        error_400("Parameter lon invalid");
     $_lat = filter_var($lat_dirty[$i], FILTER_VALIDATE_FLOAT);
     if ($_lat === FALSE)
-        error_500("Parameter lat invalid");
+        error_400("Parameter lat invalid");
     $_x = filter_var($x_dirty[$i], FILTER_VALIDATE_INT);
     if ($_x === FALSE)
-        error_500("Parameter x invalid");
+        error_400("Parameter x invalid");
     $_y = filter_var($y_dirty[$i], FILTER_VALIDATE_INT);
     if ($_y === FALSE)
-        error_500("Parameter y invalid");
+        error_400("Parameter y invalid");
 
     $d[] = array("lat" => $_lat, "lon" => $_lon, "x" => $_x, "y" => $_y);
 }
@@ -91,7 +104,7 @@ function colorat($im, $x, $y) {
 try {
     error_reporting(0);
 
-    $file = file_get_contents('http://wxs.ign.fr/jwwl8p4ie5qcwbgohl0uv7zx/geoportail/wmts?service=WMTS&request=GetTile&version=1.0.0&layer=GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN&style=normal&tilematrixset=PM&format=image/png&tilematrix=' . $tilematrix . '&tilerow=' . $tilerow . '&tilecol=' . $tilecol, false, buildContext());
+    $file = file_get_contents('https://wxs.ign.fr/' . $apikey . '/geoportail/wmts?service=WMTS&request=GetTile&version=1.0.0&layer=GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN&style=normal&tilematrixset=PM&format=image/png&tilematrix=' . $tilematrix . '&tilerow=' . $tilerow . '&tilecol=' . $tilecol, false, buildContext());
     if ($file === FALSE)
         error_500("Could not fetch data");
     $im = imagecreatefromstring($file);
