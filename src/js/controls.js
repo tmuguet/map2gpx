@@ -88,7 +88,7 @@ module.exports = {
 
   addTrackDrawerToolbar(map, track, options) {
     const opts = $.extend({}, { direction: 'horizontal', position: 'topcenter' }, options);
-    return L.TrackDrawer.control(track, opts).addTo(map);
+    return L.TrackDrawer.toolBar(track, opts).addTo(map);
   },
 
   addTrackDrawerTracebar(map, track, options) {
