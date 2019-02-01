@@ -6,28 +6,66 @@ module.exports = {
     const baseLayers = {};
     const overlays = {};
 
+    const visibilities = {};
+
     Object.keys(visibleBaseLayers).forEach((key) => {
-      visibleBaseLayers[key].addTo(map);
+      const visibility = $.localStorage.get(`layervisibility-${key}`);
       baseLayers[key] = visibleBaseLayers[key];
+      visibilities[key] = visibility === 'true' || visibility === null;
     });
     Object.keys(visibleOverlays).forEach((key) => {
-      visibleOverlays[key].addTo(map);
+      const visibility = $.localStorage.get(`layervisibility-${key}`);
       overlays[key] = visibleOverlays[key];
+      visibilities[key] = visibility === 'true' || visibility === null;
     });
 
     Object.keys(hiddenBaseLayers).forEach((key) => {
-      if (controlType === 'geoportail') hiddenBaseLayers[key].addTo(map);
+      const visibility = $.localStorage.get(`layervisibility-${key}`);
       baseLayers[key] = hiddenBaseLayers[key];
+      visibilities[key] = visibility === 'true';
     });
     Object.keys(hiddenOverlays).forEach((key) => {
-      if (controlType === 'geoportail') hiddenOverlays[key].addTo(map);
+      const visibility = $.localStorage.get(`layervisibility-${key}`);
       overlays[key] = hiddenOverlays[key];
+      visibilities[key] = visibility === 'true';
+    });
+
+    Object.keys(baseLayers).forEach((key) => {
+      if (visibilities[key] || controlType === 'geoportail') baseLayers[key].addTo(map);
+      const opacity = $.localStorage.get(`layeropacity-${key}`);
+      if (opacity !== null) baseLayers[key].setOpacity(opacity);
+    });
+    Object.keys(overlays).forEach((key) => {
+      if (visibilities[key] || controlType === 'geoportail') overlays[key].addTo(map);
+      const opacity = $.localStorage.get(`layeropacity-${key}`);
+      if (opacity !== null) overlays[key].setOpacity(opacity);
     });
 
     let control;
     switch (controlType) {
       case 'native':
         control = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
+
+        $('.leaflet-control-layers-selector[type=radio]').change((e) => {
+          Object.keys(baseLayers).forEach((key) => {
+            this._onLayerVisibilityChanged(false, key);
+          });
+          this._onLayerVisibilityChanged(
+            true,
+            $(e.target)
+              .next()
+              .text().trim(),
+          );
+        });
+        $('.leaflet-control-layers-selector[type=checkbox]').change((e) => {
+          this._onLayerVisibilityChanged(
+            $(e.target)[0].checked,
+            $(e.target)
+              .next()
+              .text().trim(),
+          );
+        });
+
         break;
 
       case 'geoportail':
@@ -35,12 +73,18 @@ module.exports = {
           collapsed: false,
         });
         map.addControl(control);
-        Object.keys(hiddenBaseLayers).forEach((key) => {
-          control.setVisibility(hiddenBaseLayers[key], false);
+
+        Object.keys(baseLayers).forEach((key) => {
+          if (!visibilities[key]) control.setVisibility(baseLayers[key], false);
+          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(baseLayers[key])}`)}`).change(e => this._onLayerVisibilityChanged($(e.target)[0].checked, key));
+          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(baseLayers[key])}`)}`).change(e => this._onLayerOpacityChanged($(e.target).val() / 100, key));
         });
-        Object.keys(hiddenOverlays).forEach((key) => {
-          control.setVisibility(hiddenOverlays[key], false);
+        Object.keys(overlays).forEach((key) => {
+          if (!visibilities[key]) control.setVisibility(overlays[key], false);
+          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(overlays[key])}`)}`).change(e => this._onLayerVisibilityChanged($(e.target)[0].checked, key));
+          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(overlays[key])}`)}`).change(e => this._onLayerOpacityChanged($(e.target).val() / 100, key));
         });
+
         $('.GPlayerRemove').remove();
         break;
 
@@ -49,6 +93,14 @@ module.exports = {
     }
 
     return control;
+  },
+
+  _onLayerVisibilityChanged(isVisible, key) {
+    $.localStorage.set(`layervisibility-${key}`, isVisible ? 'true' : 'false');
+  },
+
+  _onLayerOpacityChanged(opacity, key) {
+    $.localStorage.set(`layeropacity-${key}`, opacity);
   },
 
   addZoom(map, options = {}) {
