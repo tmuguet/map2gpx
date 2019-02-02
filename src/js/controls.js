@@ -54,7 +54,8 @@ module.exports = {
             true,
             $(e.target)
               .next()
-              .text().trim(),
+              .text()
+              .trim(),
           );
         });
         $('.leaflet-control-layers-selector[type=checkbox]').change((e) => {
@@ -62,7 +63,8 @@ module.exports = {
             $(e.target)[0].checked,
             $(e.target)
               .next()
-              .text().trim(),
+              .text()
+              .trim(),
           );
         });
 
@@ -263,6 +265,7 @@ module.exports = {
         const c = g.container;
         if (c.getPopup() === undefined) {
           c.bindPopup('<>');
+          c.addEventParent(map);
         }
         const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
         c.setPopupContent(
