@@ -6,6 +6,7 @@ module.exports = L.Control.EasyButton.extend({
     title: 'Export',
     fileLabel: 'File',
     cancelLabel: 'Cancel',
+    includeMarkersLabel: 'Include the stepover markers',
   },
 
   initialize(track, options) {
@@ -43,7 +44,9 @@ module.exports = L.Control.EasyButton.extend({
       + '<fieldset>'
       + `<label for="export-file">${this.options.fileLabel}</label>`
       + '<input type="text" name="export-file" id="export-file" value="track" class="text ui-widget-content ui-corner-all"/>'
-      + '<button id="export-gpx-button" class="ui-button ui-corner-all ui-widget">GPX</button>'
+      + '<span style="display: block"><input type="checkbox" name="export-markers" id="export-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>'
+      + `<label for="export-markers" style="display: inline">${this.options.includeMarkersLabel}</label></span>`
+      + '</fieldset><fieldset><button id="export-gpx-button" class="ui-button ui-corner-all ui-widget">GPX</button>'
       + '<button id="export-kml-button" class="ui-button ui-corner-all ui-widget">KML</button>'
       + '<button id="export-geojson-button" class="ui-button ui-corner-all ui-widget">GeoJSON</button>'
       + '</fieldset>'
@@ -71,8 +74,9 @@ module.exports = L.Control.EasyButton.extend({
       event.preventDefault();
 
       const filename = this._fieldName.val();
+
       this._export(
-        togpx(this._track.toGeoJSON(), {
+        togpx(this._track.toGeoJSON($('#export-markers').is(':checked')), {
           creator: 'map2gpx',
           featureTitle: p => ('index' in p ? `${filename}-${p.index}` : ''),
         }),
@@ -86,7 +90,7 @@ module.exports = L.Control.EasyButton.extend({
 
       const filename = this._fieldName.val();
       this._export(
-        tokml(this._track.toGeoJSON(), {
+        tokml(this._track.toGeoJSON($('#export-markers').is(':checked')), {
           documentName: filename,
         }),
         'application/xml;charset=utf-8',
@@ -97,7 +101,11 @@ module.exports = L.Control.EasyButton.extend({
     this._form.find('#export-geojson-button').on('click', (event) => {
       event.preventDefault();
 
-      this._export(JSON.stringify(this._track.toGeoJSON()), 'application/json;charset=utf-8', 'geojson');
+      this._export(
+        JSON.stringify(this._track.toGeoJSON($('#export-markers').is(':checked'))),
+        'application/json;charset=utf-8',
+        'geojson',
+      );
     });
   },
 });

@@ -3,7 +3,6 @@
   "version": "2.0.0-alpha.3",
   "description": "map2gpx is a web application that lets you trace paths on maps (for hiking for instance) and export them to GPX or KML formats.\\n",
   "main": "n/a",
-  "private": true,
   "scripts": {
     "bundle": "gulp bundle",
     "pack": "gulp pack",
@@ -70,7 +69,7 @@
     "leaflet-filelayer": "^1.2.0",
     "leaflet-minimap": "^3.6.1",
     "leaflet-routing-machine": "^3.2.12",
-    "leaflet-trackdrawer": "^0.4.0",
+    "leaflet-trackdrawer": "^0.4.2",
     "leaflet-trackdrawer-filelayer": "^0.1.3",
     "leaflet-trackstats": "^0.1.4",
     "leaflet.awesome-markers": "^2.0.4",
