@@ -56,7 +56,7 @@ module.exports = L.Control.EasyButton.extend({
     }
     promise.then((val) => {
       if (val !== false) {
-        this._map.flyToBounds(this._track.getBounds());
+        this._map.flyToBounds(this._track.getBounds(), { padding: [20, 20] });
         this._dialog.dialog('close');
       }
     });

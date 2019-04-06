@@ -42,7 +42,7 @@ L.Map.include({
       try {
         this._imported = true; // FIXME Dirty hack to avoid tour to show up
         await track.loadUrl($.QueryString.url, true);
-        this.fitBounds(track.getBounds());
+        this.fitBounds(track.getBounds(), { padding: [20, 20] });
         hasSetView = true;
       } catch (e) {
         console.log(e.message);
