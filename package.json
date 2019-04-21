@@ -70,7 +70,7 @@
     "leaflet-minimap": "^3.6.1",
     "leaflet-routing-machine": "^3.2.12",
     "leaflet-trackdrawer": "^0.4.2",
-    "leaflet-trackdrawer-filelayer": "^0.1.5",
+    "leaflet-trackdrawer-filelayer": "^0.2.0",
     "leaflet-trackstats": "^0.1.4",
     "leaflet.awesome-markers": "^2.0.4",
     "lrm-geoportail": "^0.1.1",

@@ -90,6 +90,9 @@ module.exports = {
         $('.GPlayerRemove').remove();
         break;
 
+      case 'none':
+        break;
+
       default:
         throw new Error('Unsupported control type');
     }

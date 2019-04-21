@@ -6,6 +6,7 @@ module.exports = L.Control.EasyButton.extend({
     title: 'Import a file',
     fileLabel: 'File',
     urlLabel: 'URL',
+    addWaypointsLabel: 'Add waypoints',
     submitLabel: 'Import',
     cancelLabel: 'Cancel',
   },
@@ -38,17 +39,17 @@ module.exports = L.Control.EasyButton.extend({
 
     const files = this._fieldFile[0].files; // eslint-disable-line prefer-destructuring
     const url = this._fieldUrl.val();
-    // const interpolate = $('#import-gpx-interpolate').is(':checked');
+    const waypoints = $('#import-markers').is(':checked') ? 100 : false;
 
     let promise;
     if (files[0]) {
-      promise = this._track.loadFile(files[0]).catch((e) => {
+      promise = this._track.loadFile(files[0], waypoints).catch((e) => {
         this._fieldFile.addClass('ui-state-error');
         this._form.find('#import-file-tips').text(e.message);
         return false;
       });
     } else {
-      promise = this._track.loadUrl(url, true).catch((e) => {
+      promise = this._track.loadUrl(url, true, waypoints).catch((e) => {
         this._fieldUrl.addClass('ui-state-error');
         this._form.find('#import-url-tips').text(e.message);
         return false;
@@ -73,6 +74,10 @@ module.exports = L.Control.EasyButton.extend({
       + `<label for="import-url">${this.options.urlLabel}</label>`
       + '<input type="text" name="import-url" id="import-url" value="" class="text ui-widget-content ui-corner-all"/>'
       + '<input type="submit"  tabindex="-1" style="position:absolute; top:-1000px"/>'
+      + '</fieldset>'
+      + '<fieldset>'
+      + '<span style="display: block"><input type="checkbox" name="import-markers" id="import-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>'
+      + `<label for="import-markers" style="display: inline">${this.options.addWaypointsLabel}</label></span>`
       + '</fieldset>'
       + '</form>'
       + '</div>';
