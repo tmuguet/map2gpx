@@ -2,6 +2,15 @@ body {
   font: 12px/1.5 'Helvetica Neue', Arial, Helvetica, sans-serif;
 }
 
+body.theme-white {
+  background-color: #ffffff;
+  color: #000000;
+}
+body.theme-black {
+  background-color: #000000;
+  color: #ffffff;
+}
+
 .leaflet-bar .easy-button-button.active-active,
 .leaflet-bar .easy-button-button.active-active:hover {
   color: #ffffff;
@@ -135,8 +144,16 @@ ul.legend.black {
   left: 0px;
   right: 0px;
   bottom: 0px;
-  background-color: #ffffff;
   text-align: center;
+}
+.theme-white .data {
+  color: #000000;
+  background-color: #ffffff;
+}
+.theme-dark .data {
+  color: #ffffff;
+  background-color: #000000;
+
 }
 #data.data,
 #data-empty.data {

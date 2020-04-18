@@ -27,6 +27,12 @@ L.Map.include({
   },
 
   async initView(track, provider) {
+    if ('theme' in $.QueryString) {
+      $('body').addClass('theme-' + $.QueryString.theme);
+    } else {
+      $('body').addClass('theme-white');
+    }
+
     const view = $.localStorage.getAsJSON('view') || [44.96777356135154, 6.06822967529297, 13]; // Center in les Ecrins because I love this place
     let hasSetView = false;
 
