@@ -173,10 +173,11 @@ module.exports = {
     ).addTo(map);
   },
 
-  addMinimap(map, layer) {
+  addMinimap(map, layer, options) {
+    const opts = $.extend({}, { zoomLevelOffset: -4 }, options);
     return new L.Control.MiniMap(layer, {
       position: 'bottomleft',
-      zoomLevelOffset: -4,
+      zoomLevelOffset: opts.zoomLevelOffset,
     }).addTo(map);
   },
 

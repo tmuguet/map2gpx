@@ -8,7 +8,7 @@
   <meta name="author" content="Thomas Muguet" />
   <meta name="robots" content="index,follow" />
 
-  <title>map2gpx par tmuguet</title>
+  <title>map2gpx par tmuguet (version OSM)</title>
   <link rel="icon" type="image/png" sizes="72x72" href="ico/logo-medium-72.png" />
   <link rel="apple-touch-icon" sizes="57x57" href="ico/logo-medium-57.png" />
   <link rel="apple-touch-icon" sizes="72x72" href="ico/logo-medium-72.png" />
@@ -22,7 +22,7 @@
   <meta property="og:title" content="map2gpx" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://map2gpx.fr/screenshot.png" />
-  <meta property="og:url" content="https://map2gpx.fr/index.html" />
+  <meta property="og:url" content="https://map2gpx.fr/osm.html" />
 
   <link rel="stylesheet" href="node_modules/jquery-ui-dist/jquery-ui.min.css" />
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
@@ -85,10 +85,8 @@
     </div>
     <div id="help-layers">
       <p>
-        Plusieurs couches sont disponibles. Par défaut, le fond de <em>Cartes IGN</em> est affiché en transparence au
-        dessus des <em>Photographies aériennes</em>.<br />
-        Vous pouvez régler l'opacité et la visibilité des couches.<br />
-        Si vous préférez utiliser des fonds de cartes libres, vous pouvez <a href="osm.html">cliquer ici</a>.
+        Plusieurs couches sont disponibles, fournies par différents services.<br />
+        Si vous préférez utiliser les fonds de cartes IGN, vous pouvez <a href="index.html">cliquer ici</a>.
       </p>
     </div>
     <div id="help-search">
@@ -317,15 +315,41 @@
       });
 
       var visibleLayers = {
-        Photos: L.geoportalLayer.WMTS({ layer: 'ORTHOIMAGERY.ORTHOPHOTOS' }),
-        Map: L.geoportalLayer.WMTS({ layer: 'GEOGRAPHICALGRIDSYSTEMS.MAPS' }, { opacity: 0.25 }),
+        'Thunderforest OpenCycleMap': L.tileLayer(
+          'https://tile.thunderforest.com/cycle/{z}/{x}/{y}{r}.png?apikey=bcecc6dc7a9a46cca6d1eff04dd595cf',
+          {
+            maxZoom: 18,
+            attribution:
+              'Maps © <a href="http://www.thunderforest.com">Thunderforest</a>, Data © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+          }
+        ),
       };
       var visibleOverlays = {};
-      var hiddenLayers = {};
-      var hiddenOverlays = {
-        Slope: L.geoportalLayer.WMTS({ layer: 'GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN' }, { opacity: 0.25 }),
+      var hiddenLayers = {
+        'Thunderforest Outdoors': L.tileLayer(
+          'https://tile.thunderforest.com/outdoors/{z}/{x}/{y}{r}.png?apikey=bcecc6dc7a9a46cca6d1eff04dd595cf',
+          {
+            maxZoom: 18,
+            attribution:
+              'Maps © <a href="http://www.thunderforest.com">Thunderforest</a>, Data © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+          }
+        ),
+        OpenTopoMap: L.tileLayer('https://a.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          attribution:
+            'Map data: &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map display: &copy; <a href="http://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+        }),
+        'Hike & Bike': new L.TileLayer('http://{s}.tiles.wmflabs.org/hikebike/{z}/{x}/{y}.png', {
+          maxZoom: 17,
+          attribution: 'Map Data: © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }),
       };
-      Map2gpx.controls.addLayers(map, visibleLayers, visibleOverlays, hiddenLayers, hiddenOverlays, 'geoportail');
+      var hiddenOverlays = {
+        HillShading: new L.TileLayer('http://{s}.tiles.wmflabs.org/hillshading/{z}/{x}/{y}.png', {
+          maxZoom: 17,
+          attribution: 'Hillshading: SRTM3 v2 (<a href="http://www2.jpl.nasa.gov/srtm/">NASA</a>)',
+        }),
+      };
+      Map2gpx.controls.addLayers(map, visibleLayers, visibleOverlays, hiddenLayers, hiddenOverlays, 'native');
 
       Map2gpx.controls.addZoom(map, {
         zoomInTitle: 'Zoomer',
@@ -375,9 +399,8 @@
       });
       Map2gpx.controls.addMinimap(
         map,
-        L.geoportalLayer.WMTS({
-          layer: 'GEOGRAPHICALGRIDSYSTEMS.MAPS',
-        })
+        L.tileLayer('https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+        { zoomLevelOffset: -6 }
       );
       Map2gpx.controls.addInfoToolbar(map, {
         labelInfo: 'A propos & crédits',

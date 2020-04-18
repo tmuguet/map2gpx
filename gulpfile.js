@@ -86,6 +86,13 @@ gulp.task('copy-dependencies-fr', () => {
     .pipe(gulp.dest('./www-fr/'));
 });
 
+gulp.task('copy-dependencies-fr2', () => {
+  return gulp
+    .src('index-fr-osm.html')
+    .pipe(rename('osm.html'))
+    .pipe(gulp.dest('./www-fr/'));
+});
+
 gulp.task('copy-dependencies-en', () => {
   const htmlcpr = require('gulp-htmlcpr');
 
@@ -117,6 +124,7 @@ gulp.task(
   'copy-dependencies',
   gulp.parallel(
     'copy-dependencies-fr',
+    'copy-dependencies-fr2',
     'copy-dependencies-en',
     'copy-dependencies-others',
     'copy-dependencies-others2',
