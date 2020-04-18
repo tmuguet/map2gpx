@@ -174,11 +174,8 @@ module.exports = {
   },
 
   addMinimap(map, layer, options) {
-    const opts = $.extend({}, { zoomLevelOffset: -4 }, options);
-    return new L.Control.MiniMap(layer, {
-      position: 'bottomleft',
-      zoomLevelOffset: opts.zoomLevelOffset,
-    }).addTo(map);
+    const opts = $.extend({}, { position: 'bottomleft', zoomLevelOffset: -4 }, options);
+    return new L.Control.MiniMap(layer, opts).addTo(map);
   },
 
   addInfoToolbar(map, options) {
@@ -257,10 +254,10 @@ module.exports = {
           }
           node.setPopupContent(
             `<ul class="legend ${node.options.colorName}">`
-              + `<li>${options.labelAltitude}: ${Math.round(node._stats.z)}m</li>`
-              + `<li>${options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>`
-              + `<li>${options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100)
-                / 100}km</li></ul>`,
+            + `<li>${options.labelAltitude}: ${Math.round(node._stats.z)}m</li>`
+            + `<li>${options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>`
+            + `<li>${options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100)
+            / 100}km</li></ul>`,
           );
         });
       });
@@ -274,11 +271,11 @@ module.exports = {
         const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
         c.setPopupContent(
           `<ul class="legend ${colorName}">`
-            + `<li>${options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>`
-            + `<li>${options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>`
-            + `<li>${options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>`
-            + `<li>${options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>`
-            + `<li>${options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li></ul>`,
+          + `<li>${options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>`
+          + `<li>${options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>`
+          + `<li>${options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>`
+          + `<li>${options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>`
+          + `<li>${options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li></ul>`,
         );
       });
 

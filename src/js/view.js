@@ -19,6 +19,13 @@ L.Map.include({
     });
   },
 
+  shouldShowControls() {
+    if ('controls' in $.QueryString) {
+      return $.QueryString.lat === "true";
+    }
+    return true;
+  },
+
   async initView(track, provider) {
     const view = $.localStorage.getAsJSON('view') || [44.96777356135154, 6.06822967529297, 13]; // Center in les Ecrins because I love this place
     let hasSetView = false;

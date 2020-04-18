@@ -349,63 +349,65 @@
           attribution: 'Hillshading: SRTM3 v2 (<a href="http://www2.jpl.nasa.gov/srtm/">NASA</a>)',
         }),
       };
-      Map2gpx.controls.addLayers(map, visibleLayers, visibleOverlays, hiddenLayers, hiddenOverlays, 'native');
+      Map2gpx.controls.addLayers(map, visibleLayers, visibleOverlays, hiddenLayers, hiddenOverlays, map.shouldShowControls() ? 'native' : 'none');
 
-      Map2gpx.controls.addZoom(map, {
-        zoomInTitle: 'Zoomer',
-        zoomOutTitle: 'Dézoomer',
-      });
-      Map2gpx.controls.addScale(map);
-      Map2gpx.controls.addGeocoder(map, {
-        geocoder: new Map2gpx.GeoportailProvider(Gp.Config.apiKey),
-        placeholder: 'Rechercher...',
-        errorMessage: 'Aucun résultat',
-      });
       var drawRoute = Map2gpx.controls.addTrackDrawer(
         map,
         L.TrackStats.geoportail(Gp.Config.apiKey, map),
         new Map2gpx.GeoportailProvider(Gp.Config.apiKey)
       );
-      Map2gpx.controls.addImportExportButtons(map, drawRoute, {
-        optionsImport: {
-          title: 'Importer un fichier',
-          fileLabel: 'Fichier',
-          urlLabel: 'Adresse',
-          addWaypointsLabel: 'Ajouter les marqueurs de points de passage',
-          submitLabel: 'Importer',
-          cancelLabel: 'Annuler',
-        },
-        optionsExport: {
-          title: 'Exporter',
-          fileLabel: 'Nom du fichier',
-          cancelLabel: 'Annuler',
-          includeMarkersLabel: 'Inclure les marqueurs de points de passage',
-          exportAsSingleTrackLabel: 'Exporter en une trace unique',
-        },
-      });
-      Map2gpx.controls.addTrackDrawerToolbar(map, drawRoute, {
-        labelAddMarker: 'Ajouter un marqueur au clic',
-        labelInsertMarker: 'Insérer un marqueur au clic sur un tracé',
-        labelCloseLoop: 'Fermer la boucle',
-        labelDeleteMarker: 'Supprimer un marquer au clic',
-        labelPromoteMarker: 'Transformer en point de passage au clic',
-        labelDemoteMarker: 'Remettre en point normal au clic',
-        labelClean: 'Supprimer tous les marqueurs',
-      });
-      Map2gpx.controls.addTrackDrawerTracebar(map, drawRoute, {
-        labelAuto: 'Utiliser le mode de tracé automatique',
-        labelLine: 'Utiliser le mode de tracé en ligne droite',
-        routerAuto: L.Routing.geoPortail(Gp.Config.apiKey, { profile: 'Pieton' }),
-      });
-      Map2gpx.controls.addMinimap(
-        map,
-        L.tileLayer('https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-        { zoomLevelOffset: -6 }
-      );
-      Map2gpx.controls.addInfoToolbar(map, {
-        labelInfo: 'A propos & crédits',
-        labelHelp: 'Aide',
-      });
+
+      if (map.shouldShowControls()) {
+        Map2gpx.controls.addZoom(map, {
+          zoomInTitle: 'Zoomer',
+          zoomOutTitle: 'Dézoomer',
+        });
+        Map2gpx.controls.addScale(map);
+        Map2gpx.controls.addGeocoder(map, {
+          geocoder: new Map2gpx.GeoportailProvider(Gp.Config.apiKey),
+          placeholder: 'Rechercher...',
+          errorMessage: 'Aucun résultat',
+        });
+        Map2gpx.controls.addImportExportButtons(map, drawRoute, {
+          optionsImport: {
+            title: 'Importer un fichier',
+            fileLabel: 'Fichier',
+            urlLabel: 'Adresse',
+            addWaypointsLabel: 'Ajouter les marqueurs de points de passage',
+            submitLabel: 'Importer',
+            cancelLabel: 'Annuler',
+          },
+          optionsExport: {
+            title: 'Exporter',
+            fileLabel: 'Nom du fichier',
+            cancelLabel: 'Annuler',
+            includeMarkersLabel: 'Inclure les marqueurs de points de passage',
+            exportAsSingleTrackLabel: 'Exporter en une trace unique',
+          },
+        });
+        Map2gpx.controls.addTrackDrawerToolbar(map, drawRoute, {
+          labelAddMarker: 'Ajouter un marqueur au clic',
+          labelInsertMarker: 'Insérer un marqueur au clic sur un tracé',
+          labelCloseLoop: 'Fermer la boucle',
+          labelDeleteMarker: 'Supprimer un marquer au clic',
+          labelPromoteMarker: 'Transformer en point de passage au clic',
+          labelDemoteMarker: 'Remettre en point normal au clic',
+          labelClean: 'Supprimer tous les marqueurs',
+        });
+        Map2gpx.controls.addTrackDrawerTracebar(map, drawRoute, {
+          labelAuto: 'Utiliser le mode de tracé automatique',
+          labelLine: 'Utiliser le mode de tracé en ligne droite',
+          routerAuto: L.Routing.geoPortail(Gp.Config.apiKey, { profile: 'Pieton' }),
+        });
+        Map2gpx.controls.addMinimap(
+          map,
+          L.tileLayer('https://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
+        );
+        Map2gpx.controls.addInfoToolbar(map, {
+          labelInfo: 'A propos & crédits',
+          labelHelp: 'Aide',
+        });
+      }
 
       Map2gpx.controls.addChart(map, drawRoute, {
         showTerrainSlope: true,
@@ -424,10 +426,12 @@
         labelHeightDiffDown: 'D-',
       });
 
-      Map2gpx.controls.addTour(drawRoute, {
-        labelNext: 'Suivant',
-        labelClose: 'Fermer',
-      });
+      if (map.shouldShowControls()) {
+        Map2gpx.controls.addTour(drawRoute, {
+          labelNext: 'Suivant',
+          labelClose: 'Fermer',
+        });
+      }
     };
   </script>
 </body>
