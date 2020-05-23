@@ -21,7 +21,7 @@ L.Map.include({
 
   shouldShowControls() {
     if ('controls' in $.QueryString) {
-      return $.QueryString.lat === "true";
+      return $.QueryString.lat === 'true';
     }
     return true;
   },
@@ -54,7 +54,7 @@ L.Map.include({
     } else if ('url' in $.QueryString) {
       try {
         this._imported = true; // FIXME Dirty hack to avoid tour to show up
-        await track.loadUrl($.QueryString.url, true);
+        await track.loadUrl($.QueryString.url, true, true);
         this.fitBounds(track.getBounds(), { padding: [20, 20] });
         hasSetView = true;
       } catch (e) {
