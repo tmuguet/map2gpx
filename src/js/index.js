@@ -1,5 +1,6 @@
 import { version } from '../../package.json';
 
+require('./leflet.vincenty');
 require('./chart');
 require('./progress');
 require('./jquery.shepherd');
