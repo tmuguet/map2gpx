@@ -11,7 +11,9 @@ Pre-requisites:
 1. Install [nodejs](https://nodejs.org/en/download/)
 2. In the checkout, install the dependencies: `npm install`
 3. Run `npm run lrm-graphhopper-fixup`
-4. Web-server with PHP installed
+4. If you are using GeoPortail API, download the autoconf file and put it in this folder under the name _autoconf-https-prod.json_.
+5. Otherwise, simply copy _autoconf-https-prod.json.sample_ to _autoconf-https-prod.json_.
+6. Web-server with PHP installed
 
 Rebuild:
 
@@ -21,9 +23,9 @@ Rebuild:
 
 Output comes in two flavors:
 
-- _www-fr_ to use GeoPortail maps and APIs (only available in France) - driven by _index-fr.html_
+- _www-fr_ to use GeoPortail maps and APIs (only available in France) - driven by _index-fr.html_, source for [map2gpx.fr](https://map2gpx.fr)
   - You will need your own API key if you want to test/run it
-- _www-en_ to use services available worldwide (maps from OpenStreetMap, Thunderforest, OpenTopoMap, Hike & Bike, Hillshading and APIs from MapQuest, GrapHopper) - driven by _index-en.html_
+- _www-en_ to use services available worldwide (maps from OpenStreetMap, Thunderforest, OpenTopoMap, Hike & Bike, Hillshading and APIs from MapQuest, GrapHopper) - driven by _index-en.html_, source for [map2gpx.eu](https://map2gpx.eu)
   - Thunderforest, MapQuest and GraphHopper requires API keys. Even if the API keys provided here may work for you, please use your own API key if you to test/run it
 
 ## Customize

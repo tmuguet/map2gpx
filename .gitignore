@@ -1,6 +1,8 @@
 .DS_Store
 node_modules
 key.txt
+autoconf-https-local.json
+autoconf-https-prod.json
 dist
 www-*
 coverage
