@@ -21,7 +21,7 @@ L.Map.include({
 
   shouldShowControls() {
     if ('controls' in $.QueryString) {
-      return $.QueryString.lat === 'true';
+      return $.QueryString.controls === 'true';
     }
     return true;
   },
