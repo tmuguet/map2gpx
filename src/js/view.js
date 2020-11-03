@@ -53,8 +53,13 @@ L.Map.include({
       }
     } else if ('url' in $.QueryString) {
       try {
+        let editable = true;
+        if ('editable' in $.QueryString) {
+          editable = $.QueryString.editable === 'true';
+        }
+
         this._imported = true; // FIXME Dirty hack to avoid tour to show up
-        await track.loadUrl($.QueryString.url, true, true);
+        await track.loadUrl($.QueryString.url, true, editable);
         this.fitBounds(track.getBounds(), { padding: [20, 20] });
         hasSetView = true;
       } catch (e) {
