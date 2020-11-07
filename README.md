@@ -10,7 +10,8 @@ Pre-requisites:
 
 1. Install [nodejs](https://nodejs.org/en/download/)
 2. In the checkout, install the dependencies: `npm install`
-3. Web-server with PHP installed
+3. Run `npm run lrm-graphhopper-fixup`
+4. Web-server with PHP installed
 
 Rebuild:
 

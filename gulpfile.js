@@ -129,8 +129,8 @@ gulp.task(
     'copy-dependencies-others',
     'copy-dependencies-others2',
     'copy-dependencies-ign',
-    'copy-dependencies-ign2',
-  ),
+    'copy-dependencies-ign2'
+  )
 );
 
 gulp.task('lint', () => {

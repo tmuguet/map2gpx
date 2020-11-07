@@ -1,6 +1,6 @@
 {
   "name": "map2gpx",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "description": "map2gpx is a web application that lets you trace paths on maps (for hiking for instance) and export them to GPX or KML formats.\\n",
   "main": "n/a",
   "scripts": {
