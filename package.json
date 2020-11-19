@@ -61,7 +61,7 @@
     "file-saver": "^2.0.2",
     "geoportal-extensions-leaflet": "^2.1.5",
     "gulp-htmlcpr": "^0.1.2",
-    "jquery": "^3.4.1",
+    "jquery": "^3.5.0",
     "jquery-ui-dist": "^1.12.1",
     "leaflet": "^1.6.0",
     "leaflet-control-geocoder": "^1.10.0",
