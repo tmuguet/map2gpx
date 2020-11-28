@@ -1,5 +1,9 @@
-/* global Blob, saveAs, $, togpx, tokml */
+/* global Blob */
 const L = require('leaflet');
+const $ = require('jquery');
+const { saveAs } = require('file-saver');
+const togpx = require('togpx');
+const tokml = require('tokml');
 
 module.exports = L.Control.EasyButton.extend({
   options: {
@@ -40,21 +44,30 @@ module.exports = L.Control.EasyButton.extend({
   },
 
   _buildPopup() {
-    const content = `<div id="dialog-export" title="${this.options.title}">`
-      + '<form enctype="multipart/form-data">'
-      + '<fieldset>'
-      + `<label for="export-file">${this.options.fileLabel}</label>`
-      + '<input type="text" name="export-file" id="export-file" value="track" class="text ui-widget-content ui-corner-all"/>'
-      + '<span style="display: block"><input type="checkbox" name="export-markers" id="export-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>'
-      + `<label for="export-markers" style="display: inline">${this.options.includeMarkersLabel}</label></span>`
-      + '<span style="display: block"><input type="checkbox" name="export-single" id="export-single" class="ui-widget-content ui-corner-all" style="display: inline"/>'
-      + `<label for="export-single" style="display: inline">${this.options.exportAsSingleTrackLabel}</label></span>`
-      + '</fieldset><fieldset><button id="export-gpx-button" class="ui-button ui-corner-all ui-widget">GPX</button>'
-      + '<button id="export-kml-button" class="ui-button ui-corner-all ui-widget">KML</button>'
-      + '<button id="export-geojson-button" class="ui-button ui-corner-all ui-widget">GeoJSON</button>'
-      + '</fieldset>'
-      + '</form>'
-      + '</div>';
+    /* eslint-disable max-len */
+    const content = `
+<div id="dialog-export" title="${this.options.title}">
+  <form enctype="multipart/form-data">
+    <fieldset>
+      <label for="export-file">${this.options.fileLabel}</label>
+      <input type="text" name="export-file" id="export-file" value="track" class="text ui-widget-content ui-corner-all"/>
+      <span style="display: block">
+        <input type="checkbox" name="export-markers" id="export-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>
+        <label for="export-markers" style="display: inline">${this.options.includeMarkersLabel}</label>
+      </span>
+      <span style="display: block">
+        <input type="checkbox" name="export-single" id="export-single" class="ui-widget-content ui-corner-all" style="display: inline"/>
+        <label for="export-single" style="display: inline">${this.options.exportAsSingleTrackLabel}</label>
+      </span>
+    </fieldset>
+    <fieldset>
+      <button id="export-gpx-button" class="ui-button ui-corner-all ui-widget">GPX</button>
+      <button id="export-kml-button" class="ui-button ui-corner-all ui-widget">KML</button>
+      <button id="export-geojson-button" class="ui-button ui-corner-all ui-widget">GeoJSON</button>
+    </fieldset>
+  </form>
+</div>`;
+    /* eslint-enable max-len */
     const $content = $(content);
 
     const buttons = {};

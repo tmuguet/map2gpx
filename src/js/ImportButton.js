@@ -1,5 +1,5 @@
-/* global $ */
 const L = require('leaflet');
+const $ = require('jquery');
 
 module.exports = L.Control.EasyButton.extend({
   options: {
@@ -64,23 +64,28 @@ module.exports = L.Control.EasyButton.extend({
   },
 
   _buildPopup() {
-    const content = `<div id="dialog-import" title="${this.options.title}">`
-      + '<form enctype="multipart/form-data">'
-      + '<fieldset>'
-      + '<p id="import-file-tips" class="validateTips"></p>'
-      + `<label for="import-file">${this.options.fileLabel}</label>`
-      + '<input type="file" name="import-file" id="import-file"  accept=".gpx,.kml,.json,.geojson" class="text ui-widget-content ui-corner-all"/>'
-      + '<p id="import-url-tips" class="validateTips"></p>'
-      + `<label for="import-url">${this.options.urlLabel}</label>`
-      + '<input type="text" name="import-url" id="import-url" value="" class="text ui-widget-content ui-corner-all"/>'
-      + '<input type="submit"  tabindex="-1" style="position:absolute; top:-1000px"/>'
-      + '</fieldset>'
-      + '<fieldset>'
-      + '<span style="display: block"><input type="checkbox" name="import-markers" id="import-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>'
-      + `<label for="import-markers" style="display: inline">${this.options.addWaypointsLabel}</label></span>`
-      + '</fieldset>'
-      + '</form>'
-      + '</div>';
+    /* eslint-disable max-len */
+    const content = `
+<div id="dialog-import" title="${this.options.title}">
+  <form enctype="multipart/form-data">
+    <fieldset>
+      <p id="import-file-tips" class="validateTips"></p>
+      <label for="import-file">${this.options.fileLabel}</label>
+      <input type="file" name="import-file" id="import-file"  accept=".gpx,.kml,.json,.geojson" class="text ui-widget-content ui-corner-all"/>
+      <p id="import-url-tips" class="validateTips"></p>
+      <label for="import-url">${this.options.urlLabel}</label>
+      <input type="text" name="import-url" id="import-url" value="" class="text ui-widget-content ui-corner-all"/>
+      <input type="submit"  tabindex="-1" style="position:absolute; top:-1000px"/>
+    </fieldset>
+    <fieldset>
+      <span style="display: block">
+        <input type="checkbox" name="import-markers" id="import-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>
+        <label for="import-markers" style="display: inline">${this.options.addWaypointsLabel}</label>
+      </span>
+    </fieldset>
+  </form>
+</div>`;
+    /* eslint-enable max-len */
     const $content = $(content);
 
     const buttons = {};

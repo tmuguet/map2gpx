@@ -1,5 +1,6 @@
-/* global $, Map2gpx */
+/* global Map2gpx */
 const L = require('leaflet');
+const $ = require('jquery');
 
 module.exports = {
   addLayers(map, visibleBaseLayers, visibleOverlays, hiddenBaseLayers, hiddenOverlays, controlType) {
@@ -46,7 +47,7 @@ module.exports = {
       case 'native':
         control = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
 
-        $('.leaflet-control-layers-selector[type=radio]').change((e) => {
+        $('.leaflet-control-layers-selector[type=radio]').on('change', (e) => {
           Object.keys(baseLayers).forEach((key) => {
             this._onLayerVisibilityChanged(false, key);
           });
@@ -58,7 +59,7 @@ module.exports = {
               .trim(),
           );
         });
-        $('.leaflet-control-layers-selector[type=checkbox]').change((e) => {
+        $('.leaflet-control-layers-selector[type=checkbox]').on('change', (e) => {
           this._onLayerVisibilityChanged(
             $(e.target)[0].checked,
             $(e.target)
@@ -78,13 +79,21 @@ module.exports = {
 
         Object.keys(baseLayers).forEach((key) => {
           if (!visibilities[key]) control.setVisibility(baseLayers[key], false);
-          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(baseLayers[key])}`)}`).change(e => this._onLayerVisibilityChanged($(e.target)[0].checked, key));
-          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(baseLayers[key])}`)}`).change(e => this._onLayerOpacityChanged($(e.target).val() / 100, key));
+          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(baseLayers[key])}`)}`).on(
+            'change', e => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
+          );
+          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(baseLayers[key])}`)}`).on(
+            'change', e => this._onLayerOpacityChanged($(e.target).val() / 100, key),
+          );
         });
         Object.keys(overlays).forEach((key) => {
           if (!visibilities[key]) control.setVisibility(overlays[key], false);
-          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(overlays[key])}`)}`).change(e => this._onLayerVisibilityChanged($(e.target)[0].checked, key));
-          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(overlays[key])}`)}`).change(e => this._onLayerOpacityChanged($(e.target).val() / 100, key));
+          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(overlays[key])}`)}`).on(
+            'change', e => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
+          );
+          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(overlays[key])}`)}`).on(
+            'change', e => this._onLayerOpacityChanged($(e.target).val() / 100, key),
+          );
         });
 
         $('.GPlayerRemove').remove();
@@ -252,13 +261,13 @@ module.exports = {
           if (node.getPopup() === undefined) {
             node.bindPopup('<>');
           }
-          node.setPopupContent(
-            `<ul class="legend ${node.options.colorName}">`
-            + `<li>${options.labelAltitude}: ${Math.round(node._stats.z)}m</li>`
-            + `<li>${options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>`
-            + `<li>${options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100)
-            / 100}km</li></ul>`,
-          );
+          node.setPopupContent(`
+<ul class="legend ${node.options.colorName}">
+<li>${options.labelAltitude}: ${Math.round(node._stats.z)}m</li>
+<li>${options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>
+<li>${options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100) / 100}km</li>
+</ul>
+`);
         });
       });
 
@@ -269,14 +278,15 @@ module.exports = {
           c.addEventParent(map);
         }
         const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
-        c.setPopupContent(
-          `<ul class="legend ${colorName}">`
-          + `<li>${options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>`
-          + `<li>${options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>`
-          + `<li>${options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>`
-          + `<li>${options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>`
-          + `<li>${options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li></ul>`,
-        );
+        c.setPopupContent(`
+<ul class="legend ${colorName}">
+<li>${options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>
+<li>${options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>
+<li>${options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>
+<li>${options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>
+<li>${options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li>
+</ul>
+`);
       });
 
       $('#data-computing').slideUp();

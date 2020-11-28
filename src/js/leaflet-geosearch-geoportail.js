@@ -1,4 +1,5 @@
-import L from 'leaflet';
+const L = require('leaflet');
+const Gp = require('geoportal-extensions-leaflet');
 
 module.exports = L.Class.extend({
   options: {},
@@ -32,7 +33,7 @@ module.exports = L.Class.extend({
     return this.geocode(query, cb, context);
   },
 
-  reverse(location, scale, cb, context) {
+  reverse(location, _scale, cb, context) {
     const options = {
       position: { x: location.lng, y: location.lat },
       filterOptions: { type: ['StreetAddress', 'PositionOfInterest'] },
