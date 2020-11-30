@@ -4,8 +4,8 @@ const $ = require('jquery');
 
 $.widget('map2gpx.chart', {
   options: {
+    track: undefined,
     map: undefined,
-    dataEmpty: '#data-empty',
     isSmallScreen: false,
 
     showMarker: true,
@@ -31,15 +31,34 @@ $.widget('map2gpx.chart', {
     labelHeightDiffUp: 'D+',
     labelAltitudeMin: 'Altitude min',
     labelHeightDiffDown: 'D-',
+
+    labelComputing: 'Calculs en cours...',
+    labelFetching: 'points à récupérer',
+    labelFetched: 'points récupérés',
+    labelWelcome: `<h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br />
+Rien à montrer ici...</h2>
+Commencez à tracer votre itinéraire pour voir les données le concernant.`,
   },
 
   _create() {
+    if (this.options.track === undefined) throw new Error('"track" option cannot be undefined');
     if (this.options.map === undefined) throw new Error('"map" option cannot be undefined');
 
-    this.$emptyElement = $(this.options.dataEmpty);
+    this.$chartElement = $('<div class="map2gpx-data"></div>')
+      .appendTo(this.element);
+    this.$emptyElement = $(`<div class="map2gpx-data overlay" style="display: block;">
+${this.options.labelWelcome}
+  </div>`)
+      .appendTo(this.element);
+    this.$computingElement = $('<div class="map2gpx-data overlay" style="display: none;"></div>')
+      .appendTo(this.element);
+
+    const progressbar = this.$computingElement.progress({
+      labelComputing: this.options.labelComputing,
+    });
 
     if (!this.options.isSmallScreen) {
-      this.$chart = $('<canvas width="100%" height="100%"></canvas>').appendTo(this.element);
+      this.$chart = $('<canvas width="100%" height="100%"></canvas>').appendTo(this.$chartElement);
 
       const datasets = [
         {
@@ -137,7 +156,7 @@ $.widget('map2gpx.chart', {
             mode: 'index',
             intersect: false,
             callbacks: {
-              title: tooltipItems => `
+              title: (tooltipItems) => `
 ${this.options.labelDistance}: ${Math.floor(tooltipItems[0].xLabel * 100) / 100}km
 `,
               label: (tooltipItems, data) => `
@@ -155,6 +174,70 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
         },
       });
     }
+
+    this.options.track.on('TrackDrawer:start', () => {
+      progressbar.progress('start');
+      this.$computingElement.slideDown();
+      this.$emptyElement.slideUp();
+    });
+    this.options.track.on('TrackStats:fetching', (e) => {
+      progressbar.progress('update', {
+        start: true,
+        total: e.size,
+        step: `🤖 ${e.size} ${this.options.labelFetching}`,
+      });
+    });
+    this.options.track.on('TrackStats:fetched', (e) => {
+      progressbar.progress('update', {
+        count: e.size,
+        step: `⭐️ ${e.size} ${this.options.labelFetched}`,
+      });
+    });
+    this.options.track.on('TrackDrawer:statsfailed', (e) => {
+      progressbar.progress('failed', e);
+    });
+    this.options.track.on('TrackDrawer:statsdone', () => {
+      progressbar.progress('stop');
+
+      this.element
+        .data('map2gpx-chart')
+        .replot(this.options.track.getStatsTotal(), this.options.track.getStatsSteps().map((x) => x.startingDistance));
+
+      this.options.track.getNodes().forEach((n) => {
+        n.markers.forEach((node) => {
+          if (node.getPopup() === undefined) {
+            node.bindPopup('<>');
+          }
+          node.setPopupContent(`
+<ul class="legend ${node.options.colorName}">
+<li>${this.options.labelAltitude}: ${Math.round(node._stats.z)}m</li>
+<li>${this.options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>
+<li>${this.options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100) / 100}km</li>
+</ul>
+`);
+        });
+      });
+
+      this.options.track.getSteps().forEach((g) => {
+        const c = g.container;
+        if (c.getPopup() === undefined) {
+          c.bindPopup('<>');
+          c.addEventParent(this.options.map);
+        }
+        const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
+        c.setPopupContent(`
+<ul class="legend ${colorName}">
+<li>${this.options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>
+<li>${this.options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>
+<li>${this.options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>
+<li>${this.options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>
+<li>${this.options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li>
+</ul>
+`);
+      });
+
+      this.$computingElement.slideUp();
+    });
   },
 
   _onClick(_event, active) {
@@ -195,7 +278,7 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
 
   _replotSmallScreen(data) {
     if (data.size > 0) {
-      this.element.html(`
+      this.$chartElement.html(`
 <ul>
 <li>Altitude max: ${Math.round(data.total.altMax)}m; D+: ${Math.round(data.total.denivPos)}m</li>
 <li>Altitude min: ${Math.round(data.total.altMin)}m; D-: ${Math.round(data.total.denivNeg)}m</li>
@@ -203,7 +286,7 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
 </ul>
 `);
     } else {
-      this.element.empty();
+      this.$chartElement.empty();
     }
   },
 
@@ -379,7 +462,6 @@ ${this.options.labelDistance}: ${Math.round(series1[lastIndex].x * 100) / 100}km
     //   else
     this._replotWideScreen(stats, annotations);
 
-    if (stats.getLatLngs().length > 0) this.$emptyElement.slideUp();
-    else this.$emptyElement.slideDown();
+    if (stats.getLatLngs().length === 0) this.$emptyElement.slideDown();
   },
 });

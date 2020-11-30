@@ -81,19 +81,19 @@ const controls = {
         Object.keys(baseLayers).forEach((key) => {
           if (!visibilities[key]) control.setVisibility(baseLayers[key], false);
           $(`#${control._addUID(`GPvisibility_ID_${L.stamp(baseLayers[key])}`)}`).on(
-            'change', e => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
+            'change', (e) => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
           );
           $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(baseLayers[key])}`)}`).on(
-            'change', e => this._onLayerOpacityChanged($(e.target).val() / 100, key),
+            'change', (e) => this._onLayerOpacityChanged($(e.target).val() / 100, key),
           );
         });
         Object.keys(overlays).forEach((key) => {
           if (!visibilities[key]) control.setVisibility(overlays[key], false);
           $(`#${control._addUID(`GPvisibility_ID_${L.stamp(overlays[key])}`)}`).on(
-            'change', e => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
+            'change', (e) => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
           );
           $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(overlays[key])}`)}`).on(
-            'change', e => this._onLayerOpacityChanged($(e.target).val() / 100, key),
+            'change', (e) => this._onLayerOpacityChanged($(e.target).val() / 100, key),
           );
         });
 
@@ -238,85 +238,9 @@ const controls = {
     return L.easyBar([infoBtn, helpBtn], { position: 'bottomright' }).addTo(map);
   },
 
-  addChart(map, track, options) {
-    const progressbar = $('#data-computing').progress({
-      labelComputing: options.labelComputing,
-    });
-    track.on('TrackDrawer:start', () => {
-      progressbar.progress('start');
-      $('#data-computing').slideDown();
-    });
-    track.on('TrackStats:fetching', (e) => {
-      progressbar.progress('update', {
-        start: true,
-        total: e.size,
-        step: `🤖 ${e.size} ${options.labelFetching}`,
-      });
-    });
-    track.on('TrackStats:fetched', (e) => {
-      progressbar.progress('update', {
-        count: e.size,
-        step: `⭐️ ${e.size} ${options.labelFetched}`,
-      });
-    });
-    track.on('TrackDrawer:statsfailed', (e) => {
-      progressbar.progress('failed', e);
-    });
-    track.on('TrackDrawer:statsdone', () => {
-      progressbar.progress('stop');
-
-      $('#data')
-        .data('map2gpx-chart')
-        .replot(track.getStatsTotal(), track.getStatsSteps().map(x => x.startingDistance));
-
-      track.getNodes().forEach((n) => {
-        n.markers.forEach((node) => {
-          if (node.getPopup() === undefined) {
-            node.bindPopup('<>');
-          }
-          node.setPopupContent(`
-<ul class="legend ${node.options.colorName}">
-<li>${options.labelAltitude}: ${Math.round(node._stats.z)}m</li>
-<li>${options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>
-<li>${options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100) / 100}km</li>
-</ul>
-`);
-        });
-      });
-
-      track.getSteps().forEach((g) => {
-        const c = g.container;
-        if (c.getPopup() === undefined) {
-          c.bindPopup('<>');
-          c.addEventParent(map);
-        }
-        const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
-        c.setPopupContent(`
-<ul class="legend ${colorName}">
-<li>${options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>
-<li>${options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>
-<li>${options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>
-<li>${options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>
-<li>${options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li>
-</ul>
-`);
-      });
-
-      $('#data-computing').slideUp();
-    });
-
-    $('#data').chart({
-      map,
-      isSmallScreen: false,
-      showTerrainSlope: options.showTerrainSlope,
-      labelAltitude: options.labelAltitude,
-      labelSlope: options.labelSlope,
-      labelDistance: options.labelDistance,
-      labelAltitudeMax: options.labelAltitudeMax,
-      labelHeightDiffUp: options.labelHeightDiffUp,
-      labelAltitudeMin: options.labelAltitudeMin,
-      labelHeightDiffDown: options.labelHeightDiffDown,
-    });
+  addChart(item, map, track, options) {
+    const opts = $.extend({}, { map, track }, options);
+    item.chart(opts);
   },
 
   addTour(track, options) {

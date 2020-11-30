@@ -136,8 +136,9 @@ ul.legend.black {
   right: 0px;
   bottom: 150px;
 }
-.data {
-  display: none;
+
+#chart {
+  display: block;
   position: absolute;
   overflow: hidden;
   height: 150px;
@@ -146,26 +147,32 @@ ul.legend.black {
   bottom: 0px;
   text-align: center;
 }
-.theme-white .data {
+
+.map2gpx-data {
+  overflow: hidden;
+  text-align: center;
+  height: 100%;
+  width: 100%;
+}
+.theme-white .map2gpx-data {
   color: #000000;
   background-color: #ffffff;
 }
-.theme-dark .data {
+.theme-dark .map2gpx-data {
   color: #ffffff;
   background-color: #000000;
-
 }
-#data.data,
-#data-empty.data {
-  display: block;
+.map2gpx-data.overlay {
+  position: relative;
+  top: -100%;
 }
-.data-computing-progressbar-container {
+.map2gpx-data .data-computing-progressbar-container {
   width: 400px;
   height: 3px;
   background-color: grey;
   margin: 0px auto;
 }
-.data-computing-progressbar {
+.map2gpx-data .data-computing-progressbar {
   height: 100%;
   width: 0%;
   background-color: #24b835;

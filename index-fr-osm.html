@@ -296,12 +296,7 @@
     </div>
   </div>
   <div id="map"></div>
-  <div id="data" class="data"></div>
-  <div id="data-empty" class="data">
-    <h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br />Rien à montrer ici...</h2>
-    Commencez à tracer votre itinéraire pour voir les données le concernant.
-  </div>
-  <div id="data-computing" class="data"></div>
+  <div id="chart"></div>
   <div id="version" class="map2gpx-version"></div>
   <script>
     window.onload = function () {
@@ -410,7 +405,7 @@
         });
       }
 
-      Map2gpx.controls.addChart(map, drawRoute, {
+      Map2gpx.controls.addChart($('#chart'), map, drawRoute, {
         showTerrainSlope: true,
         labelComputing: 'Calculs en cours...',
         labelFetching: 'points à récupérer',
