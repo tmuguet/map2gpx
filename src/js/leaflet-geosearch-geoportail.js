@@ -15,7 +15,7 @@ const GeoportailProvider = L.Class.extend({
       filterOptions: { type: ['StreetAddress', 'PositionOfInterest'] },
       apiKey: this._apiKey,
       onSuccess: (results) => {
-        const data = results.suggestedLocations.map(r => ({
+        const data = results.suggestedLocations.map((r) => ({
           center: L.latLng(r.position.y, r.position.x),
           name: r.fullText,
           bbox: L.latLngBounds(L.latLng(r.position.y, r.position.x), L.latLng(r.position.y, r.position.x)),
@@ -39,7 +39,7 @@ const GeoportailProvider = L.Class.extend({
       filterOptions: { type: ['StreetAddress', 'PositionOfInterest'] },
       apiKey: this._apiKey,
       onSuccess: (results) => {
-        const data = results.suggestedLocations.map(r => ({
+        const data = results.suggestedLocations.map((r) => ({
           center: L.latLng(r.position.y, r.position.x),
           name: r.fullText,
           bbox: L.latLngBounds(L.latLng(r.position.y, r.position.x), L.latLng(r.position.y, r.position.x)),

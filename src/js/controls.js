@@ -2,6 +2,7 @@ const L = require('leaflet');
 const $ = require('jquery');
 const { importButton } = require('./ImportButton');
 const { exportButton } = require('./ExportButton');
+const i18n = require('./i18n');
 
 const controls = {
   addLayers(map, visibleBaseLayers, visibleOverlays, hiddenBaseLayers, hiddenOverlays, controlType) {
@@ -119,7 +120,8 @@ const controls = {
   },
 
   addZoom(map, options = {}) {
-    return L.control.zoom(options).addTo(map);
+    const opts = $.extend({}, { zoomInTitle: i18n.zoomIn, zoomOutTitle: i18n.zoomOut }, options);
+    return L.control.zoom(opts).addTo(map);
   },
 
   addScale(map) {
@@ -127,7 +129,13 @@ const controls = {
   },
 
   addGeocoder(map, options = {}) {
-    const opts = $.extend({}, { position: 'topleft', expand: 'click', defaultMarkGeocode: false }, options);
+    const opts = $.extend({}, {
+      position: 'topleft',
+      expand: 'click',
+      defaultMarkGeocode: false,
+      placeholder: i18n.search,
+      errorMessage: i18n.noResult,
+    }, options);
 
     return L.Control.geocoder(opts)
       .on('markgeocode', (e) => {
@@ -166,7 +174,19 @@ const controls = {
   },
 
   addTrackDrawerToolbar(map, track, options) {
-    const opts = $.extend({}, { direction: 'horizontal', position: 'topcenter' }, options);
+    const opts = $.extend({}, {
+      direction: 'horizontal',
+      position: 'topcenter',
+      labelAddMarker: i18n.addMarker,
+      labelInsertMarker: i18n.insertMarker,
+      labelCloseLoop: i18n.closeLoop,
+      labelDeleteMarker: i18n.deleteMarker,
+      labelPromoteMarker: i18n.promoteMarker,
+      labelDemoteMarker: i18n.demoteMarker,
+      labelClean: i18n.clean,
+      labelUndo: i18n.undo,
+      labelRedo: i18n.redo,
+    }, options);
     return L.TrackDrawer.toolBar(track, opts).addTo(map);
   },
 
@@ -177,13 +197,13 @@ const controls = {
         {
           id: 'auto',
           icon: 'fa-map-o',
-          name: options.labelAuto,
+          name: i18n.modeAuto,
           router: options.routerAuto,
         },
         {
           id: 'line',
           icon: 'fa-compass',
-          name: options.labelLine,
+          name: i18n.modeLine,
           router: L.Routing.straightLine(),
         },
       ],
@@ -218,7 +238,7 @@ const controls = {
               },
             });
           },
-          title: options.labelInfo,
+          title: i18n.info,
         },
       ],
     });
@@ -230,7 +250,7 @@ const controls = {
           onClick: () => {
             $.Shepherd.get(0).start(true);
           },
-          title: options.labelHelp,
+          title: i18n.help,
         },
       ],
     });
@@ -245,9 +265,6 @@ const controls = {
 
   addTour(track, options) {
     if (track._map._imported) return; // Skip if some nodes were imported
-
-    $.Shepherd.labelNext = options.labelNext;
-    $.Shepherd.labelClose = options.labelClose;
 
     $.Shepherd.tour()
       .add('welcome', {

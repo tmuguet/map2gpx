@@ -1,11 +1,11 @@
 const $ = require('jquery');
+const i18n = require('./i18n');
 
 $.widget('map2gpx.progress', {
   options: {
     progress: 0,
     total: 0,
     started: false,
-    labelComputing: 'Calculs en cours...',
   },
 
   _create() {
@@ -14,7 +14,7 @@ $.widget('map2gpx.progress', {
 <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i><br/>
 <strong>
   <span class="data-computing-progress"></span> 
-  <small>- <span class="data-computing-status">${this.options.labelComputing}</span></small>
+  <small>- <span class="data-computing-status">${i18n.computing}</span></small>
 </strong>
 <div class="data-computing-progressbar-container">
   <div class="data-computing-progressbar"></div>
@@ -39,7 +39,7 @@ $.widget('map2gpx.progress', {
       // Reset
       this.options.progress = 0;
       this.options.total = 0;
-      this.$status.text(this.options.labelComputing);
+      this.$status.text(i18n.computing);
       this.$h2
         .find('i.fa.fa-3x')
         .removeClass('fa-bug')
@@ -75,7 +75,7 @@ $.widget('map2gpx.progress', {
   },
 
   failed(error) {
-    this.$status.text('Une erreur est survenue');
+    this.$status.text(i18n.error);
     this.$h2
       .find('i.fa.fa-3x')
       .addClass('fa-bug')
@@ -93,7 +93,7 @@ $.widget('map2gpx.progress', {
 
   update(progress) {
     if (Array.isArray(progress)) {
-      progress.forEach(i => this._update(i));
+      progress.forEach((i) => this._update(i));
     } else {
       this._update(progress);
     }
@@ -130,7 +130,7 @@ $.widget('map2gpx.progress', {
     this.$progressbar.css('width', `${Math.floor(p * 100)}%`);
 
     if (Math.round(p * 100) === 42) {
-      $("<div><small>La grande question sur la vie, l'univers et le reste répondue</small></div>")
+      $(`<div><small>${i18n[42]}</small></div>`)
         .insertAfter(this.$h2)
         .fadeOut(400, function () {
           $(this).remove();

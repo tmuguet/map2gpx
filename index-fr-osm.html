@@ -301,6 +301,7 @@
   <script>
     window.onload = function () {
       Gp.Config.apiKey = Object.keys(Gp.Config.generalOptions.apiKeys)[0];
+      Map2gpx.i18n.set('fr');
 
       $('.map2gpx-version').html('map2gpx v' + Map2gpx.getVersion());
 
@@ -354,79 +355,29 @@
       );
 
       if (map.shouldShowControls()) {
-        Map2gpx.controls.addZoom(map, {
-          zoomInTitle: 'Zoomer',
-          zoomOutTitle: 'Dézoomer',
-        });
+        Map2gpx.controls.addZoom(map);
         Map2gpx.controls.addScale(map);
         Map2gpx.controls.addGeocoder(map, {
           geocoder: Map2gpx.geoportailProvider(Gp.Config.apiKey),
-          placeholder: 'Rechercher...',
-          errorMessage: 'Aucun résultat',
         });
-        Map2gpx.controls.addImportExportButtons(map, drawRoute, {
-          optionsImport: {
-            title: 'Importer un fichier',
-            fileLabel: 'Fichier',
-            urlLabel: 'Adresse',
-            addWaypointsLabel: 'Ajouter les marqueurs de points de passage',
-            submitLabel: 'Importer',
-            cancelLabel: 'Annuler',
-          },
-          optionsExport: {
-            title: 'Exporter',
-            fileLabel: 'Nom du fichier',
-            cancelLabel: 'Annuler',
-            includeMarkersLabel: 'Inclure les marqueurs de points de passage',
-            exportAsSingleTrackLabel: 'Exporter en une trace unique',
-          },
-        });
-        Map2gpx.controls.addTrackDrawerToolbar(map, drawRoute, {
-          labelAddMarker: 'Ajouter un marqueur au clic',
-          labelInsertMarker: 'Insérer un marqueur au clic sur un tracé',
-          labelCloseLoop: 'Fermer la boucle',
-          labelDeleteMarker: 'Supprimer un marquer au clic',
-          labelPromoteMarker: 'Transformer en point de passage au clic',
-          labelDemoteMarker: 'Remettre en point normal au clic',
-          labelClean: 'Supprimer tous les marqueurs',
-        });
+        Map2gpx.controls.addImportExportButtons(map, drawRoute);
+        Map2gpx.controls.addTrackDrawerToolbar(map, drawRoute);
         Map2gpx.controls.addTrackDrawerTracebar(map, drawRoute, {
-          labelAuto: 'Utiliser le mode de tracé automatique',
-          labelLine: 'Utiliser le mode de tracé en ligne droite',
           routerAuto: L.Routing.geoPortail(Gp.Config.apiKey, { profile: 'Pieton' }),
         });
         Map2gpx.controls.addMinimap(
           map,
           L.tileLayer('https://a.tile.openstreetmap.org/{z}/{x}/{y}.png')
         );
-        Map2gpx.controls.addInfoToolbar(map, {
-          labelInfo: 'A propos & crédits',
-          labelHelp: 'Aide',
-        });
+        Map2gpx.controls.addInfoToolbar(map);
       }
 
       Map2gpx.controls.addChart($('#chart'), map, drawRoute, {
         showTerrainSlope: true,
-        labelComputing: 'Calculs en cours...',
-        labelFetching: 'points à récupérer',
-        labelFetched: 'points récupérés',
-        labelAltitude: 'Altitude',
-        labelSlope: "Pente de l'itinéraire",
-        labelTerrainSlope: 'Pente du terrain',
-        labelDistance: 'Distance',
-        labelDistanceFromStart: 'Distance depuis le départ',
-        labelDistanceFromLastStopover: 'Distance depuis la dernière étape',
-        labelAltitudeMax: 'Altitude max',
-        labelHeightDiffUp: 'D+',
-        labelAltitudeMin: 'Altitude min',
-        labelHeightDiffDown: 'D-',
       });
 
       if (map.shouldShowControls()) {
-        Map2gpx.controls.addTour(drawRoute, {
-          labelNext: 'Suivant',
-          labelClose: 'Fermer',
-        });
+        Map2gpx.controls.addTour(drawRoute);
       }
     };
   </script>

@@ -1,11 +1,12 @@
 const $ = require('jquery');
 const Shepherd = require('shepherd.js');
+const i18n = require('./i18n');
 
 const tutorials = [];
 
 $.Shepherd = {
-  labelNext: 'Next',
-  labelClose: 'Close',
+  labelNext: i18n.next,
+  labelClose: i18n.close,
 };
 $.Shepherd.Step = function () {
   let _name;

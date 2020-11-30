@@ -335,8 +335,6 @@
         Map2gpx.controls.addImportExportButtons(map, drawRoute);
         Map2gpx.controls.addTrackDrawerToolbar(map, drawRoute);
         Map2gpx.controls.addTrackDrawerTracebar(map, drawRoute, {
-          labelAuto: 'Use automatic routing',
-          labelLine: 'Use straight line routing',
           routerAuto: L.Routing.graphHopper('29aa5bd4-23a6-489e-9bd0-67f8c9207d77', {
             urlParameters: {
               vehicle: 'foot',
@@ -344,34 +342,15 @@
           }),
         });
         Map2gpx.controls.addMinimap(map, L.tileLayer('https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'));
-        Map2gpx.controls.addInfoToolbar(map, {
-          labelInfo: 'About & credits',
-          labelHelp: 'Help',
-        });
+        Map2gpx.controls.addInfoToolbar(map);
       }
 
       Map2gpx.controls.addChart($('#chart'), map, drawRoute, {
         showTerrainSlope: false,
-        labelComputing: 'Computing...',
-        labelFetching: 'coordinates to fetch',
-        labelFetched: 'coordinates fetched',
-        labelWelcome: '<h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br />Nothing to show here...</h2>Start tracing your path to see data.',
-        labelAltitude: 'Altitude',
-        labelSlope: 'Slope',
-        labelDistance: 'Distance',
-        labelDistanceFromStart: 'Distance from start',
-        labelDistanceFromLastStopover: 'Distance from last stopover',
-        labelAltitudeMax: 'Altitude max',
-        labelHeightDiffUp: 'Height diff up',
-        labelAltitudeMin: 'Altitude min',
-        labelHeightDiffDown: 'Height diff down',
       });
 
       if (map.shouldShowControls()) {
-        Map2gpx.controls.addTour(drawRoute, {
-          labelNext: 'Next',
-          labelClose: 'Close',
-        });
+        Map2gpx.controls.addTour(drawRoute);
       }
     };
   </script>

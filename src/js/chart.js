@@ -1,6 +1,7 @@
 const L = require('leaflet');
 const Chart = require('chart.js');
 const $ = require('jquery');
+const i18n = require('./i18n');
 
 $.widget('map2gpx.chart', {
   options: {
@@ -22,22 +23,6 @@ $.widget('map2gpx.chart', {
 
     showSlope: true,
     showTerrainSlope: true,
-
-    labelAltitude: 'Altitude',
-    labelSlope: "Pente de l'itinéraire",
-    labelTerrainSlope: 'Pente du terrain',
-    labelDistance: 'Distance',
-    labelAltitudeMax: 'Altitude max',
-    labelHeightDiffUp: 'D+',
-    labelAltitudeMin: 'Altitude min',
-    labelHeightDiffDown: 'D-',
-
-    labelComputing: 'Calculs en cours...',
-    labelFetching: 'points à récupérer',
-    labelFetched: 'points récupérés',
-    labelWelcome: `<h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br />
-Rien à montrer ici...</h2>
-Commencez à tracer votre itinéraire pour voir les données le concernant.`,
   },
 
   _create() {
@@ -47,7 +32,11 @@ Commencez à tracer votre itinéraire pour voir les données le concernant.`,
     this.$chartElement = $('<div class="map2gpx-data"></div>')
       .appendTo(this.element);
     this.$emptyElement = $(`<div class="map2gpx-data overlay" style="display: block;">
-${this.options.labelWelcome}
+<h2>
+  <i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br />
+  ${i18n.nothingToShow}
+</h2>
+${i18n.init}
   </div>`)
       .appendTo(this.element);
     this.$computingElement = $('<div class="map2gpx-data overlay" style="display: none;"></div>')
@@ -62,7 +51,7 @@ ${this.options.labelWelcome}
 
       const datasets = [
         {
-          label: this.options.labelAltitude,
+          label: i18n.altitude,
           data: [],
           fill: false,
           borderColor: 'rgba(12, 98, 173, 0.8)',
@@ -84,7 +73,7 @@ ${this.options.labelWelcome}
       if (this.options.showSlope) {
         this.slopeIdx = datasets.length;
         datasets.push({
-          label: this.options.labelSlope,
+          label: i18n.slope,
           data: [],
           fill: true,
           pointRadius: 0,
@@ -100,7 +89,7 @@ ${this.options.labelWelcome}
       if (this.options.showTerrainSlope) {
         this.slopeTerrainIdx = datasets.length;
         datasets.push({
-          label: this.options.labelTerrainSlope,
+          label: i18n.terrainSlope,
           data: [],
           fill: true,
           pointRadius: 0,
@@ -157,7 +146,7 @@ ${this.options.labelWelcome}
             intersect: false,
             callbacks: {
               title: (tooltipItems) => `
-${this.options.labelDistance}: ${Math.floor(tooltipItems[0].xLabel * 100) / 100}km
+${i18n.distance}: ${Math.floor(tooltipItems[0].xLabel * 100) / 100}km
 `,
               label: (tooltipItems, data) => `
 ${data.datasets[tooltipItems.datasetIndex].label}: ${
@@ -184,13 +173,13 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
       progressbar.progress('update', {
         start: true,
         total: e.size,
-        step: `🤖 ${e.size} ${this.options.labelFetching}`,
+        step: `🤖 ${e.size} ${i18n.fetching}`,
       });
     });
     this.options.track.on('TrackStats:fetched', (e) => {
       progressbar.progress('update', {
         count: e.size,
-        step: `⭐️ ${e.size} ${this.options.labelFetched}`,
+        step: `⭐️ ${e.size} ${i18n.fetched}`,
       });
     });
     this.options.track.on('TrackDrawer:statsfailed', (e) => {
@@ -210,9 +199,9 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
           }
           node.setPopupContent(`
 <ul class="legend ${node.options.colorName}">
-<li>${this.options.labelAltitude}: ${Math.round(node._stats.z)}m</li>
-<li>${this.options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>
-<li>${this.options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100) / 100}km</li>
+<li>${i18n.altitude}: ${Math.round(node._stats.z)}m</li>
+<li>${i18n.distanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>
+<li>${i18n.distanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100) / 100}km</li>
 </ul>
 `);
         });
@@ -227,11 +216,11 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
         const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
         c.setPopupContent(`
 <ul class="legend ${colorName}">
-<li>${this.options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>
-<li>${this.options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>
-<li>${this.options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>
-<li>${this.options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>
-<li>${this.options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li>
+<li>${i18n.altitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>
+<li>${i18n.elevationUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>
+<li>${i18n.altitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>
+<li>${i18n.elevationDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>
+<li>${i18n.distance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li>
 </ul>
 `);
       });
@@ -280,9 +269,11 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
     if (data.size > 0) {
       this.$chartElement.html(`
 <ul>
-<li>Altitude max: ${Math.round(data.total.altMax)}m; D+: ${Math.round(data.total.denivPos)}m</li>
-<li>Altitude min: ${Math.round(data.total.altMin)}m; D-: ${Math.round(data.total.denivNeg)}m</li>
-<li>Distance: ${Math.round(data.elevations[data.size - 1].dist * 100) / 100}km</li>
+<li>${i18n.altitudeMax}: ${Math.round(data.total.altMax)}m;
+${i18n.elevationUp}: ${Math.round(data.total.denivPos)}m</li>
+<li>${i18n.altitudeMin}: ${Math.round(data.total.altMin)}m;
+${i18n.elevationDown}: ${Math.round(data.total.denivNeg)}m</li>
+<li>${i18n.distance}: ${Math.round(data.elevations[data.size - 1].dist * 100) / 100}km</li>
 </ul>
 `);
     } else {
@@ -328,17 +319,17 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
       this.chartjs.config.data.datasets[0].data = series1;
       annotations[0].value = stats.getAltMax();
       annotations[0].label.content = `
-${this.options.labelAltitudeMax}: ${Math.round(stats.getAltMax())}m;
-${this.options.labelHeightDiffUp}: ${Math.round(stats.getHeightDiffUp())}m
+${i18n.altitudeMax}: ${Math.round(stats.getAltMax())}m;
+${i18n.elevationUp}: ${Math.round(stats.getHeightDiffUp())}m
 `;
       annotations[1].value = stats.getAltMin();
       annotations[1].label.content = `
-${this.options.labelAltitudeMin}: ${Math.round(stats.getAltMin())}m;
-${this.options.labelHeightDiffDown}: ${Math.round(stats.getHeightDiffDown())}m
+${i18n.altitudeMin}: ${Math.round(stats.getAltMin())}m;
+${i18n.elevationDown}: ${Math.round(stats.getHeightDiffDown())}m
 `;
       annotations[2].value = series1[lastIndex].x;
       annotations[2].label.content = `
-${this.options.labelDistance}: ${Math.round(series1[lastIndex].x * 100) / 100}km
+${i18n.distance}: ${Math.round(series1[lastIndex].x * 100) / 100}km
 `;
 
       if (this.options.showSlope) {

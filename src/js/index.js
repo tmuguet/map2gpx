@@ -10,6 +10,7 @@ require('./view');
 
 const { GeoportailProvider, geoportailProvider } = require('./leaflet-geosearch-geoportail');
 const { controls } = require('./controls');
+const i18n = require('./i18n');
 
 const Map2gpx = {
   GeoportailProvider,
@@ -18,6 +19,7 @@ const Map2gpx = {
   getVersion() {
     return version;
   },
+  i18n,
 };
 
 module.exports = Map2gpx;

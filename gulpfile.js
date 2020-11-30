@@ -1,7 +1,8 @@
+/* eslint-disable global-require */
 const gulp = require('gulp');
 const rename = require('gulp-rename');
 
-const ENV = 'prod';
+const { ENV } = require('./env.json');
 
 // gulp.task('bundle-javascript', () => {
 //   const browserify = require('browserify');
@@ -91,6 +92,14 @@ gulp.task('copy-dependencies-fr2', () => gulp
   .pipe(rename('osm.html'))
   .pipe(gulp.dest('./www-fr/')));
 
+gulp.task('translations-fr', () => gulp
+  .src('locales/fr/translation.json')
+  .pipe(gulp.dest('./www-fr/locales/fr')));
+
+// gulp.task('translations-en', () => gulp
+//   .src('locales/en/translation.json')
+//   .pipe(gulp.dest('./www-en/locales/en')));
+
 gulp.task('copy-dependencies-en', () => {
   const htmlcpr = require('gulp-htmlcpr');
 
@@ -128,6 +137,8 @@ gulp.task(
     'copy-dependencies-others2',
     'copy-dependencies-ign',
     'copy-dependencies-ign2',
+    // 'translations-fr',
+    // 'translations-en',
   ),
 );
 
