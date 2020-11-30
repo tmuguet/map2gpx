@@ -8,15 +8,12 @@ require('./jquery.querystring');
 require('./jquery.localstorage');
 require('./view');
 
-const ImportButton = require('./ImportButton');
-const ExportButton = require('./ExportButton');
-const GeoportailProvider = require('./leaflet-geosearch-geoportail');
-const controls = require('./controls');
+const { GeoportailProvider, geoportailProvider } = require('./leaflet-geosearch-geoportail');
+const { controls } = require('./controls');
 
 const Map2gpx = {
-  ImportButton,
-  ExportButton,
   GeoportailProvider,
+  geoportailProvider,
   controls,
   getVersion() {
     return version;

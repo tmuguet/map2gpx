@@ -5,7 +5,7 @@ const { saveAs } = require('file-saver');
 const togpx = require('togpx');
 const tokml = require('tokml');
 
-module.exports = L.Control.EasyButton.extend({
+const ExportButton = L.Control.EasyButton.extend({
   options: {
     title: 'Export',
     fileLabel: 'File',
@@ -125,3 +125,10 @@ module.exports = L.Control.EasyButton.extend({
     });
   },
 });
+
+module.exports = {
+  ExportButton,
+  exportButton(track, options) {
+    return new ExportButton(track, options);
+  },
+};

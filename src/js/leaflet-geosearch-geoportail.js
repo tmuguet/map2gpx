@@ -1,7 +1,7 @@
 const L = require('leaflet');
 const Gp = require('geoportal-extensions-leaflet');
 
-module.exports = L.Class.extend({
+const GeoportailProvider = L.Class.extend({
   options: {},
 
   initialize(apiKey, options) {
@@ -53,3 +53,10 @@ module.exports = L.Class.extend({
     Gp.Services.reverseGeocode(options);
   },
 });
+
+module.exports = {
+  GeoportailProvider,
+  geoportailProvider(apiKey, options) {
+    return new GeoportailProvider(apiKey, options);
+  },
+};

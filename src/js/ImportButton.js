@@ -1,7 +1,7 @@
 const L = require('leaflet');
 const $ = require('jquery');
 
-module.exports = L.Control.EasyButton.extend({
+const ImportButton = L.Control.EasyButton.extend({
   options: {
     title: 'Import a file',
     fileLabel: 'File',
@@ -111,3 +111,10 @@ module.exports = L.Control.EasyButton.extend({
     this._fieldUrl = this._form.find('#import-url');
   },
 });
+
+module.exports = {
+  ImportButton,
+  importButton(track, options) {
+    return new ImportButton(track, options);
+  },
+};

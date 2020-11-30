@@ -1,8 +1,9 @@
-/* global Map2gpx */
 const L = require('leaflet');
 const $ = require('jquery');
+const { importButton } = require('./ImportButton');
+const { exportButton } = require('./ExportButton');
 
-module.exports = {
+const controls = {
   addLayers(map, visibleBaseLayers, visibleOverlays, hiddenBaseLayers, hiddenOverlays, controlType) {
     const baseLayers = {};
     const overlays = {};
@@ -145,10 +146,22 @@ module.exports = {
     return drawRoute;
   },
 
+  addImportButton(map, track, options) {
+    const opts = $.extend({}, { id: 'btn-import' }, options);
+    const importBtn = importButton(track, opts);
+    return importBtn.addTo(map);
+  },
+
+  addExportButton(map, track, options) {
+    const opts = $.extend({}, { id: 'btn-export' }, options);
+    const exportBtn = importButton(track, opts);
+    return exportBtn.addTo(map);
+  },
+
   addImportExportButtons(map, track, options) {
     const opts = $.extend({}, { optionsImport: { id: 'btn-import' }, optionsExport: { id: 'btn-export' } }, options);
-    const importBtn = new Map2gpx.ImportButton(track, opts.optionsImport);
-    const exportBtn = new Map2gpx.ExportButton(track, opts.optionsExport);
+    const importBtn = importButton(track, opts.optionsImport);
+    const exportBtn = exportButton(track, opts.optionsExport);
     return L.easyBar([importBtn, exportBtn]).addTo(map);
   },
 
@@ -393,4 +406,8 @@ module.exports = {
       }
     });
   },
+};
+
+module.exports = {
+  controls,
 };

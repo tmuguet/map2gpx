@@ -331,7 +331,7 @@
       var drawRoute = Map2gpx.controls.addTrackDrawer(
         map,
         L.TrackStats.geoportail(Gp.Config.apiKey, map),
-        new Map2gpx.GeoportailProvider(Gp.Config.apiKey)
+        Map2gpx.geoportailProvider(Gp.Config.apiKey)
       );
 
       if (map.shouldShowControls()) {
@@ -341,7 +341,7 @@
         });
         Map2gpx.controls.addScale(map);
         Map2gpx.controls.addGeocoder(map, {
-          geocoder: new Map2gpx.GeoportailProvider(Gp.Config.apiKey),
+          geocoder: Map2gpx.geoportailProvider(Gp.Config.apiKey),
           placeholder: 'Rechercher...',
           errorMessage: 'Aucun résultat',
         });
