@@ -1,5 +1,5 @@
-const $ = require('jquery');
-const L = require('leaflet');
+import $ from 'jquery';
+import L from 'leaflet';
 
 L.Map.include({
   _bindViewEvents() {

@@ -1,5 +1,5 @@
-const $ = require('jquery');
-const i18n = require('./i18n');
+import $ from 'jquery';
+import { i18n } from './i18n';
 
 $.widget('map2gpx.progress', {
   options: {

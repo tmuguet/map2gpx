@@ -1,12 +1,12 @@
 /* global Blob */
-const L = require('leaflet');
-const $ = require('jquery');
-const { saveAs } = require('file-saver');
-const togpx = require('togpx');
-const tokml = require('tokml');
-const i18n = require('./i18n');
+import L from 'leaflet';
+import $ from 'jquery';
+import { saveAs } from 'file-saver';
+import togpx from 'togpx';
+import tokml from 'tokml';
+import { i18n } from './i18n';
 
-const ExportButton = L.Control.EasyButton.extend({
+export const ExportButton = L.Control.EasyButton.extend({
   options: { },
 
   initialize(track, options) {
@@ -121,9 +121,6 @@ const ExportButton = L.Control.EasyButton.extend({
   },
 });
 
-module.exports = {
-  ExportButton,
-  exportButton(track, options) {
-    return new ExportButton(track, options);
-  },
-};
+export function exportButton(track, options) {
+  return new ExportButton(track, options);
+}

@@ -1,16 +1,16 @@
-const { version } = require('../../package.json');
+import { version } from '../../package.json';
 
-require('./leflet.vincenty');
-require('./chart');
-require('./progress');
-require('./jquery.shepherd');
-require('./jquery.querystring');
-require('./jquery.localstorage');
-require('./view');
+import './leflet.vincenty';
+import './chart';
+import './progress';
+import './jquery.shepherd';
+import './jquery.querystring';
+import './jquery.localstorage';
+import './view';
 
-const { GeoportailProvider, geoportailProvider } = require('./leaflet-geosearch-geoportail');
-const { controls } = require('./controls');
-const i18n = require('./i18n');
+import { GeoportailProvider, geoportailProvider } from './leaflet-geosearch-geoportail';
+import controls from './controls';
+import { i18n } from './i18n';
 
 const Map2gpx = {
   GeoportailProvider,
@@ -22,4 +22,4 @@ const Map2gpx = {
   i18n,
 };
 
-module.exports = Map2gpx;
+export default Map2gpx;

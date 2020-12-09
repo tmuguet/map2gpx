@@ -1,5 +1,5 @@
 /* global window, DOMException */
-const $ = require('jquery');
+import $ from 'jquery';
 
 const hasLocalStorage = (function storageAvailable(type) {
   let storage;

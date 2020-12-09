@@ -1,13 +1,10 @@
-const $ = require('jquery');
-const Shepherd = require('shepherd.js');
-const i18n = require('./i18n');
+import $ from 'jquery';
+import Shepherd from 'shepherd.js';
+import { i18n } from './i18n';
 
 const tutorials = [];
 
-$.Shepherd = {
-  labelNext: i18n.next,
-  labelClose: i18n.close,
-};
+$.Shepherd = {};
 $.Shepherd.Step = function () {
   let _name;
   let _shepherd;
@@ -54,7 +51,7 @@ $.Shepherd.Tour = function () {
 
     opts.buttons = [
       {
-        text: $.Shepherd.labelClose,
+        text: i18n.close,
         classes: 'shepherd-button-secondary',
         action: () => {
           $.localStorage.set(`tutorial${tutorials.indexOf(this)}`, -1);
@@ -62,7 +59,7 @@ $.Shepherd.Tour = function () {
         },
       },
       {
-        text: $.Shepherd.labelNext,
+        text: i18n.next,
         classes: 'shepherd-button-primary',
         action: () => {
           const currentShepherdIndex = tutorials.indexOf(this);

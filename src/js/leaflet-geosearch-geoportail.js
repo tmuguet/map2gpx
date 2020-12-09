@@ -1,7 +1,7 @@
-const L = require('leaflet');
-const Gp = require('geoportal-extensions-leaflet');
+import L from 'leaflet';
+import Gp from 'geoportal-extensions-leaflet';
 
-const GeoportailProvider = L.Class.extend({
+export const GeoportailProvider = L.Class.extend({
   options: {},
 
   initialize(apiKey, options) {
@@ -54,9 +54,6 @@ const GeoportailProvider = L.Class.extend({
   },
 });
 
-module.exports = {
-  GeoportailProvider,
-  geoportailProvider(apiKey, options) {
-    return new GeoportailProvider(apiKey, options);
-  },
-};
+export function geoportailProvider(apiKey, options) {
+  return new GeoportailProvider(apiKey, options);
+}

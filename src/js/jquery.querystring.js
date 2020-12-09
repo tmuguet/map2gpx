@@ -1,5 +1,5 @@
 /* global window */
-const $ = require('jquery');
+import $ from 'jquery';
 
 /* from https://stackoverflow.com/a/3855394 */
 $.QueryString = (function (paramsArray) {

@@ -1,7 +1,7 @@
-const L = require('leaflet');
-const Chart = require('chart.js');
-const $ = require('jquery');
-const i18n = require('./i18n');
+import L from 'leaflet';
+import Chart from 'chart.js';
+import $ from 'jquery';
+import { i18n } from './i18n';
 
 $.widget('map2gpx.chart', {
   options: {

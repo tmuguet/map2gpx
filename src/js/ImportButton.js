@@ -1,8 +1,8 @@
-const L = require('leaflet');
-const $ = require('jquery');
-const i18n = require('./i18n');
+import L from 'leaflet';
+import $ from 'jquery';
+import { i18n } from './i18n';
 
-const ImportButton = L.Control.EasyButton.extend({
+export const ImportButton = L.Control.EasyButton.extend({
   options: { },
 
   initialize(track, options) {
@@ -106,9 +106,6 @@ const ImportButton = L.Control.EasyButton.extend({
   },
 });
 
-module.exports = {
-  ImportButton,
-  importButton(track, options) {
-    return new ImportButton(track, options);
-  },
-};
+export function importButton(track, options) {
+  return new ImportButton(track, options);
+}

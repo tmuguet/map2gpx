@@ -79,10 +79,14 @@ export default [
   // CommonJS (for Node) and ES module (for bundlers) build.
   {
     input,
-    external: ['ms'] + external,
+    external,
     output: [
       {
-        file: pkg.main, format: 'cjs', sourcemap, globals,
+        file: pkg.main,
+        format: 'cjs',
+        sourcemap,
+        globals,
+        exports: 'default',
       },
       {
         file: pkg.module, format: 'es', sourcemap, globals,

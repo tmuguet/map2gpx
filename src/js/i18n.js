@@ -1,7 +1,8 @@
-const localesFr = require('./locales/fr.json');
-const localesEn = require('./locales/en.json');
+/* eslint-disable import/prefer-default-export */
+import localesFr from './locales/fr.json';
+import localesEn from './locales/en.json';
 
-const i18n = {
+export const i18n = {
   set(locale) {
     if (locale === 'fr') {
       Object.assign(this, localesFr);
@@ -11,5 +12,3 @@ const i18n = {
   },
 };
 Object.assign(i18n, localesEn);
-
-module.exports = i18n;

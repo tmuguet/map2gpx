@@ -1,8 +1,8 @@
-const L = require('leaflet');
-const $ = require('jquery');
-const { importButton } = require('./ImportButton');
-const { exportButton } = require('./ExportButton');
-const i18n = require('./i18n');
+import L from 'leaflet';
+import $ from 'jquery';
+import { importButton } from './ImportButton';
+import { exportButton } from './ExportButton';
+import { i18n } from './i18n';
 
 const controls = {
   addLayers(map, visibleBaseLayers, visibleOverlays, hiddenBaseLayers, hiddenOverlays, controlType) {
@@ -349,6 +349,4 @@ const controls = {
   },
 };
 
-module.exports = {
-  controls,
-};
+export default controls;
