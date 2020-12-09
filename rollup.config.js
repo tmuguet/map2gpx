@@ -3,6 +3,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import babel from '@rollup/plugin-babel';
 import { terser } from 'rollup-plugin-terser';
 import json from '@rollup/plugin-json';
+import postcss from 'rollup-plugin-postcss';
 import pkg from './package.json';
 
 const input = 'src/js/index.js';
@@ -45,6 +46,11 @@ export default [
     },
     plugins: [
       json(),
+      postcss({
+        extensions: ['.css'],
+        extract: true,
+        minimize: true,
+      }),
       resolve(),
       commonjs(),
       babel({
@@ -66,6 +72,10 @@ export default [
     },
     plugins: [
       json(),
+      postcss({
+        extensions: ['.css'],
+        extract: true,
+      }),
       resolve(),
       commonjs(),
       babel({
@@ -92,6 +102,12 @@ export default [
         file: pkg.module, format: 'es', sourcemap, globals,
       },
     ],
-    plugins: [json()],
+    plugins: [
+      json(),
+      postcss({
+        extensions: ['.css'],
+        extract: true,
+      }),
+    ],
   },
 ];

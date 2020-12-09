@@ -8,6 +8,9 @@ import './jquery.querystring';
 import './jquery.localstorage';
 import './view';
 
+import '../css/map2gpx.css';
+import '../css/theme.css';
+
 import { GeoportailProvider, geoportailProvider } from './leaflet-geosearch-geoportail';
 import controls from './controls';
 import { i18n } from './i18n';

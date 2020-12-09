@@ -236,6 +236,9 @@ const controls = {
                   $(this).dialog('close');
                 },
               },
+              classes: {
+                'ui-dialog': 'map2gpx',
+              },
             });
           },
           title: i18n.info,

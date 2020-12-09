@@ -198,7 +198,7 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
             node.bindPopup('<>');
           }
           node.setPopupContent(`
-<ul class="legend ${node.options.colorName}">
+<ul class="map2gpx-legend ${node.options.colorName}">
 <li>${i18n.altitude}: ${Math.round(node._stats.z)}m</li>
 <li>${i18n.distanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>
 <li>${i18n.distanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100) / 100}km</li>
@@ -215,7 +215,7 @@ ${data.datasets[tooltipItems.datasetIndex].label}: ${
         }
         const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
         c.setPopupContent(`
-<ul class="legend ${colorName}">
+<ul class="map2gpx-legend ${colorName}">
 <li>${i18n.altitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>
 <li>${i18n.elevationUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>
 <li>${i18n.altitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>
@@ -318,19 +318,13 @@ ${i18n.elevationDown}: ${Math.round(data.total.denivNeg)}m</li>
       this.chartjs.options.scales.xAxes[0].ticks.max = series1[lastIndex].x;
       this.chartjs.config.data.datasets[0].data = series1;
       annotations[0].value = stats.getAltMax();
-      annotations[0].label.content = `
-${i18n.altitudeMax}: ${Math.round(stats.getAltMax())}m;
-${i18n.elevationUp}: ${Math.round(stats.getHeightDiffUp())}m
-`;
+      annotations[0].label.content = `${i18n.altitudeMax}: ${Math.round(stats.getAltMax())}m;
+${i18n.elevationUp}: ${Math.round(stats.getHeightDiffUp())}m`;
       annotations[1].value = stats.getAltMin();
-      annotations[1].label.content = `
-${i18n.altitudeMin}: ${Math.round(stats.getAltMin())}m;
-${i18n.elevationDown}: ${Math.round(stats.getHeightDiffDown())}m
-`;
+      annotations[1].label.content = `${i18n.altitudeMin}: ${Math.round(stats.getAltMin())}m;
+${i18n.elevationDown}: ${Math.round(stats.getHeightDiffDown())}m`;
       annotations[2].value = series1[lastIndex].x;
-      annotations[2].label.content = `
-${i18n.distance}: ${Math.round(series1[lastIndex].x * 100) / 100}km
-`;
+      annotations[2].label.content = `${i18n.distance}: ${Math.round(series1[lastIndex].x * 100) / 100}km`;
 
       if (this.options.showSlope) {
         this.chartjs.config.data.datasets[this.slopeIdx].data = series2;

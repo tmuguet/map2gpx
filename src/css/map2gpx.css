@@ -1,0 +1,116 @@
+.map2gpx.ui-dialog {
+  z-index: 10000 !important ;
+}
+
+.map2gpx.ui-dialog .validateTips {
+  float: right;
+  padding: 0px;
+  margin: 0px;
+}
+.map2gpx.ui-dialog label,
+.map2gpx.ui-dialog input {
+  display: block;
+}
+.map2gpx.ui-dialog input.text {
+  width: 95%;
+  padding: 0.4em;
+  margin-bottom: 12px;
+}
+.map2gpx.ui-dialog fieldset {
+  padding: 0;
+  border: 0;
+  margin-top: 25px;
+}
+.map2gpx.ui-dialog .ui-dialog .ui-state-error {
+  padding: 0.3em;
+}
+
+ul.map2gpx-legend {
+  padding: 0px 0px 0px 10px;
+  margin: 0px;
+  border-left-style: solid;
+  border-left-width: 5px;
+  list-style: none;
+}
+
+ul.map2gpx-legend.red {
+  border-left-color: #d63e2a;
+}
+ul.map2gpx-legend.orange {
+  border-left-color: #f59630;
+}
+ul.map2gpx-legend.green {
+  border-left-color: #72b026;
+}
+ul.map2gpx-legend.blue {
+  border-left-color: #38aadd;
+}
+ul.map2gpx-legend.purple {
+  border-left-color: #d252b9;
+}
+ul.map2gpx-legend.darkred {
+  border-left-color: #a23336;
+}
+ul.map2gpx-legend.darkblue {
+  border-left-color: #0067a3;
+}
+ul.map2gpx-legend.darkgreen {
+  border-left-color: #728224;
+}
+ul.map2gpx-legend.darkpurple {
+  border-left-color: #5b396b;
+}
+ul.map2gpx-legend.cadetblue {
+  border-left-color: #436978;
+}
+ul.map2gpx-legend.lightred {
+  border-left-color: #ff8e7f;
+}
+ul.map2gpx-legend.beige {
+  border-left-color: #ffcb92;
+}
+ul.map2gpx-legend.lightgreen {
+  border-left-color: #bbf970;
+}
+ul.map2gpx-legend.lightblue {
+  border-left-color: #8adaff;
+}
+ul.map2gpx-legend.pink {
+  border-left-color: #ff91ea;
+}
+ul.map2gpx-legend.white {
+  border-left-color: #fbfbfb;
+}
+ul.map2gpx-legend.lightgray {
+  border-left-color: #a3a3a3;
+}
+ul.map2gpx-legend.gray {
+  border-left-color: #575757;
+}
+ul.map2gpx-legend.black {
+  border-left-color: #303030;
+}
+
+.shepherd.map2gpx,
+.drop-element.map2gpx {
+  z-index: 1000;
+}
+.map2gpx-data {
+  overflow: hidden;
+  text-align: center;
+  height: 100%;
+  width: 100%;
+}
+.map2gpx-data.overlay {
+  position: relative;
+  top: -100%;
+}
+.map2gpx-data .data-computing-progressbar-container {
+  width: 400px;
+  height: 3px;
+  margin: 0px auto;
+}
+.map2gpx-data .data-computing-progressbar {
+  height: 100%;
+  width: 0%;
+}

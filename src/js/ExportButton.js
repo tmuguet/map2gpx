@@ -74,6 +74,9 @@ export const ExportButton = L.Control.EasyButton.extend({
       close: () => {
         this._form[0].reset();
       },
+      classes: {
+        'ui-dialog': 'map2gpx',
+      },
     });
 
     this._form = this._dialog.find('form').on('submit', (event) => {

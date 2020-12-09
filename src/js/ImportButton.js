@@ -95,6 +95,9 @@ export const ImportButton = L.Control.EasyButton.extend({
         this._fieldFile.removeClass('ui-state-error');
         this._form.find('.validateTips').empty();
       },
+      classes: {
+        'ui-dialog': 'map2gpx',
+      },
     });
 
     this._form = this._dialog.find('form').on('submit', (event) => {
