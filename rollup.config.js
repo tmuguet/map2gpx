@@ -1,9 +1,10 @@
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import babel from '@rollup/plugin-babel';
 import { terser } from 'rollup-plugin-terser';
+import babel from '@rollup/plugin-babel';
+import commonjs from '@rollup/plugin-commonjs';
+import copy from 'rollup-plugin-copy';
 import json from '@rollup/plugin-json';
 import postcss from 'rollup-plugin-postcss';
+import resolve from '@rollup/plugin-node-resolve';
 import pkg from './package.json';
 
 const input = 'src/js/index.js';
@@ -58,6 +59,11 @@ export default [
         babelHelpers: 'bundled',
       }),
       terser(),
+      copy({
+        targets: [
+          { src: ['fetch.php', 'slope.php'], dest: 'dist' },
+        ],
+      }),
     ],
     external,
   },
