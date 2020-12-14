@@ -1,6 +1,6 @@
 import { version } from '../../package.json';
 
-import './leflet.vincenty';
+import './leaflet.vincenty';
 import './chart';
 import './progress';
 import './jquery.shepherd';
