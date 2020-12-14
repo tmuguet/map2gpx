@@ -7,11 +7,13 @@
   "browser": "dist/map2gpx.min.js",
   "browser_uncompressed": "dist/map2gpx.js",
   "scripts": {
-    "pack": "rollup -c rollup.config.js && gulp pack",
-    "lint": "gulp lint",
-    "validate": "npm run pack && npm run lint",
-    "version": "npm run validate",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "eslint": "eslint src/js/*.js",
+    "bundle": "rollup -c rollup.config.js",
+    "pack": "npm run bundle && gulp pack",
+    "test": "echo \"No test specified\" && exit 0",
+    "doc": "echo \"No doc specified\" && exit 0",
+    "validate": "npm run pack && npm run eslint && npm run test",
+    "version": "npm run validate && npm run doc && git add docs dist",
     "lrm-graphhopper-fixup": "npm explore lrm-graphhopper -- npm run dist"
   },
   "repository": {
@@ -57,7 +59,6 @@
     "gulp-concat": "^2.6.1",
     "gulp-copy": "^4.0.1",
     "gulp-csso": "^3.0.1",
-    "gulp-eslint": "^5.0.0",
     "gulp-rename": "^1.4.0",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-uglify": "^3.0.2",

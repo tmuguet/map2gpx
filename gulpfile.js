@@ -6,7 +6,6 @@ const concat = require('gulp-concat');
 const csso = require('gulp-csso');
 const copy = require('gulp-copy');
 const htmlcpr = require('gulp-htmlcpr');
-const eslint = require('gulp-eslint');
 
 const { ENV } = require('./env.json');
 
@@ -70,14 +69,6 @@ function copyConfIgn() {
     .pipe(rename('autoconf.json'))
     .pipe(dest('./www-fr/'));
 }
-
-function lint() {
-  return src(['src/js/*.js', '!node_modules/**'])
-    .pipe(eslint())
-    .pipe(eslint.format())
-    .pipe(eslint.failAfterError());
-}
-exports.lint = lint;
 
 exports.pack = series(
   parallel(bundleCss, bundleImages),
