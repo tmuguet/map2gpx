@@ -11,7 +11,7 @@
     "bundle": "rollup -c rollup.config.js",
     "pack": "npm run bundle && gulp pack",
     "test": "echo \"No test specified\" && exit 0",
-    "doc": "echo \"No doc specified\" && exit 0",
+    "doc": "typedoc --out docs/ --ignoreCompilerErrors --includeDeclarations --excludeExternals --disableSources --name \"Map2gpx\" --theme markdown --readme none --mode file src/js/index.d.ts",
     "validate": "npm run pack && npm run eslint && npm run test",
     "version": "npm run validate && npm run doc && git add docs dist",
     "lrm-graphhopper-fixup": "npm explore lrm-graphhopper -- npm run dist"

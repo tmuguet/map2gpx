@@ -125,8 +125,9 @@ const controls = {
     return L.control.zoom(opts).addTo(map);
   },
 
-  addScale(map) {
-    return L.control.scale({ imperial: false, position: 'bottomcenter' }).addTo(map);
+  addScale(map, options = {}) {
+    const opts = $.extend({}, { imperial: false, position: 'bottomcenter' }, options);
+    return L.control.scale(opts).addTo(map);
   },
 
   addGeocoder(map, options = {}) {
@@ -198,6 +199,11 @@ const controls = {
   },
 
   addTrackDrawerTracebar(map, track, options) {
+    const opts = $.extend({}, {
+      direction: 'horizontal',
+      position: 'topcenter',
+      mode: 'auto',
+    }, options);
     return L.TrackDrawer.traceModeBar(
       track,
       [
@@ -214,11 +220,7 @@ const controls = {
           router: L.Routing.straightLine(),
         },
       ],
-      {
-        direction: 'horizontal',
-        position: 'topcenter',
-        mode: 'auto',
-      },
+      opts,
     ).addTo(map);
   },
 
