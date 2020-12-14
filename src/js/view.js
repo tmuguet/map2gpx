@@ -5,12 +5,10 @@ import { i18n } from './i18n';
 L.Map.include({
   _bindViewEvents() {
     this.on('zoomend', () => {
-      console.log('Zoomed to ', this.getZoom());
       $.localStorage.set('view', [this.getCenter().lat, this.getCenter().lng, this.getZoom()]);
     });
 
     this.on('moveend', () => {
-      console.log('Moved to ', this.getCenter());
       $.localStorage.setAsJSON('view', [this.getCenter().lat, this.getCenter().lng, this.getZoom()]);
     });
   },

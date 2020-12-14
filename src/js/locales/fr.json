@@ -13,6 +13,8 @@
     "import": "Importer",
     "url": "URL",
     "addWaypoints": "Ajouter les marqueurs de points de passage",
+    "coordinates": "Coordonnées",
+    "zoomLevel": "Niveau de zoom",
     "zoomIn": "Zoomer",
     "zoomOut": "Dézoomer",
     "search": "Rechercher",

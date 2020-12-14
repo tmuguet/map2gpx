@@ -13,6 +13,8 @@
     "import": "Import",
     "url": "URL",
     "addWaypoints": "Add waypoints",
+    "coordinates": "Coordinates",
+    "zoomLevel": "Zoom level",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "search": "Search",

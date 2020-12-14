@@ -2,6 +2,7 @@ import L from 'leaflet';
 import $ from 'jquery';
 import { importButton } from './ImportButton';
 import { exportButton } from './ExportButton';
+import { mapCoordinatesButton } from './MapCoordinatesControl';
 import { i18n } from './i18n';
 
 const controls = {
@@ -171,6 +172,12 @@ const controls = {
     const importBtn = importButton(track, opts.optionsImport);
     const exportBtn = exportButton(track, opts.optionsExport);
     return L.easyBar([importBtn, exportBtn]).addTo(map);
+  },
+
+  addMapCoordinatesButton(map, options) {
+    const opts = $.extend({}, { position: 'bottomleft' }, options);
+    const btn = mapCoordinatesButton(opts);
+    return btn.addTo(map);
   },
 
   addTrackDrawerToolbar(map, track, options) {
