@@ -221,13 +221,13 @@ const controls = {
   },
 
   addInfoToolbar(map, options) {
+    const opts = $.extend({}, { position: 'bottomright', aboutDialog: '#about' }, options);
     const infoBtn = L.easyButton({
-      position: 'bottomright',
       states: [
         {
           icon: 'fa-info-circle',
           onClick: () => {
-            $('#about').dialog({
+            $(opts.aboutDialog).dialog({
               autoOpen: true,
               modal: true,
               minWidth: 600,
@@ -246,7 +246,6 @@ const controls = {
       ],
     });
     const helpBtn = L.easyButton({
-      position: 'bottomright',
       states: [
         {
           icon: 'fa-question-circle',
@@ -258,7 +257,7 @@ const controls = {
       ],
     });
 
-    return L.easyBar([infoBtn, helpBtn], { position: 'bottomright' }).addTo(map);
+    return L.easyBar([infoBtn, helpBtn], { position: opts.position }).addTo(map);
   },
 
   addChart(item, map, track, options) {
@@ -266,7 +265,7 @@ const controls = {
     item.chart(opts);
   },
 
-  addTour(track, options) {
+  addTour(track) {
     if (track._map._imported) return; // Skip if some nodes were imported
 
     $.Shepherd.tour()

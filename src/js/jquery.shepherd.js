@@ -5,27 +5,6 @@ import { i18n } from './i18n';
 const tutorials = [];
 
 $.Shepherd = {};
-$.Shepherd.Step = function () {
-  let _name;
-  let _shepherd;
-  let _opts;
-
-  const init = function (name, settings) {
-    _name = name;
-    _opts = $.extend({}, settings, {
-      classes: 'shepherd shepherd-open shepherd-transparent-text',
-    });
-    return this;
-  };
-
-  return {
-    init,
-  };
-};
-
-$.Shepherd.step = function (name, settings) {
-  return $.Shepherd.Step().init(name, settings);
-};
 
 $.Shepherd.Tour = function () {
   let _tour;
@@ -63,9 +42,6 @@ $.Shepherd.Tour = function () {
         classes: 'shepherd-button-primary',
         action: () => {
           const currentShepherdIndex = tutorials.indexOf(this);
-
-          if (currentShepherdIndex < 0) console.log('Could not find current shepherd, something is probably wrong');
-
           $.localStorage.set(`tutorial${currentShepherdIndex}`, currentStep + 1); // Restore next step
 
           this.next();

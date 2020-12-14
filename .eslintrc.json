@@ -5,6 +5,7 @@
     "no-param-reassign": ["error", { "props": false }],
     "max-len": ["error", { "code": 120 }],
     "import/no-unresolved": "off",
-    "import/no-extraneous-dependencies": "off"
+    "import/no-extraneous-dependencies": "off",
+    "func-names": "off"
   }
 }

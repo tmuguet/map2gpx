@@ -1,5 +1,6 @@
 import $ from 'jquery';
 import L from 'leaflet';
+import { i18n } from './i18n';
 
 L.Map.include({
   _bindViewEvents() {
@@ -59,9 +60,25 @@ L.Map.include({
         if (results && results.length > 0) {
           this.setView(results[0].center, opts.geocoderZoom);
           hasSetView = true;
+        } else {
+          throw new Error(`${i18n.noResult}`);
         }
       } catch (e) {
-        console.log(e.message);
+        $(`<div id="map2gpx_errordialog" title="${i18n.error}">${i18n.error}: ${e.message}</div>`).dialog({
+          appendTo: 'body',
+          classes: {
+            'ui-dialog': 'map2gpx',
+          },
+          dialogClass: 'alert',
+          draggable: false,
+          modal: true,
+          buttons: {
+            Ok() {
+              $(this).dialog('close');
+            },
+          },
+          close() { $('#map2gpx_errordialog').dialog('destroy'); },
+        });
       }
     } else if ('url' in $.QueryString) {
       try {
@@ -75,7 +92,21 @@ L.Map.include({
         this.fitBounds(track.getBounds(), { padding: opts.boundsPadding });
         hasSetView = true;
       } catch (e) {
-        console.log(e.message);
+        $(`<div id="map2gpx_errordialog" title="${i18n.error}">${i18n.error}: ${e.message}</div>`).dialog({
+          appendTo: 'body',
+          classes: {
+            'ui-dialog': 'map2gpx',
+          },
+          dialogClass: 'alert',
+          draggable: false,
+          modal: true,
+          buttons: {
+            Ok() {
+              $(this).dialog('close');
+            },
+          },
+          close() { $('#map2gpx_errordialog').dialog('destroy'); },
+        });
       }
     }
 

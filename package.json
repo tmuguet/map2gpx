@@ -10,7 +10,7 @@
     "pack": "rollup -c rollup.config.js && gulp pack",
     "lint": "gulp lint",
     "validate": "npm run pack && npm run lint",
-    "version": "npm run pack",
+    "version": "npm run validate",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lrm-graphhopper-fixup": "npm explore lrm-graphhopper -- npm run dist"
   },
