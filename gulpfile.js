@@ -65,7 +65,7 @@ function copyAssetsIgn() {
   return src(['./slope.php']).pipe(dest('./www-fr/'));
 }
 function copyConfIgn() {
-  return src(`./autoconf-https-${ENV}.json`)
+  return src(`./autoconf-https-${ENV}.json`, { allowEmpty: true })
     .pipe(rename('autoconf.json'))
     .pipe(dest('./www-fr/'));
 }

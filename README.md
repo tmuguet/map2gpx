@@ -11,9 +11,8 @@ Pre-requisites:
 1. Install [nodejs](https://nodejs.org/en/download/)
 2. In the checkout, install the dependencies: `npm install`
 3. Run `npm run lrm-graphhopper-fixup`
-4. If you are using GeoPortail API, download the autoconf file and put it in this folder under the name _autoconf-https-prod.json_.
-5. Otherwise, simply copy _autoconf-https-prod.json.sample_ to _autoconf-https-prod.json_.
-6. Web-server with PHP installed
+4. If you are using GeoPortail API, download the autoconf file and put it in this folder under the name _autoconf-https-prod.json_. This can be ignored if not using GeoPortail API.
+5. Web-server with PHP installed
 
 Rebuild:
 
