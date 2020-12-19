@@ -56,7 +56,7 @@ export default [
       commonjs(),
       babel({
         exclude: ['node_modules/**'],
-        babelHelpers: 'bundled',
+        babelHelpers: 'runtime',
       }),
       terser(),
       copy({
@@ -86,7 +86,7 @@ export default [
       commonjs(),
       babel({
         exclude: ['node_modules/**'],
-        babelHelpers: 'bundled',
+        babelHelpers: 'runtime',
       }),
     ],
     external,
@@ -95,7 +95,7 @@ export default [
   // CommonJS (for Node) and ES module (for bundlers) build.
   {
     input,
-    external,
+    external: [/@babel\/runtime/].concat(...external),
     output: [
       {
         file: pkg.main,
