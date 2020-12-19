@@ -1,15 +1,9 @@
-/* global $ */
-const L = require('leaflet');
+import L from 'leaflet';
+import $ from 'jquery';
+import { i18n } from './i18n';
 
-module.exports = L.Control.EasyButton.extend({
-  options: {
-    title: 'Import a file',
-    fileLabel: 'File',
-    urlLabel: 'URL',
-    addWaypointsLabel: 'Add waypoints',
-    submitLabel: 'Import',
-    cancelLabel: 'Cancel',
-  },
+export const ImportButton = L.Control.EasyButton.extend({
+  options: { },
 
   initialize(track, options) {
     this._track = track;
@@ -19,7 +13,7 @@ module.exports = L.Control.EasyButton.extend({
       states: [
         {
           icon: 'fa-cloud-upload',
-          title: this.options.title,
+          title: i18n.import,
           onClick: () => {
             this._dialog.dialog('open');
           },
@@ -64,28 +58,33 @@ module.exports = L.Control.EasyButton.extend({
   },
 
   _buildPopup() {
-    const content = `<div id="dialog-import" title="${this.options.title}">`
-      + '<form enctype="multipart/form-data">'
-      + '<fieldset>'
-      + '<p id="import-file-tips" class="validateTips"></p>'
-      + `<label for="import-file">${this.options.fileLabel}</label>`
-      + '<input type="file" name="import-file" id="import-file"  accept=".gpx,.kml,.json,.geojson" class="text ui-widget-content ui-corner-all"/>'
-      + '<p id="import-url-tips" class="validateTips"></p>'
-      + `<label for="import-url">${this.options.urlLabel}</label>`
-      + '<input type="text" name="import-url" id="import-url" value="" class="text ui-widget-content ui-corner-all"/>'
-      + '<input type="submit"  tabindex="-1" style="position:absolute; top:-1000px"/>'
-      + '</fieldset>'
-      + '<fieldset>'
-      + '<span style="display: block"><input type="checkbox" name="import-markers" id="import-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>'
-      + `<label for="import-markers" style="display: inline">${this.options.addWaypointsLabel}</label></span>`
-      + '</fieldset>'
-      + '</form>'
-      + '</div>';
+    /* eslint-disable max-len */
+    const content = `
+<div id="dialog-import" title="${i18n.import}">
+  <form enctype="multipart/form-data">
+    <fieldset>
+      <p id="import-file-tips" class="validateTips"></p>
+      <label for="import-file">${i18n.file}</label>
+      <input type="file" name="import-file" id="import-file"  accept=".gpx,.kml,.json,.geojson" class="text ui-widget-content ui-corner-all"/>
+      <p id="import-url-tips" class="validateTips"></p>
+      <label for="import-url">${i18n.url}</label>
+      <input type="text" name="import-url" id="import-url" value="" class="text ui-widget-content ui-corner-all"/>
+      <input type="submit"  tabindex="-1" style="position:absolute; top:-1000px"/>
+    </fieldset>
+    <fieldset>
+      <span style="display: block">
+        <input type="checkbox" name="import-markers" id="import-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>
+        <label for="import-markers" style="display: inline">${i18n.addWaypoints}</label>
+      </span>
+    </fieldset>
+  </form>
+</div>`;
+    /* eslint-enable max-len */
     const $content = $(content);
 
     const buttons = {};
-    buttons[this.options.submitLabel] = () => this._import();
-    buttons[this.options.cancelLabel] = () => this._dialog.dialog('close');
+    buttons[i18n.import] = () => this._import();
+    buttons[i18n.cancel] = () => this._dialog.dialog('close');
     this._dialog = $content.dialog({
       autoOpen: false,
       modal: true,
@@ -95,6 +94,9 @@ module.exports = L.Control.EasyButton.extend({
         this._fieldUrl.removeClass('ui-state-error');
         this._fieldFile.removeClass('ui-state-error');
         this._form.find('.validateTips').empty();
+      },
+      classes: {
+        'ui-dialog': 'map2gpx',
       },
     });
 
@@ -106,3 +108,7 @@ module.exports = L.Control.EasyButton.extend({
     this._fieldUrl = this._form.find('#import-url');
   },
 });
+
+export function importButton(track, options) {
+  return new ImportButton(track, options);
+}

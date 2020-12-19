@@ -11,18 +11,20 @@ Pre-requisites:
 1. Install [nodejs](https://nodejs.org/en/download/)
 2. In the checkout, install the dependencies: `npm install`
 3. Run `npm run lrm-graphhopper-fixup`
-4. If you are using GeoPortail API, download the autoconf file and put it in this folder under the name _autoconf-https-prod.json_.
-5. Otherwise, simply copy _autoconf-https-prod.json.sample_ to _autoconf-https-prod.json_.
-6. Web-server with PHP installed
+4. If you are using GeoPortail API, download the autoconf file and put it in this folder under the name _autoconf-https-prod.json_. This can be ignored if not using GeoPortail API.
+5. Web-server with PHP installed
 
 Rebuild:
 
-- `gulp pack` just re-bundle and generate _www-fr_ and _www-en_ folders.
+- `npm run pack` runs:
+  - [rollup](https://www.rollupjs.org/) to generate the JS library files (can be re-used as-is without all the map2gpx layout) in _dist_ folder
+  - [gulp](https://gulpjs.com/) to generate the websites (_dist-www_ for generic assets, _www-fr_ and _www-en_ for the whole map2gpx websites)
 
 ## Generated files
 
-Output comes in two flavors:
+Output comes in multiples flavors:
 
+- _dist_ folder exposes the library (available in CommonJS, ES6 and UMD formats), that can be reused directly into your projects
 - _www-fr_ to use GeoPortail maps and APIs (only available in France) - driven by _index-fr.html_, source for [map2gpx.fr](https://map2gpx.fr)
   - You will need your own API key if you want to test/run it
 - _www-en_ to use services available worldwide (maps from OpenStreetMap, Thunderforest, OpenTopoMap, Hike & Bike, Hillshading and APIs from MapQuest, GrapHopper) - driven by _index-en.html_, source for [map2gpx.eu](https://map2gpx.eu)

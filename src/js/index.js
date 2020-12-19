@@ -1,26 +1,28 @@
 import { version } from '../../package.json';
 
-require('./leflet.vincenty');
-require('./chart');
-require('./progress');
-require('./jquery.shepherd');
-require('./jquery.querystring');
-require('./jquery.localstorage');
-require('./view');
+import './leaflet.vincenty';
+import './chart';
+import './progress';
+import './jquery.shepherd';
+import './jquery.querystring';
+import './jquery.localstorage';
+import './view';
 
-const ImportButton = require('./ImportButton');
-const ExportButton = require('./ExportButton');
-const GeoportailProvider = require('./leaflet-geosearch-geoportail');
-const controls = require('./controls');
+import '../css/map2gpx.css';
+import '../css/theme.css';
+
+import { GeoportailProvider, geoportailProvider } from './leaflet-geosearch-geoportail';
+import controls from './controls';
+import { i18n } from './i18n';
 
 const Map2gpx = {
-  ImportButton,
-  ExportButton,
   GeoportailProvider,
+  geoportailProvider,
   controls,
   getVersion() {
     return version;
   },
+  i18n,
 };
 
-module.exports = Map2gpx;
+export default Map2gpx;

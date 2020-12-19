@@ -1,0 +1,41 @@
+body.theme-white {
+  background-color: #ffffff;
+  color: #000000;
+}
+body.theme-black {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.leaflet-bar .easy-button-button.active-active,
+.leaflet-bar .easy-button-button.active-active:hover {
+  color: #ffffff;
+  background-color: #24b835;
+  border-bottom: 1px solid #999;
+}
+.mode-active {
+  color: #ffffff;
+  background-color: #24b835;
+}
+.shepherd-element .shepherd-content footer .shepherd-buttons li .shepherd-button {
+  background: #24b835;
+  transition: background 0.2s ease-out;
+}
+.shepherd-element .shepherd-content footer .shepherd-buttons li .shepherd-button:hover {
+  background: #27cc3a;
+  transition: background 0.3s ease-in;
+}
+.theme-white .map2gpx-data {
+  color: #000000;
+  background-color: #ffffff;
+}
+.theme-dark .map2gpx-data {
+  color: #ffffff;
+  background-color: #000000;
+}
+.map2gpx-data .data-computing-progressbar-container {
+  background-color: grey;
+}
+.map2gpx-data .data-computing-progressbar {
+  background-color: #24b835;
+}

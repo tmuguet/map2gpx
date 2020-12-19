@@ -1,6 +1,7 @@
 import L from 'leaflet';
+import Gp from 'geoportal-extensions-leaflet';
 
-module.exports = L.Class.extend({
+export const GeoportailProvider = L.Class.extend({
   options: {},
 
   initialize(apiKey, options) {
@@ -14,7 +15,7 @@ module.exports = L.Class.extend({
       filterOptions: { type: ['StreetAddress', 'PositionOfInterest'] },
       apiKey: this._apiKey,
       onSuccess: (results) => {
-        const data = results.suggestedLocations.map(r => ({
+        const data = results.suggestedLocations.map((r) => ({
           center: L.latLng(r.position.y, r.position.x),
           name: r.fullText,
           bbox: L.latLngBounds(L.latLng(r.position.y, r.position.x), L.latLng(r.position.y, r.position.x)),
@@ -32,13 +33,13 @@ module.exports = L.Class.extend({
     return this.geocode(query, cb, context);
   },
 
-  reverse(location, scale, cb, context) {
+  reverse(location, _scale, cb, context) {
     const options = {
       position: { x: location.lng, y: location.lat },
       filterOptions: { type: ['StreetAddress', 'PositionOfInterest'] },
       apiKey: this._apiKey,
       onSuccess: (results) => {
-        const data = results.suggestedLocations.map(r => ({
+        const data = results.suggestedLocations.map((r) => ({
           center: L.latLng(r.position.y, r.position.x),
           name: r.fullText,
           bbox: L.latLngBounds(L.latLng(r.position.y, r.position.x), L.latLng(r.position.y, r.position.x)),
@@ -52,3 +53,7 @@ module.exports = L.Class.extend({
     Gp.Services.reverseGeocode(options);
   },
 });
+
+export function geoportailProvider(apiKey, options) {
+  return new GeoportailProvider(apiKey, options);
+}

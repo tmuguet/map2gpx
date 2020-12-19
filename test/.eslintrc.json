@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "should|expect"
+      }
+    ],
+    "no-unused-expressions": "off"
+  },
+  "env": {
+    "jquery": true,
+    "mocha": true
+  },
+  "globals": {
+    "L": "readonly",
+    "expect": "readonly",
+    "sinon": "readonly",
+    "happen": "readonly",
+    "Map2gpx": "readonly"
+  }
+}

@@ -33,10 +33,10 @@
   <link rel="stylesheet" href="node_modules/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
   <link rel="stylesheet" href="node_modules/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <link rel="stylesheet" href="node_modules/shepherd.js/dist/css/shepherd-theme-square.css" />
-  <link rel="stylesheet" href="dist/css/map2gpx.min.css" />
+  <link rel="stylesheet" href="dist/map2gpx.min.css" />
+  <link rel="stylesheet" href="dist-www/css/map2gpx.min.css" />
 
   <script src="https://use.fontawesome.com/769d9e20e5.js"></script>
-  <script src="node_modules/@babel/polyfill/dist/polyfill.min.js"></script>
   <script src="node_modules/jquery/dist/jquery.min.js"></script>
   <script src="node_modules/jquery-ui-dist/jquery-ui.min.js"></script>
   <script src="node_modules/leaflet/dist/leaflet.js"></script>
@@ -45,12 +45,14 @@
   <script src="node_modules/leaflet-easybutton/src/easy-button.js"></script>
   <script src="node_modules/leaflet.awesome-markers/dist/leaflet.awesome-markers.min.js"></script>
   <script src="node_modules/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
-  <script src="node_modules/@mapbox/togeojson/togeojson.js"></script>
+  <script src="node_modules/@tmcw/togeojson/dist/togeojson.umd.js"></script>
+  <script src="node_modules/@mapbox/corslite/corslite.js"></script>
+  <script src="node_modules/promise-queue/lib/index.js"></script>
   <script src="node_modules/leaflet-filelayer/src/leaflet.filelayer.js"></script>
   <script src="node_modules/lrm-graphhopper/dist/lrm-graphhopper.min.js"></script>
   <script src="node_modules/lrm-straightline/dist/lrm-straightline.min.js"></script>
-  <script src="node_modules/leaflet-trackdrawer/dist/leaflet.trackdrawer.min.js"></script>
-  <script src="node_modules/leaflet-trackstats/dist/leaflet.trackstats.min.js"></script>
+  <script src="node_modules/leaflet-trackdrawer/dist/leaflet.trackdrawer.umd.min.js"></script>
+  <script src="node_modules/leaflet-trackstats/dist/leaflet.trackstats.umd.min.js"></script>
   <script src="node_modules/chart.js/dist/Chart.min.js"></script>
   <script src="node_modules/chartjs-plugin-annotation/chartjs-plugin-annotation.min.js"></script>
   <script src="node_modules/file-saver/dist/FileSaver.min.js"></script>
@@ -59,7 +61,7 @@
   <script src="node_modules/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <script src="node_modules/tippy.js/dist/tippy.min.js"></script>
   <script src="node_modules/shepherd.js/dist/js/shepherd.min.js"></script>
-  <script src="dist/js/map2gpx.min.js"></script>
+  <script src="dist/map2gpx.min.js"></script>
 </head>
 
 <body>
@@ -247,6 +249,12 @@
           (MIT License)
         </li>
         <li>
+          <a href="http://www.movable-type.co.uk/scripts/latlong-vincenty.html" target="_blank"
+            rel="noopener noreferrer">Vincenty Formula</a>
+          (MIT License) and <a href="https://github.com/bullvinkle/Leflet.Vincenty" target="_blank"
+            rel="noopener noreferrer">its Leaflet implementation</a>
+        </li>
+        <li>
           <a href="https://github.com/shipshapecode/shepherd" target="_blank" rel="noopener noreferrer">Shepherd</a>
           (MIT license)
         </li>
@@ -271,13 +279,7 @@
     </div>
   </div>
   <div id="map"></div>
-  <div id="data" class="data"></div>
-  <div id="data-empty" class="data">
-    <h2><i class="fa fa-area-chart fa-3x" aria-hidden="true"></i><br />Nothing to show here...</h2>
-    Start tracing your path to see data.
-  </div>
-  <div id="data-error" class="data"></div>
-  <div id="data-computing" class="data"></div>
+  <div id="chart"></div>
   <div id="version" class="map2gpx-version"></div>
   <script>
     window.onload = function () {
@@ -339,8 +341,6 @@
         Map2gpx.controls.addImportExportButtons(map, drawRoute);
         Map2gpx.controls.addTrackDrawerToolbar(map, drawRoute);
         Map2gpx.controls.addTrackDrawerTracebar(map, drawRoute, {
-          labelAuto: 'Use automatic routing',
-          labelLine: 'Use straight line routing',
           routerAuto: L.Routing.graphHopper('29aa5bd4-23a6-489e-9bd0-67f8c9207d77', {
             urlParameters: {
               vehicle: 'foot',
@@ -348,33 +348,16 @@
           }),
         });
         Map2gpx.controls.addMinimap(map, L.tileLayer('https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'));
-        Map2gpx.controls.addInfoToolbar(map, {
-          labelInfo: 'About & credits',
-          labelHelp: 'Help',
-        });
+        Map2gpx.controls.addMapCoordinatesButton(map);
+        Map2gpx.controls.addInfoToolbar(map);
       }
 
-      Map2gpx.controls.addChart(map, drawRoute, {
+      Map2gpx.controls.addChart($('#chart'), map, drawRoute, {
         showTerrainSlope: false,
-        labelComputing: 'Computing...',
-        labelFetching: 'coordinates to fetch',
-        labelFetched: 'coordinates fetched',
-        labelAltitude: 'Altitude',
-        labelSlope: 'Slope',
-        labelDistance: 'Distance',
-        labelDistanceFromStart: 'Distance from start',
-        labelDistanceFromLastStopover: 'Distance from last stopover',
-        labelAltitudeMax: 'Altitude max',
-        labelHeightDiffUp: 'Height diff up',
-        labelAltitudeMin: 'Altitude min',
-        labelHeightDiffDown: 'Height diff down',
       });
 
       if (map.shouldShowControls()) {
-        Map2gpx.controls.addTour(drawRoute, {
-          labelNext: 'Next',
-          labelClose: 'Close',
-        });
+        Map2gpx.controls.addTour(drawRoute);
       }
     };
   </script>

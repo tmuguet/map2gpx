@@ -1,7 +1,11 @@
-/* global $, Map2gpx */
-const L = require('leaflet');
+import L from 'leaflet';
+import $ from 'jquery';
+import { importButton } from './ImportButton';
+import { exportButton } from './ExportButton';
+import { mapCoordinatesButton } from './MapCoordinatesControl';
+import { i18n } from './i18n';
 
-module.exports = {
+const controls = {
   addLayers(map, visibleBaseLayers, visibleOverlays, hiddenBaseLayers, hiddenOverlays, controlType) {
     const baseLayers = {};
     const overlays = {};
@@ -46,7 +50,7 @@ module.exports = {
       case 'native':
         control = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
 
-        $('.leaflet-control-layers-selector[type=radio]').change((e) => {
+        $('.leaflet-control-layers-selector[type=radio]').on('change', (e) => {
           Object.keys(baseLayers).forEach((key) => {
             this._onLayerVisibilityChanged(false, key);
           });
@@ -58,7 +62,7 @@ module.exports = {
               .trim(),
           );
         });
-        $('.leaflet-control-layers-selector[type=checkbox]').change((e) => {
+        $('.leaflet-control-layers-selector[type=checkbox]').on('change', (e) => {
           this._onLayerVisibilityChanged(
             $(e.target)[0].checked,
             $(e.target)
@@ -78,13 +82,21 @@ module.exports = {
 
         Object.keys(baseLayers).forEach((key) => {
           if (!visibilities[key]) control.setVisibility(baseLayers[key], false);
-          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(baseLayers[key])}`)}`).change(e => this._onLayerVisibilityChanged($(e.target)[0].checked, key));
-          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(baseLayers[key])}`)}`).change(e => this._onLayerOpacityChanged($(e.target).val() / 100, key));
+          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(baseLayers[key])}`)}`).on(
+            'change', (e) => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
+          );
+          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(baseLayers[key])}`)}`).on(
+            'change', (e) => this._onLayerOpacityChanged($(e.target).val() / 100, key),
+          );
         });
         Object.keys(overlays).forEach((key) => {
           if (!visibilities[key]) control.setVisibility(overlays[key], false);
-          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(overlays[key])}`)}`).change(e => this._onLayerVisibilityChanged($(e.target)[0].checked, key));
-          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(overlays[key])}`)}`).change(e => this._onLayerOpacityChanged($(e.target).val() / 100, key));
+          $(`#${control._addUID(`GPvisibility_ID_${L.stamp(overlays[key])}`)}`).on(
+            'change', (e) => this._onLayerVisibilityChanged($(e.target)[0].checked, key),
+          );
+          $(`#${control._addUID(`GPopacityValueDiv_ID_${L.stamp(overlays[key])}`)}`).on(
+            'change', (e) => this._onLayerOpacityChanged($(e.target).val() / 100, key),
+          );
         });
 
         $('.GPlayerRemove').remove();
@@ -109,15 +121,23 @@ module.exports = {
   },
 
   addZoom(map, options = {}) {
-    return L.control.zoom(options).addTo(map);
+    const opts = $.extend({}, { zoomInTitle: i18n.zoomIn, zoomOutTitle: i18n.zoomOut }, options);
+    return L.control.zoom(opts).addTo(map);
   },
 
-  addScale(map) {
-    return L.control.scale({ imperial: false, position: 'bottomcenter' }).addTo(map);
+  addScale(map, options = {}) {
+    const opts = $.extend({}, { imperial: false, position: 'bottomcenter' }, options);
+    return L.control.scale(opts).addTo(map);
   },
 
   addGeocoder(map, options = {}) {
-    const opts = $.extend({}, { position: 'topleft', expand: 'click', defaultMarkGeocode: false }, options);
+    const opts = $.extend({}, {
+      position: 'topleft',
+      expand: 'click',
+      defaultMarkGeocode: false,
+      placeholder: i18n.search,
+      errorMessage: i18n.noResult,
+    }, options);
 
     return L.Control.geocoder(opts)
       .on('markgeocode', (e) => {
@@ -136,40 +156,71 @@ module.exports = {
     return drawRoute;
   },
 
+  addImportButton(map, track, options) {
+    const opts = $.extend({}, { id: 'btn-import' }, options);
+    const importBtn = importButton(track, opts);
+    return importBtn.addTo(map);
+  },
+
+  addExportButton(map, track, options) {
+    const opts = $.extend({}, { id: 'btn-export' }, options);
+    const exportBtn = importButton(track, opts);
+    return exportBtn.addTo(map);
+  },
+
   addImportExportButtons(map, track, options) {
     const opts = $.extend({}, { optionsImport: { id: 'btn-import' }, optionsExport: { id: 'btn-export' } }, options);
-    const importBtn = new Map2gpx.ImportButton(track, opts.optionsImport);
-    const exportBtn = new Map2gpx.ExportButton(track, opts.optionsExport);
+    const importBtn = importButton(track, opts.optionsImport);
+    const exportBtn = exportButton(track, opts.optionsExport);
     return L.easyBar([importBtn, exportBtn]).addTo(map);
   },
 
+  addMapCoordinatesButton(map, options) {
+    const opts = $.extend({}, { position: 'bottomleft' }, options);
+    const btn = mapCoordinatesButton(opts);
+    return btn.addTo(map);
+  },
+
   addTrackDrawerToolbar(map, track, options) {
-    const opts = $.extend({}, { direction: 'horizontal', position: 'topcenter' }, options);
+    const opts = $.extend({}, {
+      direction: 'horizontal',
+      position: 'topcenter',
+      labelAddMarker: i18n.addMarker,
+      labelInsertMarker: i18n.insertMarker,
+      labelCloseLoop: i18n.closeLoop,
+      labelDeleteMarker: i18n.deleteMarker,
+      labelPromoteMarker: i18n.promoteMarker,
+      labelDemoteMarker: i18n.demoteMarker,
+      labelClean: i18n.clean,
+      labelUndo: i18n.undo,
+      labelRedo: i18n.redo,
+    }, options);
     return L.TrackDrawer.toolBar(track, opts).addTo(map);
   },
 
   addTrackDrawerTracebar(map, track, options) {
+    const opts = $.extend({}, {
+      direction: 'horizontal',
+      position: 'topcenter',
+      mode: 'auto',
+    }, options);
     return L.TrackDrawer.traceModeBar(
       track,
       [
         {
           id: 'auto',
           icon: 'fa-map-o',
-          name: options.labelAuto,
+          name: i18n.modeAuto,
           router: options.routerAuto,
         },
         {
           id: 'line',
           icon: 'fa-compass',
-          name: options.labelLine,
+          name: i18n.modeLine,
           router: L.Routing.straightLine(),
         },
       ],
-      {
-        direction: 'horizontal',
-        position: 'topcenter',
-        mode: 'auto',
-      },
+      opts,
     ).addTo(map);
   },
 
@@ -179,13 +230,13 @@ module.exports = {
   },
 
   addInfoToolbar(map, options) {
+    const opts = $.extend({}, { position: 'bottomright', aboutDialog: '#about' }, options);
     const infoBtn = L.easyButton({
-      position: 'bottomright',
       states: [
         {
           icon: 'fa-info-circle',
           onClick: () => {
-            $('#about').dialog({
+            $(opts.aboutDialog).dialog({
               autoOpen: true,
               modal: true,
               minWidth: 600,
@@ -194,113 +245,37 @@ module.exports = {
                   $(this).dialog('close');
                 },
               },
+              classes: {
+                'ui-dialog': 'map2gpx',
+              },
             });
           },
-          title: options.labelInfo,
+          title: i18n.info,
         },
       ],
     });
     const helpBtn = L.easyButton({
-      position: 'bottomright',
       states: [
         {
           icon: 'fa-question-circle',
           onClick: () => {
             $.Shepherd.get(0).start(true);
           },
-          title: options.labelHelp,
+          title: i18n.help,
         },
       ],
     });
 
-    return L.easyBar([infoBtn, helpBtn], { position: 'bottomright' }).addTo(map);
+    return L.easyBar([infoBtn, helpBtn], { position: opts.position }).addTo(map);
   },
 
-  addChart(map, track, options) {
-    const progressbar = $('#data-computing').progress({
-      labelComputing: options.labelComputing,
-    });
-    track.on('TrackDrawer:start', () => {
-      progressbar.progress('start');
-      $('#data-computing').slideDown();
-    });
-    track.on('TrackStats:fetching', (e) => {
-      progressbar.progress('update', {
-        start: true,
-        total: e.size,
-        step: `🤖 ${e.size} ${options.labelFetching}`,
-      });
-    });
-    track.on('TrackStats:fetched', (e) => {
-      progressbar.progress('update', {
-        count: e.size,
-        step: `⭐️ ${e.size} ${options.labelFetched}`,
-      });
-    });
-    track.on('TrackDrawer:statsfailed', (e) => {
-      progressbar.progress('failed', e);
-    });
-    track.on('TrackDrawer:statsdone', () => {
-      progressbar.progress('stop');
-
-      $('#data')
-        .data('map2gpx-chart')
-        .replot(track.getStatsTotal(), track.getStatsSteps().map(x => x.startingDistance));
-
-      track.getNodes().forEach((n) => {
-        n.markers.forEach((node) => {
-          if (node.getPopup() === undefined) {
-            node.bindPopup('<>');
-          }
-          node.setPopupContent(
-            `<ul class="legend ${node.options.colorName}">`
-            + `<li>${options.labelAltitude}: ${Math.round(node._stats.z)}m</li>`
-            + `<li>${options.labelDistanceFromStart}: ${Math.round(node._stats.distance * 100) / 100}km</li>`
-            + `<li>${options.labelDistanceFromLastStopover}: ${Math.round(node._stats.startingDistance * 100)
-            / 100}km</li></ul>`,
-          );
-        });
-      });
-
-      track.getSteps().forEach((g) => {
-        const c = g.container;
-        if (c.getPopup() === undefined) {
-          c.bindPopup('<>');
-          c.addEventParent(map);
-        }
-        const colorName = L.TrackDrawer.colors.rgbToName(g.edges[0].options.color);
-        c.setPopupContent(
-          `<ul class="legend ${colorName}">`
-          + `<li>${options.labelAltitudeMax}: ${Math.round(c._stats.getAltMax())}m</li>`
-          + `<li>${options.labelHeightDiffUp}: ${Math.round(c._stats.getHeightDiffUp())}m</li>`
-          + `<li>${options.labelAltitudeMin}: ${Math.round(c._stats.getAltMin())}m</li>`
-          + `<li>${options.labelHeightDiffDown}: ${Math.round(c._stats.getHeightDiffDown())}m</li>`
-          + `<li>${options.labelDistance}: ${Math.round(c._stats.getDistance() * 100) / 100}km</li></ul>`,
-        );
-      });
-
-      $('#data-computing').slideUp();
-    });
-
-    $('#data').chart({
-      map,
-      isSmallScreen: false,
-      showTerrainSlope: options.showTerrainSlope,
-      labelAltitude: options.labelAltitude,
-      labelSlope: options.labelSlope,
-      labelDistance: options.labelDistance,
-      labelAltitudeMax: options.labelAltitudeMax,
-      labelHeightDiffUp: options.labelHeightDiffUp,
-      labelAltitudeMin: options.labelAltitudeMin,
-      labelHeightDiffDown: options.labelHeightDiffDown,
-    });
+  addChart(item, map, track, options) {
+    const opts = $.extend({}, { map, track }, options);
+    item.chart(opts);
   },
 
-  addTour(track, options) {
+  addTour(track) {
     if (track._map._imported) return; // Skip if some nodes were imported
-
-    $.Shepherd.labelNext = options.labelNext;
-    $.Shepherd.labelClose = options.labelClose;
 
     $.Shepherd.tour()
       .add('welcome', {
@@ -384,3 +359,5 @@ module.exports = {
     });
   },
 };
+
+export default controls;

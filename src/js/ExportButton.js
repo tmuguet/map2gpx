@@ -1,14 +1,13 @@
-/* global Blob, saveAs, $, togpx, tokml */
-const L = require('leaflet');
+/* global Blob */
+import L from 'leaflet';
+import $ from 'jquery';
+import { saveAs } from 'file-saver';
+import togpx from 'togpx';
+import tokml from 'tokml';
+import { i18n } from './i18n';
 
-module.exports = L.Control.EasyButton.extend({
-  options: {
-    title: 'Export',
-    fileLabel: 'File',
-    cancelLabel: 'Cancel',
-    includeMarkersLabel: 'Include the stepover markers',
-    exportAsSingleTrackLabel: 'Export as single track',
-  },
+export const ExportButton = L.Control.EasyButton.extend({
+  options: { },
 
   initialize(track, options) {
     this._track = track;
@@ -18,7 +17,7 @@ module.exports = L.Control.EasyButton.extend({
       states: [
         {
           icon: 'fa-cloud-download',
-          title: this.options.title,
+          title: i18n.export,
           onClick: () => {
             this._dialog.dialog('open');
           },
@@ -40,31 +39,43 @@ module.exports = L.Control.EasyButton.extend({
   },
 
   _buildPopup() {
-    const content = `<div id="dialog-export" title="${this.options.title}">`
-      + '<form enctype="multipart/form-data">'
-      + '<fieldset>'
-      + `<label for="export-file">${this.options.fileLabel}</label>`
-      + '<input type="text" name="export-file" id="export-file" value="track" class="text ui-widget-content ui-corner-all"/>'
-      + '<span style="display: block"><input type="checkbox" name="export-markers" id="export-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>'
-      + `<label for="export-markers" style="display: inline">${this.options.includeMarkersLabel}</label></span>`
-      + '<span style="display: block"><input type="checkbox" name="export-single" id="export-single" class="ui-widget-content ui-corner-all" style="display: inline"/>'
-      + `<label for="export-single" style="display: inline">${this.options.exportAsSingleTrackLabel}</label></span>`
-      + '</fieldset><fieldset><button id="export-gpx-button" class="ui-button ui-corner-all ui-widget">GPX</button>'
-      + '<button id="export-kml-button" class="ui-button ui-corner-all ui-widget">KML</button>'
-      + '<button id="export-geojson-button" class="ui-button ui-corner-all ui-widget">GeoJSON</button>'
-      + '</fieldset>'
-      + '</form>'
-      + '</div>';
+    /* eslint-disable max-len */
+    const content = `
+<div id="dialog-export" title="${i18n.export}">
+  <form enctype="multipart/form-data">
+    <fieldset>
+      <label for="export-file">${i18n.file}</label>
+      <input type="text" name="export-file" id="export-file" value="track" class="text ui-widget-content ui-corner-all"/>
+      <span style="display: block">
+        <input type="checkbox" name="export-markers" id="export-markers" class="ui-widget-content ui-corner-all" style="display: inline"/>
+        <label for="export-markers" style="display: inline">${i18n.includeWaypoints}</label>
+      </span>
+      <span style="display: block">
+        <input type="checkbox" name="export-single" id="export-single" class="ui-widget-content ui-corner-all" style="display: inline"/>
+        <label for="export-single" style="display: inline">${i18n.exportAsSingleTrack}</label>
+      </span>
+    </fieldset>
+    <fieldset>
+      <button id="export-gpx-button" class="ui-button ui-corner-all ui-widget">GPX</button>
+      <button id="export-kml-button" class="ui-button ui-corner-all ui-widget">KML</button>
+      <button id="export-geojson-button" class="ui-button ui-corner-all ui-widget">GeoJSON</button>
+    </fieldset>
+  </form>
+</div>`;
+    /* eslint-enable max-len */
     const $content = $(content);
 
     const buttons = {};
-    buttons[this.options.cancelLabel] = () => this._dialog.dialog('close');
+    buttons[i18n.cancel] = () => this._dialog.dialog('close');
     this._dialog = $content.dialog({
       autoOpen: false,
       modal: true,
       buttons,
       close: () => {
         this._form[0].reset();
+      },
+      classes: {
+        'ui-dialog': 'map2gpx',
       },
     });
 
@@ -81,7 +92,7 @@ module.exports = L.Control.EasyButton.extend({
       this._export(
         togpx(this._track.toGeoJSON($('#export-markers').is(':checked'), $('#export-single').is(':checked')), {
           creator: 'map2gpx',
-          featureTitle: p => ('index' in p ? `${filename}-${p.index}` : ''),
+          featureTitle: (p) => ('index' in p ? `${filename}-${p.index}` : ''),
         }),
         'application/gpx+xml;charset=utf-8',
         'gpx',
@@ -112,3 +123,7 @@ module.exports = L.Control.EasyButton.extend({
     });
   },
 });
+
+export function exportButton(track, options) {
+  return new ExportButton(track, options);
+}

@@ -4,5 +4,6 @@ key.txt
 autoconf-https-local.json
 autoconf-https-prod.json
 dist
+dist-www
 www-*
 coverage
