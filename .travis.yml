@@ -10,6 +10,7 @@ services:
 install:
   - npm install
 script:
+  - npm run lrm-graphhopper-fixup
   - npm run validate
 
 deploy:
