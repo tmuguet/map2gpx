@@ -1,0 +1,20 @@
+language: node_js
+os:
+  - linux
+dist: xenial
+node_js:
+  - 12
+services:
+  - xvfb
+
+install:
+  - npm install
+script:
+  - npm run validate
+
+deploy:
+  provider: npm
+  email: '$NPM_EMAIL'
+  api_token: '$NPM_TOKEN'
+  on:
+    tags: true

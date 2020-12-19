@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Map2gpx Spec Runner</title>
+  <link rel="stylesheet" type="text/css" href="../node_modules/mocha/mocha.css" />
+
+  <script src="https://use.fontawesome.com/769d9e20e5.js"></script>
+  <link rel="stylesheet" href="../node_modules/jquery-ui-dist/jquery-ui.min.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet-control-topcenter/dist/leaflet-control-topcenter.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet-minimap/dist/Control.MiniMap.min.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet-easybutton/src/easy-button.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet.awesome-markers/dist/leaflet.awesome-markers.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="../node_modules/geoportal-extensions-leaflet/dist/GpPluginLeaflet.css" />
+  <link rel="stylesheet" href="../node_modules/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <link rel="stylesheet" href="../node_modules/shepherd.js/dist/css/shepherd-theme-square.css" />
+  <link rel="stylesheet" href="../dist/map2gpx.min.css" />
+  <link rel="stylesheet" href="../dist-www/css/map2gpx.min.css" />
+</head>
+
+<body>
+  <div id="mocha"></div>
+  <script src="../node_modules/mocha/mocha.js"></script>
+  <script src="../node_modules/chai/chai.js"></script>
+  <script src="../node_modules/sinon/pkg/sinon.js"></script>
+  <script src="../node_modules/happen/happen.js"></script>
+
+  <!-- source files -->
+  <script>
+    // Trick Leaflet into believing we have a touchscreen (for Chrome)
+    if (window.Touch) {
+      window.ontouchstart = function () { };
+    }
+  </script>
+
+  <script src="../node_modules/jquery/dist/jquery.min.js"></script>
+  <script src="../node_modules/jquery-ui-dist/jquery-ui.min.js"></script>
+  <script src="../node_modules/leaflet/dist/leaflet.js"></script>
+  <script src="../node_modules/leaflet-control-topcenter/dist/leaflet-control-topcenter.js"></script>
+  <script src="../node_modules/leaflet-minimap/dist/Control.MiniMap.min.js"></script>
+  <script src="../node_modules/leaflet-easybutton/src/easy-button.js"></script>
+  <script src="../node_modules/leaflet.awesome-markers/dist/leaflet.awesome-markers.min.js"></script>
+  <script src="../node_modules/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+  <script src="../node_modules/@tmcw/togeojson/dist/togeojson.umd.js"></script>
+  <script src="../node_modules/@mapbox/corslite/corslite.js"></script>
+  <script src="../node_modules/promise-queue/lib/index.js"></script>
+  <script src="../node_modules/leaflet-filelayer/src/leaflet.filelayer.js"></script>
+  <script src="../node_modules/lrm-graphhopper/dist/lrm-graphhopper.min.js"></script>
+  <script src="../node_modules/lrm-straightline/dist/lrm-straightline.min.js"></script>
+  <script src="../node_modules/leaflet-trackdrawer/dist/leaflet.trackdrawer.umd.js"></script>
+  <script src="../node_modules/leaflet-trackstats/dist/leaflet.trackstats.umd.js"></script>
+  <script src="../node_modules/chart.js/dist/Chart.min.js"></script>
+  <script src="../node_modules/chartjs-plugin-annotation/chartjs-plugin-annotation.min.js"></script>
+  <script src="../node_modules/file-saver/dist/FileSaver.min.js"></script>
+  <script src="../node_modules/togpx/togpx.js"></script>
+  <script src="../node_modules/tokml/tokml.js"></script>
+  <script src="../node_modules/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="../node_modules/tippy.js/dist/tippy.min.js"></script>
+  <script src="../node_modules/shepherd.js/dist/js/shepherd.min.js"></script>
+  <script src="../dist/map2gpx.min.js"></script>
+
+  <script>
+    mocha.setup({
+      ui: 'bdd',
+      ignoreLeaks: true,
+    });
+  </script>
+
+  <!-- spec files -->
+
+  <script src="test.js"></script>
+  <script src="InitSpec.js"></script>
+
+  <script>
+    (window.mochaPhantomJS || window.mocha).run();
+  </script>
+</body>
+
+</html>
