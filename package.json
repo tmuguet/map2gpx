@@ -1,6 +1,6 @@
 {
   "name": "map2gpx",
-  "version": "2.0.0-alpha.10",
+  "version": "2.0.0-alpha.11",
   "description": "map2gpx is a web application that lets you trace paths on maps (for hiking for instance) and export them to GPX or KML formats.\\n",
   "main": "dist/map2gpx.cjs.js",
   "module": "dist/map2gpx.esm.js",
@@ -13,7 +13,7 @@
     "test": "karma start karma.conf.js",
     "doc": "typedoc --out docs/ --ignoreCompilerErrors --includeDeclarations --excludeExternals --disableSources --name \"Map2gpx\" --theme markdown --readme none --mode file src/js/index.d.ts",
     "validate": "npm run pack && npm run eslint && npm run test",
-    "version": "npm run validate && npm run doc && git add docs dist",
+    "version": "npm run validate && npm run doc && git add docs",
     "lrm-graphhopper-fixup": "npm explore lrm-graphhopper -- npm run dist"
   },
   "repository": {
@@ -83,11 +83,11 @@
     "rollup-plugin-copy": "^3.3.0",
     "rollup-plugin-postcss": "^4.0.0",
     "rollup-plugin-terser": "^7.0.2",
+    "sinon": "^9.2.2",
     "through2": "^3.0.2",
     "typedoc": "^0.19.2",
     "typedoc-plugin-markdown": "^3.0.11",
     "typescript": "3.9.x || 4.0.x",
-    "sinon": "^9.2.2",
     "uglify-js": "^3.12.0",
     "vinyl-buffer": "^1.0.1",
     "vinyl-source-stream": "^2.0.0"
@@ -109,7 +109,7 @@
     "leaflet-filelayer": "^1.2.0",
     "leaflet-minimap": "^3.6.1",
     "leaflet-routing-machine": "^3.2.12",
-    "leaflet-trackdrawer": "^0.6.0",
+    "leaflet-trackdrawer": "^0.6.1",
     "leaflet-trackstats": "^0.2.0",
     "leaflet.awesome-markers": "^2.0.4",
     "lrm-geoportail": "^0.1.1",

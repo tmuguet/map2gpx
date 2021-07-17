@@ -46,6 +46,7 @@ const controls = {
     });
 
     let control;
+    const layers = [];
     switch (controlType) {
       case 'native':
         control = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
@@ -75,8 +76,21 @@ const controls = {
         break;
 
       case 'geoportail':
+        Object.keys(baseLayers).forEach((key) => {
+          layers.push({
+            layer: baseLayers[key],
+            config: { title: key },
+          });
+        });
+        Object.keys(overlays).forEach((key) => {
+          layers.push({
+            layer: overlays[key],
+            config: { title: key },
+          });
+        });
         control = L.geoportalControl.LayerSwitcher({
           collapsed: false,
+          layers,
         });
         map.addControl(control);
 
