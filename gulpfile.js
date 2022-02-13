@@ -7,8 +7,6 @@ const csso = require('gulp-csso');
 const copy = require('gulp-copy');
 const htmlcpr = require('gulp-htmlcpr');
 
-const { ENV } = require('./env.json');
-
 function bundleCss() {
   return src(['./src/css/default.css', './src/css/jquery-ui.theme.min.css'])
     .pipe(concat('map2gpx.css'))
@@ -65,7 +63,7 @@ function copyAssetsIgn() {
   return src(['./slope.php']).pipe(dest('./www-fr/'));
 }
 function copyConfIgn() {
-  return src(`./autoconf-https-${ENV}.json`, { allowEmpty: true })
+  return src(`./autoconf.json`, { allowEmpty: true })
     .pipe(rename('autoconf.json'))
     .pipe(dest('./www-fr/'));
 }

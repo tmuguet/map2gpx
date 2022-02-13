@@ -29,12 +29,6 @@ function error_500($msg) {  // Quick & dirty
     exit();
 }
 
-$apikey = filter_input(INPUT_GET, 'apikey', FILTER_VALIDATE_REGEXP, array(
-    "options" => array("regexp" => "/[a-zA-Z0-9]+/")
-));
-if ($apikey === FALSE)
-    error_400("Parameter apikey invalid");
-
 $tilematrix = filter_input(INPUT_GET, 'tilematrix', FILTER_VALIDATE_INT);
 if ($tilematrix === FALSE)
     error_400("Parameter tilematrix invalid");
@@ -104,7 +98,7 @@ function colorat($im, $x, $y) {
 try {
     error_reporting(0);
 
-    $file = file_get_contents('https://wxs.ign.fr/' . $apikey . '/geoportail/wmts?service=WMTS&request=GetTile&version=1.0.0&layer=GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN&style=normal&tilematrixset=PM&format=image/png&tilematrix=' . $tilematrix . '&tilerow=' . $tilerow . '&tilecol=' . $tilecol, false, buildContext());
+    $file = file_get_contents('https://wxs.ign.fr/altimetrie/geoportail/wmts?service=WMTS&request=GetTile&version=1.0.0&layer=GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN&style=normal&tilematrixset=PM&format=image/png&tilematrix=' . $tilematrix . '&tilerow=' . $tilerow . '&tilecol=' . $tilecol, false, buildContext());
     if ($file === FALSE)
         error_500("Could not fetch data");
     $im = imagecreatefromstring($file);
