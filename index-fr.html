@@ -325,23 +325,23 @@
             '&LAYER={ignLayer}&STYLE={style}&FORMAT={format}'+
             '&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}',
             {
-	            ignApiKey: 'pratique',
-	            ignLayer: 'ORTHOIMAGERY.ORTHOPHOTOS',
-	            style: 'normal',
-	            format: 'image/jpeg',
-	            service: 'WMTS'
+              ignApiKey: 'pratique',
+              ignLayer: 'ORTHOIMAGERY.ORTHOPHOTOS',
+              style: 'normal',
+              format: 'image/jpeg',
+              service: 'WMTS'
         }),
         'Cartes IGN': L.tileLayer('https://wxs.ign.fr/{ignApiKey}/geoportail/wmts?'+
             '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&TILEMATRIXSET=PM'+
             '&LAYER={ignLayer}&STYLE={style}&FORMAT={format}'+
             '&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}',
             {
-	            ignApiKey: 'pratique',
-	            ignLayer: 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2',
-	            style: 'normal',
-	            format: 'image/png',
-	            service: 'WMTS',
-				opacity: 0.25
+              ignApiKey: 'pratique',
+              ignLayer: 'GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2',
+              style: 'normal',
+              format: 'image/png',
+              service: 'WMTS',
+              opacity: 0.25
         }),
       };
       var visibleOverlays = {};
@@ -369,7 +369,18 @@
         }),
       };
       var hiddenOverlays = {
-        'Carte des pentes': L.geoportalLayer.WMTS({ layer: 'GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN' }, { opacity: 0.25 }),
+        'Carte des pentes': L.tileLayer('https://wxs.ign.fr/{ignApiKey}/geoportail/wmts?'+
+            '&REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&TILEMATRIXSET=PM'+
+            '&LAYER={ignLayer}&STYLE={style}&FORMAT={format}'+
+            '&TILECOL={x}&TILEROW={y}&TILEMATRIX={z}',
+            {
+              ignApiKey: 'altimetrie',
+              ignLayer: 'GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN',
+              style: 'normal',
+              format: 'image/png',
+              service: 'WMTS',
+              opacity: 0.25
+        }),
       };
       Map2gpx.controls.addLayers(map, visibleLayers, visibleOverlays, hiddenLayers, hiddenOverlays, map.shouldShowControls() ? 'geoportail' : 'none');
 
