@@ -6,7 +6,7 @@ module.exports = function (config) {
       'karma-chai',
       'karma-sinon',
       'karma-happen',
-      'karma-phantomjs-launcher',
+      // 'karma-phantomjs-launcher',
       // 'karma-chrome-launcher',
       // 'karma-safari-launcher',
       'karma-firefox-launcher',

@@ -27,8 +27,8 @@ Output comes in multiples flavors:
 - _dist_ folder exposes the library (available in CommonJS, ES6 and UMD formats), that can be reused directly into your projects
 - _www-fr_ to use GeoPortail maps and APIs (only available in France) - driven by _index-fr.html_, source for [map2gpx.fr](https://map2gpx.fr)
   - You will need your own API key if you want to test/run it
-- _www-en_ to use services available worldwide (maps from OpenStreetMap, Thunderforest, OpenTopoMap, Hike & Bike, Hillshading and APIs from MapQuest, GrapHopper) - driven by _index-en.html_, source for [map2gpx.eu](https://map2gpx.eu)
-  - Thunderforest, MapQuest and GraphHopper requires API keys. Even if the API keys provided here may work for you, please use your own API key if you to test/run it
+- _www-en_ to use services available worldwide (maps from OpenStreetMap, Thunderforest, OpenTopoMap, Hike & Bike, Hillshading and APIs from OpenElevation, GrapHopper) - driven by _index-en.html_, source for [map2gpx.eu](https://map2gpx.eu)
+  - Thunderforest and GraphHopper require API keys. Even if the API keys provided here may work for you, please use your own API key if you to test/run it
 
 ## Customize
 
