@@ -78,7 +78,7 @@
     "mocha-sinon": "^2.1.2",
     "nyc": "^15.1.0",
     "plugin-error": "^1.0.1",
-    "postcss": "^8.2.1",
+    "postcss": "^8.2.13",
     "rollup": "^2.33.3",
     "rollup-plugin-copy": "^3.3.0",
     "rollup-plugin-postcss": "^4.0.0",
