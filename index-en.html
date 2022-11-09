@@ -162,8 +162,14 @@
       <hr />
       <p>map2gpx uses:</p>
       <ul class="columns-2">
+        <li>Maps from <a href="http://www.thunderforest.com" target="_blank" rel="noopener noreferrer">Thunderforest (OpenCycleMap, Outdoors)</a></li>
+        <li>Maps from <a href="http://opentopomap.org" target="_blank" rel="noopener noreferrer">OpenTopoMap</a></li>
+        <li>Maps from <a href="https://wmflabs.org" target="_blank" rel="noopener noreferrer">wmflabs.org (Hike & Bike, Hillshading)</a></li>
+        <li>Maps from <a href="https://openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></li>
+        <li>Elevation API from <a href="https://open-elevation.com/" target="_blank" rel="noopener noreferrer">Open-Elevation</a></li>
+        <li>Geocoder API from <a href="https://wiki.openstreetmap.org/wiki/Nominatim" target="_blank" rel="noopener noreferrer">OpenStreetMap</a></li>
         <li>
-          <a href="http://fontawesome.io" target="_blank" rel="noopener noreferrer">Font Awesome</a> par Dave Gandy
+          <a href="http://fontawesome.io" target="_blank" rel="noopener noreferrer">Font Awesome</a> by Dave Gandy
           (SIL OFL 1.1)
         </li>
         <li><a href="http://jquery.com/" target="_blank" rel="noopener noreferrer">jQuery</a> (MIT license)</li>
@@ -330,7 +336,7 @@
 
       var drawRoute = Map2gpx.controls.addTrackDrawer(
         map,
-        L.TrackStats.mapquest('6XeYdds8vebyIvmTA7XLKlgwsEtHleGQ', map),
+        L.TrackStats.openElevation(map),
         new L.Control.Geocoder.Nominatim()
       );
 

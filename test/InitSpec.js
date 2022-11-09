@@ -63,7 +63,7 @@ describe('Init', () => {
 
     const drawRoute = Map2gpx.controls.addTrackDrawer(
       map,
-      L.TrackStats.mapquest('6XeYdds8vebyIvmTA7XLKlgwsEtHleGQ', map),
+      L.TrackStats.openElevation(map),
       new L.Control.Geocoder.Nominatim(),
     );
 
